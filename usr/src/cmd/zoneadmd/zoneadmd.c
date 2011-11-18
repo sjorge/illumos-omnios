@@ -780,6 +780,19 @@ mount_early_fs(void *data, const char *spec, const char *dir,
 	return (0);
 }
 
+void
+nwifent_free_attrs(struct zone_nwiftab *np)
+{
+	struct zone_res_attrtab *rap;
+
+	for (rap = np->zone_nwif_attrp; rap != NULL; ) {
+		struct zone_res_attrtab *tp = rap;
+
+		rap = rap->zone_res_attr_next;
+		free(tp);
+	}
+}
+
 /*
  * If retstr is not NULL, the output of the subproc is returned in the str,
  * otherwise it is output using zerror().  Any memory allocated for retstr
