@@ -30,6 +30,7 @@
 PROG= zoneadmd
 
 include ../Makefile.cmd
+include ../Makefile.ctf
 
 ROOTCMDDIR=	$(ROOTLIB)/zones
 
