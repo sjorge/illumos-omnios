@@ -2512,8 +2512,13 @@ do_res_attr(struct zone_res_attrtab **headp, complex_property_ptr_t cpp)
 				    pt_to_str(PT_NAME));
 				goto bad;
 			}
-			(void) strlcpy(np->zone_res_attr_name, cp->cp_value,
-			    sizeof (np->zone_res_attr_name));
+			if (strlcpy(np->zone_res_attr_name, cp->cp_value,
+			    sizeof (np->zone_res_attr_name)) >=
+			    sizeof (np->zone_res_attr_name)) {
+				zerr(gettext("Input for %s is too long"),
+				    pt_to_str(PT_NAME));
+				goto bad;
+			}
 			seen_name = B_TRUE;
 			break;
 		case PT_VALUE:
@@ -2522,8 +2527,14 @@ do_res_attr(struct zone_res_attrtab **headp, complex_property_ptr_t cpp)
 				    pt_to_str(PT_VALUE));
 				goto bad;
 			}
-			(void) strlcpy(np->zone_res_attr_value, cp->cp_value,
-			    sizeof (np->zone_res_attr_value));
+			if (strlcpy(np->zone_res_attr_value, cp->cp_value,
+			    sizeof (np->zone_res_attr_value)) >=
+			    sizeof (np->zone_res_attr_value)) {
+				zerr(gettext("Input for %s is too long"),
+				    pt_to_str(PT_VALUE));
+				goto bad;
+			}
+
 			seen_value = B_TRUE;
 			break;
 		default:
