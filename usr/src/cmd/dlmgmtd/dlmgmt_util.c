@@ -514,7 +514,6 @@ dlmgmt_create_common(const char *name, datalink_class_t class, uint32_t media,
 	linkp->ll_linkid = dlmgmt_nextlinkid;
 	linkp->ll_zoneid = zoneid;
 	linkp->ll_gen = 0;
-	linkp->ll_tomb = B_FALSE;
 
 	/*
 	 * While DLMGMT_TRANSIENT starts off as a flag it is converted

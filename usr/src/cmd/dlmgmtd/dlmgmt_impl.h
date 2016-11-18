@@ -79,7 +79,6 @@ typedef struct dlmgmt_link_s {
 	avl_node_t		ll_loan_node;
 	uint32_t		ll_flags;
 	uint32_t		ll_gen;		/* generation number */
-	boolean_t		ll_tomb;	/* tombstombed */
 	/*
 	 * A transient link is one that is created and destroyed along with the
 	 * lifetime of a zone. It is a non-persistent link that is owned by the
@@ -103,8 +102,6 @@ typedef struct dlmgmt_dlconf_s {
 	uint32_t		ld_gen;
 	avl_node_t		ld_node;
 } dlmgmt_dlconf_t;
-
-#define	ZONE_LOCK	"/etc/dladm/zone.lck"
 
 extern boolean_t	debug;
 extern const char	*progname;
