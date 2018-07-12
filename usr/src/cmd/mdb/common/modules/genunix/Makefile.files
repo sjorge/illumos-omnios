@@ -72,6 +72,7 @@ GENUNIX_SRCS =		\
 	pci.c		\
 	pg.c		\
 	rctl.c		\
+	refhash.c	\
 	refstr.c	\
 	sobj.c		\
 	streams.c	\
