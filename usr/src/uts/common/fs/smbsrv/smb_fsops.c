@@ -505,6 +505,11 @@ smb_fsop_create_file(smb_request_t *sr, cred_t *cr,
 		 * converted to FS format. No inheritance.
 		 */
 		secinfo = smb_sd_get_secinfo(op->sd);
+
+		if ((secinfo & SMB_SACL_SECINFO) != 0 &&
+		    !smb_user_has_security_priv(sr->uid_user, cr))
+			return (NT_STATUS_PRIVILEGE_NOT_HELD);
+
 		smb_fssd_init(&fs_sd, secinfo, 0);
 
 		status = smb_sd_tofs(op->sd, &fs_sd);
@@ -646,6 +651,11 @@ smb_fsop_mkdir(
 		 * converted to FS format. No inheritance.
 		 */
 		secinfo = smb_sd_get_secinfo(op->sd);
+
+		if ((secinfo & SMB_SACL_SECINFO) != 0 &&
+		    !smb_user_has_security_priv(sr->uid_user, cr))
+			return (NT_STATUS_PRIVILEGE_NOT_HELD);
+
 		smb_fssd_init(&fs_sd, secinfo, SMB_FSSD_FLAGS_DIR);
 
 		status = smb_sd_tofs(op->sd, &fs_sd);
@@ -1727,10 +1737,7 @@ smb_fsop_access(smb_request_t *sr, cred_t *cr, smb_node_t *snode,
 		 * it's not part of DACL. It's only granted via proper
 		 * privileges.
 		 */
-		if ((sr->uid_user->u_privileges &
-		    (SMB_USER_PRIV_BACKUP |
-		    SMB_USER_PRIV_RESTORE |
-		    SMB_USER_PRIV_SECURITY)) == 0)
+		if (!smb_user_has_security_priv(sr->uid_user, cr))
 			return (NT_STATUS_PRIVILEGE_NOT_HELD);
 
 		faccess &= ~ACCESS_SYSTEM_SECURITY;
