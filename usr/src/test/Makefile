@@ -12,6 +12,8 @@
 #
 # Copyright (c) 2012 by Delphix. All rights reserved.
 # Copyright 2014 Garrett D'Amore <garrett@damore.org>
+# Copyright 2019 Joyent, Inc.
+# Copyright 2020 Tintri by DDN, Inc. All rights reserved.
 #
 
 .PARALLEL: $(SUBDIRS)
@@ -20,6 +22,7 @@ SUBDIRS = \
 	crypto-tests \
 	elf-tests \
 	libc-tests \
+	libmlrpc-tests \
 	os-tests \
 	smbclient-tests \
 	test-runner \

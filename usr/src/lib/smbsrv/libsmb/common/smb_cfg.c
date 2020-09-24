@@ -20,7 +20,9 @@
  */
 /*
  * Copyright (c) 2007, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2015 Nexenta Systems, Inc.  All rights reserved.
+ * Copyright 2018 Nexenta Systems, Inc.  All rights reserved.
+ * Copyright 2020 Tintri by DDN, Inc. All rights reserved.
+ * Copyright 2020 RackTop Systems, Inc.
  */
 
 /*
@@ -145,6 +147,7 @@ static smb_cfg_param_t smb_cfg_table[] =
 	{SMB_CI_INITIAL_CREDITS, "initial_credits", SCF_TYPE_INTEGER, 0},
 	{SMB_CI_MAXIMUM_CREDITS, "maximum_credits", SCF_TYPE_INTEGER, 0},
 	{SMB_CI_MAX_PROTOCOL, "max_protocol", SCF_TYPE_ASTRING, 0},
+	{SMB_CI_NETLOGON_FLAGS, "netlogon_flags", SCF_TYPE_INTEGER, 0},
 
 	/* SMB_CI_MAX */
 };
