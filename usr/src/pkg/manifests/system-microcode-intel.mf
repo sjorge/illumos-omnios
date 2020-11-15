@@ -35,7 +35,7 @@
 #
 <include global_zone_only_component>
 set name=pkg.fmri \
-    value=pkg:/system/microcode/intel@20201110,$(PKGVERS_BUILTON)-$(PKGVERS_BRANCH)
+    value=pkg:/system/microcode/intel@20201112,$(PKGVERS_BUILTON)-$(PKGVERS_BRANCH)
 set name=pkg.description value="Microcode for Intel CPUs"
 set name=org.opensolaris.incorp-facet value=true
 set name=variant.arch value=i386
