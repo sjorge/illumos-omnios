@@ -648,29 +648,31 @@ tlm_cat_path(char *buf, char *dir, char *name)
  * This is necessary to check for checkpoints not being stale.
  */
 int
-tlm_get_chkpnt_time(char *path, time_t *tp)
+tlm_get_chkpnt_time(char *path, int auto_checkpoint, time_t *tp, char *jname)
 {
-	zfs_handle_t *zhp;
+	char volname[TLM_VOLNAME_MAX_LENGTH];
+	char chk_name[PATH_MAX];
+	char *cp_nm;
 
-	if (path == NULL || *path == '\0' || tp == NULL) {
-		syslog(LOG_ERR, "tlm_get_chkpnt_time: bad params");
+	syslog(LOG_DEBUG, "path [%s] auto_checkpoint: %d",
+	    path, auto_checkpoint);
+
+	if (path == NULL || *path == '\0' || tp == NULL)
 		return (-1);
-	}
 
-	(void) mutex_lock(&zlib_mtx);
-	if ((zhp = zfs_open(zlibh, path, ZFS_TYPE_DATASET)) == NULL) {
-		syslog(LOG_DEBUG, "tlm_get_chkpnt_time: open %s failed",
-		    path);
-		(void) mutex_unlock(&zlib_mtx);
+	if (get_zfsvolname(volname, TLM_VOLNAME_MAX_LENGTH,
+	    path) == -1)
 		return (-1);
+
+	if (auto_checkpoint) {
+		syslog(LOG_DEBUG, "volname [%s]", volname);
+		(void) snprintf(chk_name, PATH_MAX, "%s", jname);
+		return (chkpnt_creationtime_bypattern(volname, chk_name, tp));
 	}
+	cp_nm = strchr(volname, '@');
+	syslog(LOG_DEBUG, "volname [%s] cp_nm [%s]", volname, cp_nm);
 
-	*tp = zfs_prop_get_int(zhp, ZFS_PROP_CREATION);
-
-	zfs_close(zhp);
-	(void) mutex_unlock(&zlib_mtx);
-
-	return (0);
+	return (chkpnt_creationtime_bypattern(volname, cp_nm, tp));
 }
 
 /*
@@ -723,10 +725,9 @@ char *
 tlm_build_snapshot_name(char *name, char *sname, char *jname)
 {
 	zfs_handle_t *zhp;
-	char volname[ZFS_MAX_DATASET_NAME_LEN] = {'\0'};
-	char mountpoint[PATH_MAX] = {'\0'};
-	char zpoolname[ZFS_MAX_DATASET_NAME_LEN] = {'\0'};
-	char *slash, *rest;
+	char *rest;
+	char volname[ZFS_MAX_DATASET_NAME_LEN];
+	char mountpoint[PATH_MAX];
 
 	if (get_zfsvolname(volname, ZFS_MAX_DATASET_NAME_LEN, name) == -1)
 		goto notzfs;
@@ -748,15 +749,9 @@ tlm_build_snapshot_name(char *name, char *sname, char *jname)
 	zfs_close(zhp);
 	(void) mutex_unlock(&zlib_mtx);
 
-	(void) strlcpy(zpoolname, volname, ZFS_MAX_DATASET_NAME_LEN);
-	slash = strchr(zpoolname, '/');
-	if (slash != 0) {
-		*slash = '\0';
-	}
-
 	rest = name + strlen(mountpoint);
-	(void) snprintf(sname,
-	    TLM_MAX_PATH_NAME, "/%s/%s%s", zpoolname, jname, rest);
+	(void) snprintf(sname, TLM_MAX_PATH_NAME, "%s/%s/%s%s", mountpoint,
+	    TLM_SNAPSHOT_DIR, jname, rest);
 
 	return (sname);
 

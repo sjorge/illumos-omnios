@@ -37,7 +37,7 @@
  */
 /* Copyright (c) 2007, The Storage Networking Industry Association. */
 /* Copyright (c) 1996, 1997 PDC, Network Appliance. All Rights Reserved */
-/* Copyright 2017 Nexenta Systems, Inc. All rights reserved. */
+/* Copyright 2015 Nexenta Systems, Inc. All rights reserved. */
 
 #include <sys/types.h>
 #include <syslog.h>
@@ -154,13 +154,14 @@ static char *exls[] = {
 	NULL
 };
 
+
 /*
- * The counter for creating unique names with "NDMP_RCF_BASENAME.%d" format.
+ * The counter for creating unique names with "ndmp.%d" format.
  */
+#define	NDMP_RCF_BASENAME	"ndmp."
 static int ndmp_job_cnt = 0;
 
 static int scsi_test_unit_ready(int dev_id);
-static int ndmpd_mkdir(const char *);
 
 /*
  * ndmpd_add_file_handler
@@ -2025,72 +2026,26 @@ cctime(time_t *t)
 /*
  * ndmp_new_job_name
  *
- * Copy, at most, 'n' characters of the current backup
- * job name to the buffer in parameter 's1'.
+ * Create a job name for each backup/restore to keep track
  *
  * Parameters:
- *
- *   s1 (input) - pointer to a user supplied buffer
- *   n  (input) - number of bytes to copy
+ *   jname (output) - job name
  *
  * Returns:
- *   count of bytes in name
+ *   jname
  */
-
-int
-ndmp_new_job_name(char *s1, size_t n) {
-
-	if (n >= TLM_MAX_BACKUP_JOB_NAME) {
-		/*
-		 * TLM_MAX_BACKUP_JOB_NAME is the fixed length of
-		 * the encoded job name in the format `NdmpBackup.nnnn\0`,
-		 * where nnnn is a job sequence number.  A null byte
-		 * is included. It is okay if the buffer is bigger than that.
-		 */
-		return (snprintf(s1, n, "%10s.%04d",
-		    NDMP_RCF_BASENAME, ndmp_job_cnt++%1000));
-	}
-	return (0);
-}
-
-/*
- * Check if the volume is already checkpointed. Assume it is not
- * by setting nlp_snapname to '\0' at first. It will be filled
- * in  with the checkpoint (snapshot name) if one is found.
- */
-boolean_t
-fs_is_checkpointed(ndmp_lbr_params_t *nlp)
+char *
+ndmp_new_job_name(char *jname)
 {
-	zfs_handle_t *zhp;
-	snap_data_t si;
-
-	(void) mutex_lock(&zlib_mtx);
-	if ((zhp = zfs_open(zlibh, nlp->nlp_vol, ZFS_TYPE_DATASET)) != NULL) {
-		nlp->nlp_snapname[0] = '\0';
-		si.creation_time = (time_t)0;
-		si.last_snapshot = nlp->nlp_snapname;
-		if (ndmp_find_latest_autosync(zhp, (void *) &si) != 0) {
-			syslog(LOG_ERR,
-			    "Find AutoSync failed (err=%d): %s",
-			    errno, libzfs_error_description(zlibh));
-			zfs_close(zhp);
-			(void) mutex_unlock(&zlib_mtx);
-			return (B_FALSE);
-		}
-		zfs_close(zhp);
-		if (strlen(nlp->nlp_snapname) == 0) {
-			syslog(LOG_DEBUG, "Apparently not an "
-			    "Auto-Sync - continue as normal backup");
-			(void) mutex_unlock(&zlib_mtx);
-			return (B_FALSE);
-		}
+	if (jname != NULL) {
+		(void) snprintf(jname, TLM_MAX_BACKUP_JOB_NAME, "%s%d",
+		    NDMP_RCF_BASENAME, ndmp_job_cnt++);
+		syslog(LOG_DEBUG, "jname: \"%s\"", jname);
 	}
-	(void) mutex_unlock(&zlib_mtx);
-	syslog(LOG_DEBUG, "It is an autosync:");
-	syslog(LOG_DEBUG, "nlp->nlp_vol = [%s]", nlp->nlp_vol);
-	syslog(LOG_DEBUG, "nlp->nlp_snapname = [%s]", nlp->nlp_snapname);
-	return (B_TRUE);
+
+	return (jname);
 }
+
 
 /*
  * fs_is_valid_logvol
@@ -2129,8 +2084,9 @@ fs_is_valid_logvol(char *path)
  *   buf
  */
 char *
-ndmpd_mk_temp(char * fname, char *buf)
+ndmpd_mk_temp(char *buf)
 {
+	char fname[TLM_MAX_BACKUP_JOB_NAME];
 	const char *dir;
 	char *rv;
 
@@ -2143,18 +2099,9 @@ ndmpd_mk_temp(char * fname, char *buf)
 		return (0);
 	}
 
-	/*
-	 * Make sure the NDMP work directory exists.
-	 */
-	if (ndmpd_mkdir(dir) < 0) {
-		syslog(LOG_DEBUG,
-		    "Could not create NDMP work path %s", dir);
-		return (0);
-	}
-
 	if (!fs_is_valid_logvol((char *)dir)) {
 		syslog(LOG_ERR,
-		    "Log file path cannot be on system volumes");
+		    "Log file path cannot be on system volumes.");
 		return (0);
 	}
 
@@ -2165,60 +2112,12 @@ ndmpd_mk_temp(char * fname, char *buf)
 	}
 
 	rv = buf;
-
+	(void) ndmp_new_job_name(fname);
 	(void) tlm_cat_path(buf, (char *)dir, fname);
 
 	return (rv);
 }
 
-/*
- * ndmp_mkdir
- *
- * If the temporary bitmap database directory doesn't exist
- * create it.  This keep from having to create directory
- * by hand when it is changed with svcadm.
- *
- * Parameters:
- *   dir (input) - the path to create
- *
- * Returns:
- *   0 - success.
- *  -1 - error.
- */
-static int
-ndmpd_mkdir(const char *dir)
-{
-	char tmp[PATH_MAX];
-	char *p = NULL;
-	size_t len;
-
-	(void) snprintf(tmp, sizeof (tmp), "%s", dir);
-	len = strlen(tmp);
-	if (tmp[len - 1] == '/')
-		tmp[len - 1] = '\0';
-	for (p = tmp + 1; *p; p++) {
-		if (*p == '/') {
-			*p = '\0';
-			if (mkdir(tmp, S_IRWXU) < 0) {
-				if (errno != EEXIST) {
-				syslog(LOG_ERR,
-				    "failed to create intermediate path %s\n",
-				    tmp);
-				return (-1);
-				}
-			}
-			*p = '/';
-		}
-	}
-	if (mkdir(tmp, S_IRWXU) < 0) {
-		if (errno != EEXIST) {
-		syslog(LOG_ERR,
-		    "failed to create full path %s\n", tmp);
-		return (-1);
-		}
-	}
-	return (0);
-}
 
 /*
  * ndmpd_make_bk_dir_path
@@ -2258,66 +2157,6 @@ ndmpd_make_bk_dir_path(char *buf, char *fname)
 	return (buf);
 }
 
-static int
-ndmp_match_checkpoint_name(zfs_handle_t *zhp, void *arg)
-{
-	snap_data_t *sd = (snap_data_t *)arg;
-	time_t snap_creation;
-	nvlist_t *userprops = NULL;
-
-	if (zfs_get_type(zhp) == ZFS_TYPE_SNAPSHOT) {
-		if ((userprops = zfs_get_user_props(zhp)) != NULL) {
-			/*
-			 * Destination AutoSync snap-shots have
-			 * 'nms:autosyncmark' property whereas the
-			 * source dataset snap-shot has has
-			 * 'nms:service' property. This finds either
-			 * for use as backup.
-			 */
-			if (nvlist_exists(userprops, "nms:autosyncmark") ||
-			    nvlist_exists(userprops,
-				"com.nexenta.nef:hprsvcid") ||
-			    nvlist_exists(userprops, "nms:service")) {
-				snap_creation = (time_t)zfs_prop_get_int(zhp,
-				    ZFS_PROP_CREATION);
-				if (snap_creation > sd->creation_time) {
-					(void) strncpy(
-					    (char *) sd->last_snapshot,
-					    zfs_get_name(zhp),
-					    ZFS_MAX_DATASET_NAME_LEN);
-					sd->creation_time = snap_creation;
-				}
-			}
-		}
-	}
-	zfs_close(zhp);
-	return (0);
-}
-
-/*
- * ndmp_find_latest_autosync
- *
- * Given a dataset zfs_handlt_t find the latest "AutoSync" snapshot
- */
-int
-ndmp_find_latest_autosync(zfs_handle_t *zhp, void *arg)
-{
-	int err;
-	snap_data_t *si = (snap_data_t *)arg;
-
-	err = zfs_iter_dependents(zhp, B_FALSE,
-	    ndmp_match_checkpoint_name, (void *)si);
-	if (err) {
-		syslog(LOG_DEBUG,
-		    "Trying to find AutoSync zfs_iter_snapshots: %d", err);
-		si->last_snapshot = '\0';
-		return (-1);
-	} else {
-		syslog(LOG_DEBUG, "Found most recent AutoSync -> [%s]\n",
-		    si->last_snapshot);
-	}
-	return (0);
-}
 
 /*
  * ndmp_is_chkpnt_root
@@ -2446,22 +2285,29 @@ ndmp_check_utf8magic(tlm_cmd_t *cmd)
  * Get the backup checkpoint time.
  */
 int
-ndmp_get_cur_bk_time(ndmp_lbr_params_t *nlp, time_t *tp)
+ndmp_get_cur_bk_time(ndmp_lbr_params_t *nlp, time_t *tp, char *jname)
 {
 	int err;
 
-	if (!nlp || !tp) {
+	if (!nlp || !nlp->nlp_backup_path || !tp) {
 		syslog(LOG_ERR, "Invalid argument");
 		return (-1);
 	}
 
-	err = tlm_get_chkpnt_time(nlp->nlp_snapname, tp);
+	if (!fs_is_chkpnt_enabled(nlp->nlp_backup_path)) {
+		syslog(LOG_DEBUG, "Not a chkpnt volume %s",
+		    nlp->nlp_backup_path);
+		*tp = time(NULL);
+		return (0);
+	}
+
+	err = tlm_get_chkpnt_time(nlp->nlp_backup_path, !NLP_ISCHKPNTED(nlp),
+	    tp, jname);
 	if (err != 0) {
-		syslog(LOG_ERR, "Can't checkpoint time from [%s]",
-		    nlp->nlp_snapname);
+		syslog(LOG_ERR, "Can't checkpoint time");
 	} else {
 		syslog(LOG_DEBUG, "Checkpoint time of [%s] is [%s]",
-		    nlp->nlp_snapname, cctime(tp));
+		    nlp->nlp_backup_path, cctime(tp));
 	}
 
 	return (err);
@@ -2622,23 +2468,6 @@ ndmp_load_params(void)
 
 	/* Get the value from ndmp SMF property. */
 	ndmp_dar_support = ndmpd_get_prop_yorn(NDMP_DAR_SUPPORT);
-
-	ndmp_autosync_support = ndmpd_get_prop_yorn(NDMP_AUTOSYNC_SUPPORT);
-	ndmp_hpr_support = ndmpd_get_prop_yorn(NDMP_HPR_SUPPORT);
-	/*
-	 * The HPR snapshot feature superscedes autosync and the two can't be
-	 * active together on the same system.
-	 */
-	if (ndmp_hpr_support) {
-		ndmp_autosync_support = 0;
-		syslog(LOG_DEBUG, "NDMP_HPR_SUPPORT set to [%d]",
-		    ndmp_hpr_support);
-	}
-
-	if (ndmp_autosync_support) {
-		syslog(LOG_DEBUG, "NDMP_AUTOSYNC_SUPPORT set to [%d]",
-		    ndmp_autosync_support);
-	}
 
 	if ((ndmp_ver = atoi(ndmpd_get_prop(NDMP_VERSION_ENV))) == 0)
 		ndmp_ver = NDMPVER;

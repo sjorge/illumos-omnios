@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2007, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2017 Nexenta Systems, Inc. All rights reserved.
  */
 
 /*
@@ -1143,12 +1142,10 @@ ndmpd_tar_backup(ndmpd_session_t *session, ndmpd_module_params_t *mod_params,
 	if (err != 0)
 		return (err);
 
-	if (ndmp_new_job_name(jname, sizeof (jname)) <= 0) {
+	(void) ndmp_new_job_name(jname);
+	if (backup_create_structs(session, jname) < 0)
 		return (-1);
-	}
-	if (backup_create_structs(session, jname) < 0) {
-		return (-1);
-	}
+
 	nlp->nlp_jstat->js_start_ltime = time(NULL);
 	nlp->nlp_jstat->js_start_time = nlp->nlp_jstat->js_start_ltime;
 	nlp->nlp_jstat->js_chkpnt_time = nlp->nlp_cdate;
@@ -1242,12 +1239,9 @@ ndmpd_tar_restore(ndmpd_session_t *session, ndmpd_module_params_t *mod_params,
 	else
 		rspath = "";
 
-	if (ndmp_new_job_name(jname, sizeof (jname)) <= 0) {
+	(void) ndmp_new_job_name(jname);
+	if (restore_create_structs(session, jname) < 0)
 		return (-1);
-	}
-	if (restore_create_structs(session, jname) < 0) {
-		return (-1);
-	}
 
 	nlp->nlp_jstat->js_start_ltime = time(NULL);
 	nlp->nlp_jstat->js_start_time = time(NULL);
@@ -1828,7 +1822,8 @@ ndmpd_tar_backup_starter(void *arg)
 		NLP_SET(nlp, NLPF_CHKPNTED_PATH);
 	else {
 		NLP_UNSET(nlp, NLPF_CHKPNTED_PATH);
-		if (backup_dataset_create(nlp) < 0) {
+		if (ndmp_create_snapshot(nlp->nlp_backup_path,
+		    nlp->nlp_jstat->js_job_name) < 0) {
 			MOD_LOG(mod_params,
 			    "Error: creating checkpoint on %s\n",
 			    nlp->nlp_backup_path);
@@ -1843,7 +1838,8 @@ ndmpd_tar_backup_starter(void *arg)
 	    err, NDMP_YORN(NLP_SHOULD_UPDATE(nlp)));
 
 	if (err == 0) {
-		err = ndmp_get_cur_bk_time(nlp, &nlp->nlp_cdate);
+		err = ndmp_get_cur_bk_time(nlp, &nlp->nlp_cdate,
+		    nlp->nlp_jstat->js_job_name);
 		if (err != 0) {
 			syslog(LOG_DEBUG, "err %d", err);
 		} else {
@@ -1858,7 +1854,8 @@ ndmpd_tar_backup_starter(void *arg)
 	}
 
 	if (!NLP_ISCHKPNTED(nlp))
-		(void) backup_dataset_destroy(nlp);
+		(void) ndmp_remove_snapshot(nlp->nlp_backup_path,
+		    nlp->nlp_jstat->js_job_name);
 
 	syslog(LOG_DEBUG, "err %d, update %c",
 	    err, NDMP_YORN(NLP_SHOULD_UPDATE(nlp)));

@@ -47,7 +47,6 @@ TLM_DIR = tlm
 include $(NDMP_DIR)/Makefile.rpcgen
 
 CFLAGS += $(CCVERBOSE)
-CFLAGS += -I../../lib/libzutil/common
 
 CPPFLAGS += $(LFLAGS64)
 
@@ -76,7 +75,7 @@ CERRWARN += -_gcc=-Wno-switch
 CERRWARN += $(CNOWARN_UNINIT)
 CERRWARN += -_gcc=-Wno-address
 
-LDLIBS   += -lsocket -lnsl -lzfs -lsec -lndmp -lmd5 -lnvpair -lumem -lbsm -lcmdutils -linetutil -lzutil
+LDLIBS   += -lsocket -lnsl -lzfs -lsec -lndmp -lmd5 -lnvpair -lumem -lbsm -lcmdutils -linetutil
 
 OBJS= \
 	$(NDMP_DIR)/ndmp_xdr.o \
@@ -85,7 +84,6 @@ OBJS= \
 NDMP_OBJ = \
 	ndmpd_callbacks.o \
 	ndmpd_chkpnt.o \
-	ndmpd_clone.o \
 	ndmpd_comm.o \
 	ndmpd_config.o \
 	ndmpd_connect.o \
@@ -102,7 +100,8 @@ NDMP_OBJ = \
 	ndmpd_tape.o \
 	ndmpd_tar.o \
 	ndmpd_tar3.o \
-	ndmpd_util.o
+	ndmpd_util.o \
+	ndmpd_zfs.o
 
 TLM_OBJ = \
 	tlm_backup_reader.o \
