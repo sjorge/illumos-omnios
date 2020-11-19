@@ -23,7 +23,7 @@ include ../Makefile.cmd.64
 
 .KEEP_STATE:
 
-LDLIBS=-lsocket
+LDLIBS += -lsocket
 
 all: $(PROG)
 
