@@ -1204,8 +1204,6 @@ $(i386_ONLY)file path=platform/i86pc/ucode/GenuineIntel/000706E5-80 group=sys \
     mode=0444 reboot-needed=true
 $(i386_ONLY)file path=platform/i86pc/ucode/GenuineIntel/000806A1-10 group=sys \
     mode=0444 reboot-needed=true
-$(i386_ONLY)file path=platform/i86pc/ucode/GenuineIntel/000806C1-80 group=sys \
-    mode=0444 reboot-needed=true
 $(i386_ONLY)file path=platform/i86pc/ucode/GenuineIntel/000806E9-10 group=sys \
     mode=0444 reboot-needed=true
 $(i386_ONLY)file path=platform/i86pc/ucode/GenuineIntel/000806E9-40 group=sys \
