@@ -35,7 +35,7 @@
 #
 <include global_zone_only_component>
 set name=pkg.fmri \
-    value=pkg:/system/microcode/intel@20201112,$(PKGVERS_BUILTON)-$(PKGVERS_BRANCH)
+    value=pkg:/system/microcode/intel@20201118,$(PKGVERS_BUILTON)-$(PKGVERS_BRANCH)
 set name=pkg.description value="Microcode for Intel CPUs"
 set name=pkg.summary value="Microcode for Intel CPUs"
 set name=info.classification value=org.opensolaris.category.2008:System/Core
@@ -404,8 +404,6 @@ file path=platform/i86pc/ucode/GenuineIntel/000706A8-01 group=sys mode=0444 \
 file path=platform/i86pc/ucode/GenuineIntel/000706E5-80 group=sys mode=0444 \
     reboot-needed=true
 file path=platform/i86pc/ucode/GenuineIntel/000806A1-10 group=sys mode=0444 \
-    reboot-needed=true
-file path=platform/i86pc/ucode/GenuineIntel/000806C1-80 group=sys mode=0444 \
     reboot-needed=true
 file path=platform/i86pc/ucode/GenuineIntel/000806E9-10 group=sys mode=0444 \
     reboot-needed=true
