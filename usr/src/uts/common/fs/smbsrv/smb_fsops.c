@@ -508,7 +508,7 @@ smb_fsop_create_file(smb_request_t *sr, cred_t *cr,
 
 		if ((secinfo & SMB_SACL_SECINFO) != 0 &&
 		    !smb_user_has_security_priv(sr->uid_user, cr))
-			return (NT_STATUS_PRIVILEGE_NOT_HELD);
+			return (EPERM);
 
 		smb_fssd_init(&fs_sd, secinfo, 0);
 
@@ -658,7 +658,7 @@ smb_fsop_mkdir(
 
 		if ((secinfo & SMB_SACL_SECINFO) != 0 &&
 		    !smb_user_has_security_priv(sr->uid_user, cr))
-			return (NT_STATUS_PRIVILEGE_NOT_HELD);
+			return (EPERM);
 
 		smb_fssd_init(&fs_sd, secinfo, SMB_FSSD_FLAGS_DIR);
 
