@@ -153,7 +153,7 @@ netr_ssp_init(void *arg, ndr_xa_t *mxa)
 	 * For the UTF-8 strings, use 2*len as a heuristic.
 	 */
 	len = domain_len + 1 + comp_len + 1 +
-	    strlen(auth->hostname) * 2 + strlen(auth->server) * 2;
+	    strlen(auth->hostname) * 2 + strlen(auth->fqdn_domain) * 2;
 
 	hdr->auth_length = 0;
 
