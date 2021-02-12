@@ -13,7 +13,21 @@ are included in the footer.
 
 =======================================================================
 
-## No pending updates
+    11262 Memory leak in SMB client
+
+	system/file-system/smb
+
+    13092 ZFS I/O pipeline should use the pageout_reserve pool
+
+	All CTF, system/file-system/zfs
+
+    13466 Jan 2021 hwdata update
+
+	system/data/hardware-registry
+
+    13467 Update tzdata to 2021a
+
+	system/data/soneinfo
 
 =======================================================================
 
