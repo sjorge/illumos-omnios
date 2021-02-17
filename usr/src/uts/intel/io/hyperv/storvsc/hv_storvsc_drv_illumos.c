@@ -39,6 +39,7 @@
 
 /*
  * Copyright (c) 2017 by Delphix. All rights reserved.
+ * Copyright 2021 RackTop Systems, Inc.
  */
 
 /*
@@ -2671,8 +2672,6 @@ storvsc_io_done(struct hv_storvsc_request *reqp)
 					    sense_buffer_size :
 					    cmd->cmd_rqslen;
 
-					astat->sts_rqpkt_resid = arq_size -
-					    reqp->sense_info_len;
 					astat->sts_rqpkt_resid =
 					    sense_buffer_size - arq_size;
 					sensedata =
@@ -2680,7 +2679,15 @@ storvsc_io_done(struct hv_storvsc_request *reqp)
 					bcopy(cmd->cmd_arq_buf->b_un.b_addr,
 					    sensedata, arq_size);
 
-					pkt->pkt_state |= STATE_XARQ_DONE;
+					/*
+					 * The sd driver assumes a larger
+					 * sense buffer has been allocated if
+					 * STATE_XARQ_DONE is set.
+					 */
+					if (cmd->cmd_rqslen > SENSE_LENGTH) {
+						pkt->pkt_state |=
+						    STATE_XARQ_DONE;
+					}
 				} else {
 					astat->sts_rqpkt_resid = 0;
 				}
