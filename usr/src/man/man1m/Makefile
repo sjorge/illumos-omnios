@@ -549,6 +549,8 @@ i386_MANFILES=				\
 		acpidump.1m		\
 		acpixtract.1m		\
 		bhhwcompat.1m		\
+		bhyve.1m		\
+		bhyvectl.1m		\
 		nvmeadm.1m		\
 		pptadm.1m		\
 		rdmsr.1m
