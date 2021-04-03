@@ -1,4 +1,28 @@
-This README is here to keep track of merges from Joyent's illumos-joyent
 
-Last illumos-joyent commit: a6033573eedd94118d2b9e65f45deca0bf4b42f7
+=======================================================================
+
+The following commits are merged into this branch but not yet published
+to the IPS repository.
+
+This file is used to track packages that need to be published as part
+of the next reboot-required update for this branch. Archives that fix
+specific problems or are generally useful will be advertised on the
+web page and other mediums so users are not expected to monitor this
+file. However, some brief notes on how to install a package archive
+are included in the footer.
+
+=======================================================================
+
+No pending updates.
+
+=======================================================================
+
+=============================
+Installing a package archive.
+=============================
+
+Unpublished updates are provided for download as an IPS package archive (.p5p)
+which can be installed as follows:
+
+# pkg apply-hot-fix <archive_url>
 
