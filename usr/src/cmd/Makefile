@@ -307,6 +307,7 @@ COMMON_SUBDIRS=		\
 	pbind		\
 	pcidb		\
 	pcidr		\
+	pcieadm		\
 	pcieb		\
 	pcitool		\
 	pfexec		\
