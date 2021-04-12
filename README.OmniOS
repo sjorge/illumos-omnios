@@ -13,18 +13,7 @@ are included in the footer.
 
 =======================================================================
 
-    13118 Very slow reaping, possible deadlock in zfs_delmap
-
-	system/file-system/zfs
-
-	https://hf.omnios.org/r36/13118.p5p
-
-
-    13643 smb share of lofs mount fails
-
-	service/file-system/smb
-
-	https://hf.omnios.org/r36/smb-13643.p5p
+# No pending updates
 
 =======================================================================
 
