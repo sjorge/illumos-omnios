@@ -38,6 +38,10 @@ $(DYNLIB) := CTFMERGE_POST= :
 CFLAGS += $(CTF_FLAGS)
 STRIP_STABS = :
 
+# As a bootstrapping issue, we can't use the real mapfile because we build
+# early in tools and thus don't have support for assertions.
+MAPFILES=
+
 .KEEP_STATE:
 
 all: $(LIBS)
