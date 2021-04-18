@@ -225,6 +225,28 @@
 <!ATTLIST restartinit>
 
 <!--
+  restartinit0
+
+    Boolean indicating that the program specified by the initname attr
+    should be restarted only if it exits 0. This defaults to false.
+
+    It has no attributes.
+-->
+<!ELEMENT restartinit0	(#PCDATA) >
+<!ATTLIST restartinit0>
+
+<!--
+  restartinitreboot
+
+    Boolean indicating that, when the program specified by the initname attr
+    exits, the zone should be rebooted. This defaults to false.
+
+    It has no attributes.
+-->
+<!ELEMENT restartinitreboot	(#PCDATA) >
+<!ATTLIST restartinitreboot>
+
+<!--
   login_cmd
 
     Path to the initial login binary that should be executed when
@@ -642,7 +664,9 @@
 		directory in which the configuration file is stored.
 -->
 
-<!ELEMENT brand		(modname?, initname, restartinit?, login_cmd,
+<!ELEMENT brand		(modname?, initname, restartinit?,
+			restartinit0?, restartinitreboot?,
+			login_cmd,
 			forcedlogin_cmd, user_cmd, install,
 			installopts?, boot?, sysboot?, halt?, shutdown?,
 			verify_cfg?, verify_adm?, postattach?, postclone?,
