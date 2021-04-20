@@ -4220,6 +4220,8 @@ usr/src/test/crypto-tests/tests/modes/aes/gcm/aes_gcm_64_pkcs
 usr/src/test/elf-tests/tests/assert-deflib/test-deflib
 usr/src/test/elf-tests/tests/linker-sets/in-use-check
 usr/src/test/elf-tests/tests/linker-sets/simple
+usr/src/test/elf-tests/tests/mapfiles/assert/test-assert
+usr/src/test/elf-tests/tests/mapfiles/parser/test-parser
 usr/src/test/elf-tests/tests/tls/amd64/ie/amd64-ie-test
 usr/src/test/elf-tests/tests/tls/amd64/ld/amd64-ld-test
 usr/src/test/elf-tests/tests/tls/i386/ld/i386-ld-test
