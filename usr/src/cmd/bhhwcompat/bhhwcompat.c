@@ -16,12 +16,14 @@
 
 /*
  * The code here is derived from, and should be kept in sync with, the kernel
- * hma implementation in uts/i86pc/os/hma.c
+ * hma implementation in uts/i86pc/os/hma.c and the checks in
+ * usr/src/uts/i86pc/io/vmm/intel/vmx.c
  */
 
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -34,6 +36,7 @@
 #include <sys/x86_archext.h>
 #undef _KERNEL
 #include <sys/controlregs.h>
+#include "vmx_controls.h"
 
 #define	VMX_CTL_ONE_SETTING(val, flag)  \
 	(((val) & ((uint64_t)(flag) << 32)) != 0)
@@ -69,17 +72,44 @@ cpuid(uint64_t leaf)
 }
 
 void
-note(char *str)
+note(char *fmt, ...)
 {
-	if (!g_status)
-		printf("... %s\n", str);
+	va_list ap;
+
+	if (g_status)
+		return;
+
+	printf("... ");
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+	printf("\n");
 }
+
+static inline boolean_t
+check_onectl(uint64_t msr, boolean_t required, uint32_t bit, char *descr)
+{
+	boolean_t ret = VMX_CTL_ONE_SETTING(msr, bit);
+
+	if (ret) {
+		note("VMX supports %s", descr);
+	} else {
+		note("VMX does not support %s (%s)", descr,
+		    required ? "essential" : "optional");
+	}
+	return (ret);
+}
+
+#define REQUIRE(msr, req, bit, descr) \
+	if (!check_onectl((msr), (req), (bit), (descr)) && (req)) \
+		ret = B_FALSE
 
 boolean_t
 vmx_check(void)
 {
 	struct cpuid_regs *cp;
 	uint64_t msr;
+	boolean_t ret = B_TRUE;
 
 	cp = cpuid(1);
 	if ((cp->cp_ecx & CPUID_INTC_ECX_VMX) == 0) {
@@ -100,7 +130,7 @@ vmx_check(void)
 	msr = rdmsr(MSR_IA32_VMX_BASIC);
 	if ((msr & IA32_VMX_BASIC_INS_OUTS) == 0) {
 		note("VMX does not support INS/OUTS (essential)");
-		return (B_FALSE);
+		ret = B_FALSE;
 	}
 
 	boolean_t query_true_ctl = B_FALSE;
@@ -112,22 +142,43 @@ vmx_check(void)
 	 */
 	query_true_ctl = (msr & IA32_VMX_BASIC_TRUE_CTRLS) != 0;
 
-	/* Check for EPT and VPID support */
 	msr = rdmsr(query_true_ctl ?
 	    MSR_IA32_VMX_TRUE_PROCBASED_CTLS : MSR_IA32_VMX_PROCBASED_CTLS);
-	if (VMX_CTL_ONE_SETTING(msr, IA32_VMX_PROCBASED_2ND_CTLS)) {
+
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_TSC_OFFSET, "TSC Offsetting");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_MWAIT_EXITING, "VM Exit on MWAIT");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_MONITOR_EXITING, "VM Exit on MONITOR");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_CR8_LOAD_EXITING, "VM Exit on CR8 Load");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_CR8_STORE_EXITING, "VM Exit on CR8 Store");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_IO_EXITING, "Unconditional I/O exiting");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_MSR_BITMAPS, "MSR bitmap");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_INT_WINDOW_EXITING, "Interrupt-window exiting");
+	REQUIRE(msr, B_TRUE,
+	    PROCBASED_NMI_WINDOW_EXITING, "NMI-window exiting");
+
+	/* Check for EPT and VPID support */
+	if (check_onectl(msr, B_TRUE, IA32_VMX_PROCBASED_2ND_CTLS,
+	    "Secondary VMX controls")) {
 		msr = rdmsr(MSR_IA32_VMX_PROCBASED2_CTLS);
-		if (VMX_CTL_ONE_SETTING(msr, IA32_VMX_PROCBASED2_EPT)) {
-			note("VMX supports EPT");
+		if (check_onectl(msr, B_FALSE, IA32_VMX_PROCBASED2_EPT, "EPT"))
 			ept = B_TRUE;
-		} else {
-			note("VMX does not support EPT (optional)");
+		(void) check_onectl(msr, B_FALSE,
+		    IA32_VMX_PROCBASED2_VPID, "VPID");
+
+		if (!check_onectl(msr, B_TRUE,
+		    PROCBASED2_UNRESTRICTED_GUEST, "Unrestricted Guest")) {
+			ret = B_FALSE;
 		}
-		if (VMX_CTL_ONE_SETTING(msr, IA32_VMX_PROCBASED2_VPID)) {
-			note("VMX supports VPID");
-		} else {
-			note("VMX does not support VPID (optional)");
-		}
+	} else {
+		ret = B_FALSE;
 	}
 
 	/* Check for INVEPT support */
@@ -135,13 +186,13 @@ vmx_check(void)
 		msr = rdmsr(MSR_IA32_VMX_EPT_VPID_CAP);
 		if ((msr & IA32_VMX_EPT_VPID_INVEPT) != 0) {
 			if ((msr & IA32_VMX_EPT_VPID_INVEPT_SINGLE) != 0)
-				note("VNX supports single INVEPT");
+				note("VMX supports single INVEPT");
 			if ((msr & IA32_VMX_EPT_VPID_INVEPT_ALL) != 0)
 				note("VMX supports all INVEPT");
 		}
 	}
 
-	return (B_TRUE);
+	return (ret);
 }
 
 int
