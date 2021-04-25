@@ -1491,6 +1491,7 @@ usr/src/cmd/pathchk/pathchk
 usr/src/cmd/pbind/amd64/pbind
 usr/src/cmd/pcidb/pcidb
 usr/src/cmd/pcidr/pcidr
+usr/src/cmd/pcieadm/pcieadm
 usr/src/cmd/pcieb/pcieb
 usr/src/cmd/pcitool/i386/pcitool
 usr/src/cmd/perl/contrib/Sun/Solaris/Intrs/amd64/
