@@ -1119,7 +1119,7 @@ smb_tree_getattr(const smb_kshare_t *si, smb_node_t *node, smb_tree_t *tree)
 		VFS_RELE(realvfsp);
 	} else {
 		cmn_err(CE_NOTE, "Failed getting info for share: %s",
-			si->shr_name);
+		    si->shr_name);
 		/* do the best we can without realvfsp */
 		smb_tree_get_flags(si, vfsp, tree);
 	}
