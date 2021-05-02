@@ -22,8 +22,6 @@
  * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  *
- * Copyright 2019 Joyent, Inc.
- *
  * logadm/glob.c -- globbing routines
  *
  * these routines support two kinds of globs.  first, the
@@ -64,6 +62,8 @@
  * braces, and don't support the more powerful reglobs required by logadm.
  */
 
+#pragma ident	"%Z%%M%	%I%	%E% SMI"
+
 #include <stdio.h>
 #include <libintl.h>
 #include <stdlib.h>
@@ -100,6 +100,8 @@ glob_debrace(struct fn *fnp)
 	while (sp != NULL && (left = strchr(sp, '{')) != NULL)
 		if ((right = strchr(left, '}')) == NULL) {
 			err(EF_FILE|EF_JMP, "Missing }");
+			fn_list_free(ret);
+			return (NULL);
 		} else {
 			/* stuff before "left" is finished */
 			fn_list_appendrange(ret, sp, left);
