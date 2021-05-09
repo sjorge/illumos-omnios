@@ -67,7 +67,7 @@ _msg: $(SUBDIR_CMD) startd
 seed: svccfg configd
 
 $(SUBDIRS): FRC
-	@cd $@; pwd; $(MAKE) $(MFLAGS) $(TARGET)
+	@cd $@; pwd; $(MAKE) $(TARGET)
 
 $(XMLDIR)/%: %
 	$(INS.file)
