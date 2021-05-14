@@ -64,6 +64,7 @@ SRCS =	acpi.c			\
 	pctestdev.c		\
 	pm.c			\
 	post.c			\
+	privileges.c		\
 	ps2kbd.c		\
 	ps2mouse.c		\
 	rfb.c			\
@@ -150,6 +151,7 @@ $(PROG) := LDLIBS += \
 	-lz
 NATIVE_LIBS += libz.so libcrypto.so
 $(MEVENT_TEST_PROG) := LDLIBS += -lsocket
+$(PROG) := LDFLAGS += $(ZASLR)
 
 .KEEP_STATE:
 
