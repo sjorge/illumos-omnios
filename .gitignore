@@ -1497,8 +1497,10 @@ usr/src/cmd/pcitool/i386/pcitool
 usr/src/cmd/perl/contrib/Sun/Solaris/Intrs/amd64/
 usr/src/cmd/perl/contrib/Sun/Solaris/Kstat/amd64/
 usr/src/cmd/perl/contrib/Sun/Solaris/Lgrp/amd64/
+usr/src/cmd/perl/contrib/Sun/Solaris/Privilege/amd64/
 usr/src/cmd/perl/contrib/Sun/Solaris/Project/amd64/
 usr/src/cmd/perl/contrib/Sun/Solaris/Task/amd64/
+usr/src/cmd/perl/contrib/Sun/Solaris/Ucred/amd64/
 usr/src/cmd/perl/contrib/Sun/Solaris/Utils/amd64/
 usr/src/cmd/pfexec/pfexec
 usr/src/cmd/pfexecd/pfexecd
@@ -2441,8 +2443,7 @@ usr/src/cmd/ypcmd/ypxfrd
 usr/src/cmd/ypcmd/ypxfrd.h
 usr/src/cmd/ypcmd/ypxfrd_xdr.c
 usr/src/cmd/yppasswd/yppasswd
-usr/src/cmd/zdb/amd64/zdb
-usr/src/cmd/zdb/i386/zdb
+usr/src/cmd/zdb/zdb
 usr/src/cmd/zdump/zdump
 usr/src/cmd/zfs/zfs
 usr/src/cmd/zhack/amd64/zhack
@@ -4770,6 +4771,7 @@ usr/src/uts/intel/mwlfw/mwlboot
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_cpcgen.h
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f17h_zen1.c
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f17h_zen2.c
+usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f19h_zen3.c
 usr/src/uts/intel/os/priv_names
 usr/src/uts/intel/sha1/sha1-x86_64.s
 usr/src/uts/intel/sha2/sha256-x86_64.s
