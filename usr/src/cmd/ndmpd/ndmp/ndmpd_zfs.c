@@ -76,12 +76,12 @@ static void ndmpd_zfs_close_one_fd(ndmpd_zfs_args_t *, int);
 static int ndmpd_zfs_header_write(ndmpd_session_t *);
 static int ndmpd_zfs_header_read(ndmpd_zfs_args_t *);
 
-static int ndmpd_zfs_backup_send_read(ndmpd_zfs_args_t *);
-static int ndmpd_zfs_backup_tape_write(ndmpd_zfs_args_t *);
+static void *ndmpd_zfs_backup_send_read(void *);
+static void *ndmpd_zfs_backup_tape_write(void *);
 
 static int ndmpd_zfs_restore(ndmpd_zfs_args_t *);
-static int ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *);
-static int ndmpd_zfs_restore_recv_write(ndmpd_zfs_args_t *);
+static void *ndmpd_zfs_restore_tape_read(void *);
+static void *ndmpd_zfs_restore_recv_write(void *);
 
 static int ndmpd_zfs_reader_writer(ndmpd_zfs_args_t *, int **, int **);
 
@@ -611,9 +611,10 @@ ndmpd_zfs_backup(ndmpd_zfs_args_t *ndmpd_zfs_args)
  * Volumes do not have descednants, so 'd' and 'r' produce equivalent results.
  */
 
-static int
-ndmpd_zfs_backup_send_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
+static void *
+ndmpd_zfs_backup_send_read(void *ptr)
 {
+	ndmpd_zfs_args_t *ndmpd_zfs_args = ptr;
 	ndmpd_session_t *session = (ndmpd_session_t *)
 	    (ndmpd_zfs_params->mp_daemon_cookie);
 	sendflags_t flags = { 0 };
@@ -627,7 +628,7 @@ ndmpd_zfs_backup_send_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 	if (!zhp) {
 		if (!session->ns_data.dd_abort)
 			NDMPD_ZFS_LOG_ZERR(ndmpd_zfs_args, "zfs_open");
-		return (-1);
+		return ((void *)(uintptr_t)-1);
 	}
 
 	switch (ndmpd_zfs_args->nz_zfs_mode) {
@@ -645,14 +646,14 @@ ndmpd_zfs_backup_send_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 		syslog(LOG_ERR, "unknown zfs_mode: %c",
 		    ndmpd_zfs_args->nz_zfs_mode);
 		zfs_close(zhp);
-		return (-1);
+		return ((void *)(uintptr_t)-1);
 	}
 
 	if (ndmpd_zfs_is_incremental(ndmpd_zfs_args)) {
 		if (ndmpd_zfs_args->nz_fromsnap[0] == '\0') {
 			syslog(LOG_ERR, "no fromsnap");
 			zfs_close(zhp);
-			return (-1);
+			return ((void *)(uintptr_t)-1);
 		}
 		fromsnap = ndmpd_zfs_args->nz_fromsnap;
 	}
@@ -665,7 +666,7 @@ ndmpd_zfs_backup_send_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 
 	zfs_close(zhp);
 
-	return (err);
+	return ((void *)(uintptr_t)err);
 }
 
 /*
@@ -676,9 +677,10 @@ ndmpd_zfs_backup_send_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
  * ndmpd_zfs_args->nz_bufsize).
  */
 
-static int
-ndmpd_zfs_backup_tape_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
+static void *
+ndmpd_zfs_backup_tape_write(void *ptr)
 {
+	ndmpd_zfs_args_t *ndmpd_zfs_args = ptr;
 	ndmpd_session_t *session = (ndmpd_session_t *)
 	    (ndmpd_zfs_params->mp_daemon_cookie);
 	int bufsize = ndmpd_zfs_args->nz_bufsize;
@@ -690,7 +692,7 @@ ndmpd_zfs_backup_tape_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
 	if (buf == NULL) {
 		syslog(LOG_ERR,
 		    "buf NULL in ndmpd_zfs_backup_tape_write errno (%m)");
-		return (-1);
+		return ((void *)(uintptr_t)-1);
 	}
 
 	bytes_totalp =
@@ -709,7 +711,8 @@ ndmpd_zfs_backup_tape_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
 			    *bytes_totalp - bufsize, *bytes_totalp);
 			free(buf);
 
-			return (ndmpd_zfs_addenv_backup_size(ndmpd_zfs_args,
+			return ((void *)(uintptr_t)
+			    ndmpd_zfs_addenv_backup_size(ndmpd_zfs_args,
 			    *bytes_totalp));
 		}
 
@@ -717,7 +720,7 @@ ndmpd_zfs_backup_tape_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
 			syslog(LOG_ERR, "pipe read error (errno %d)",
 			    errno);
 			free(buf);
-			return (-1);
+			return ((void *)(uintptr_t)-1);
 		}
 		NS_ADD(rdisk, count);
 
@@ -725,7 +728,7 @@ ndmpd_zfs_backup_tape_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
 			(void) ndmpd_zfs_abort((void *) ndmpd_zfs_args);
 			syslog(LOG_ERR, "MOD_WRITE error");
 			free(buf);
-			return (-1);
+			return ((void *)(uintptr_t)-1);
 		}
 
 		*bytes_totalp += count;
@@ -832,9 +835,10 @@ ndmpd_zfs_restore(ndmpd_zfs_args_t *ndmpd_zfs_args)
 	return (err);
 }
 
-static int
-ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
+static void *
+ndmpd_zfs_restore_tape_read(void *ptr)
 {
+	ndmpd_zfs_args_t *ndmpd_zfs_args = ptr;
 	ndmpd_session_t *session = (ndmpd_session_t *)
 	    (ndmpd_zfs_params->mp_daemon_cookie);
 	int bufsize = ndmpd_zfs_args->nz_bufsize;
@@ -849,7 +853,7 @@ ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 	if (buf == NULL) {
 		syslog(LOG_ERR,
 		    "buf NULL in ndmpd_zfs_restore_tape_read errno (%m)");
-		return (-1);
+		return ((void *)(uintptr_t)-1);
 	}
 
 	bytes_totalp = &ndmpd_zfs_args->nz_nlp->nlp_bytes_total;
@@ -867,7 +871,7 @@ ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 			syslog(LOG_ERR, "MOD_READ error: %d; returning -1",
 			    err);
 			free(buf);
-			return (-1);
+			return ((void *)(uintptr_t)-1);
 		}
 
 		count = write(ndmpd_zfs_args->nz_pipe_fd[PIPE_TAPE], buf,
@@ -886,7 +890,7 @@ ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 			}
 
 			free(buf);
-			return (-1);
+			return ((void *)(uintptr_t)-1);
 		}
 
 		NS_ADD(wdisk, count);
@@ -895,7 +899,7 @@ ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
 	}
 
 	free(buf);
-	return (0);
+	return ((void *)(uintptr_t)0);
 }
 
 /*
@@ -904,9 +908,10 @@ ndmpd_zfs_restore_tape_read(ndmpd_zfs_args_t *ndmpd_zfs_args)
  * This routine executes zfs_receive() to restore the backup.
  */
 
-static int
-ndmpd_zfs_restore_recv_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
+static void *
+ndmpd_zfs_restore_recv_write(void *ptr)
 {
+	ndmpd_zfs_args_t *ndmpd_zfs_args = ptr;
 	ndmpd_session_t *session = (ndmpd_session_t *)
 	    (ndmpd_zfs_params->mp_daemon_cookie);
 	recvflags_t flags;
@@ -927,7 +932,7 @@ ndmpd_zfs_restore_recv_write(ndmpd_zfs_args_t *ndmpd_zfs_args)
 	if (err && !session->ns_data.dd_abort)
 		NDMPD_ZFS_LOG_ZERR(ndmpd_zfs_args, "zfs_receive: %d", err);
 
-	return (err);
+	return ((void *)(uintptr_t)err);
 }
 
 /*
@@ -947,12 +952,12 @@ ndmpd_zfs_reader_writer(ndmpd_zfs_args_t *ndmpd_zfs_args,
 
 	switch (ndmpd_zfs_params->mp_operation) {
 	case NDMP_DATA_OP_BACKUP:
-		sendrecv_func = (funct_t)ndmpd_zfs_backup_send_read;
-		tape_func = (funct_t)ndmpd_zfs_backup_tape_write;
+		sendrecv_func = ndmpd_zfs_backup_send_read;
+		tape_func = ndmpd_zfs_backup_tape_write;
 		break;
 	case NDMP_DATA_OP_RECOVER:
-		sendrecv_func = (funct_t)ndmpd_zfs_restore_recv_write;
-		tape_func = (funct_t)ndmpd_zfs_restore_tape_read;
+		sendrecv_func = ndmpd_zfs_restore_recv_write;
+		tape_func = ndmpd_zfs_restore_tape_read;
 		break;
 	default:
 		return (-1);
