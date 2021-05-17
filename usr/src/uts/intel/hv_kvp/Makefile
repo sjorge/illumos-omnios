@@ -46,6 +46,8 @@ LDFLAGS += -dy -N misc/hyperv -N drv/hv_vmbus
 
 CFLAGS += $(CCVERBOSE)
 
+CERRWARN += -_gcc10=-Wno-address-of-packed-member
+
 #
 #	Default build targets.
 #
