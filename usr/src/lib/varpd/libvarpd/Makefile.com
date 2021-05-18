@@ -35,7 +35,7 @@ CPPFLAGS +=	-I../common
 
 CERRWARN +=	-erroff=E_STRUCT_DERIVED_FROM_FLEX_MBR
 
-C99MODE=	-xc99=%all
+CSTD=		$(CSTD_GNU99)
 
 SRCDIR =	../common
 
