@@ -857,7 +857,7 @@ vmbus_intr_setup(struct vmbus_softc *sc)
 		panic("psm_get_ipivect == NULL");
 
 	sc->vmbus_idtvec = psm_get_ipivect(IPL_VMBUS, -1);
-	if (add_avintr(NULL, IPL_VMBUS, (avfunc)vmbus_handle_intr,
+	if (add_avintr(NULL, IPL_VMBUS, (avfunc)(uintptr_t)vmbus_handle_intr,
 	    "Hyper-V vmbus", sc->vmbus_idtvec, (caddr_t)sc, NULL,
 	    NULL, NULL) == 0) {
 		dev_err(sc->vmbus_dev, CE_WARN,
@@ -875,8 +875,8 @@ vmbus_intr_teardown(struct vmbus_softc *sc)
 	int cpu;
 
 	if (sc->vmbus_idtvec >= 0) {
-		rem_avintr(NULL, IPL_VMBUS, (avfunc)vmbus_handle_intr,
-		    sc->vmbus_idtvec);
+		rem_avintr(NULL, IPL_VMBUS,
+		    (avfunc)(uintptr_t)vmbus_handle_intr, sc->vmbus_idtvec);
 		sc->vmbus_idtvec = -1;
 	}
 
@@ -1275,7 +1275,7 @@ vmbus_xcall(vmbus_xcall_func_t func, void *arg)
 	CPUSET_ALL(set);
 	uint32_t spl = ddi_enter_critical();
 	xc_sync((xc_arg_t)arg, (uintptr_t)NULL, (uintptr_t)NULL,
-	    CPUSET2BV(set), (xc_func_t)func);
+	    CPUSET2BV(set), (xc_func_t)(uintptr_t)func);
 	ddi_exit_critical(spl);
 }
 
