@@ -22,7 +22,7 @@
 /*
  * Copyright 2015, 2018, 2019, Meisaka Yukara
  * Copyright 2018, 2019 Prominic.NET Inc. All Rights reserved.
- * Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -35,7 +35,10 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <poll.h>
+#include <priv.h>
 #include <pthread.h>
+#include <err.h>
+#include <sys/debug.h>
 
 #include <stropts.h>
 #include <sys/conf.h>
@@ -804,8 +807,7 @@ Usage(const char *prog)
 	    "        -- list available interfaces\n"
 	    " Options:\n"
 	    "   -R             same as '-r' but run in the background.\n"
-	    "   -p <level>     enable a promiscuous level. (repeatable)\n"
-	    "                  level = p[hys] s[ap] m[ulti]\n"
+	    "   -p             enable promiscuous mode.\n"
 	    "   -v             verbose output. "
 	    "(repeatable for more verbosity)\n"
 	    "   -V             process VLAN-tagged frames.\n"
@@ -941,6 +943,7 @@ main(int argc, char **argv)
 			dflag = B_TRUE;
 			break;
 		case 'v':
+			(void) setpflags(PRIV_DEBUG, 1);
 			verbose++;
 			break;
 		case 'V':
@@ -978,10 +981,8 @@ main(int argc, char **argv)
 		sessions = malloc(
 		    sizeof (yuka_session_t *) * (sessioncount + 1));
 
-		if (sessions == NULL) {
-			perror("malloc");
-			goto err;
-		}
+		if (sessions == NULL)
+			err(EXIT_FAILURE, "malloc sessions");
 
 		for (x = 0, i = optind; i < argc; i++, x++) {
 			if (verbose > 1)
@@ -996,10 +997,8 @@ main(int argc, char **argv)
 
 		yuka_get_links(&lst);
 
-		if (lst == NULL) {
-			fprintf(stderr, "No links found - exiting\n");
-			goto err;
-		}
+		if (lst == NULL)
+			errx(EXIT_FAILURE, "No links found - exiting");
 
 		for (lsti = lst; lsti != NULL; lsti = lsti->next)
 			sessioncount++;
@@ -1007,10 +1006,8 @@ main(int argc, char **argv)
 		sessions = malloc(
 		    sizeof (yuka_session_t *) * (sessioncount + 1));
 
-		if (sessions == NULL) {
-			perror("malloc");
-			goto err;
-		}
+		if (sessions == NULL)
+			err(EXIT_FAILURE, "malloc sessions");
 
 		for (x = 0, lsti = lst; lsti != NULL; lsti = lsti->next, x++) {
 			sessions[x] = yuka_session_alloc();
@@ -1029,45 +1026,57 @@ main(int argc, char **argv)
 	block_signals();
 
 	if (init_ipc() == 0)
-		goto err;
+		err(EXIT_FAILURE, "failed to initialise IPC");
 
-	if (pthread_attr_init(&attr) != 0) {
-		perror("pthread_attr_init");
-		goto err;
-	}
+	if (pthread_attr_init(&attr) != 0)
+		err(EXIT_FAILURE, "pthread_attr_init");
 
-	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0) {
-		perror("pthread_attr_setdetachstate");
-		goto err;
-	}
+	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
+		err(EXIT_FAILURE, "pthread_attr_setdetachstate");
 
-	if (pthread_create(&tid, &attr, yuka_update_hold, NULL) != 0) {
-		perror("pthread_create");
-		goto err;
-	}
+	if (pthread_create(&tid, &attr, yuka_update_hold, NULL) != 0)
+		err(EXIT_FAILURE, "pthread_create yuka_update_hold");
 
-	if (pthread_create(&tid, &attr, yuka_reaper, NULL) != 0) {
-		perror("pthread_create");
-		goto err;
-	}
+	if (pthread_create(&tid, &attr, yuka_reaper, NULL) != 0)
+		err(EXIT_FAILURE, "pthread_create yuka_reaper");
 
-	if (pthread_create(&tid, &attr, yuka_xmit, (void *)sessions) != 0) {
-		perror("pthread_create");
-		goto err;
-	}
+	if (pthread_create(&tid, &attr, yuka_xmit, (void *)sessions) != 0)
+		err(EXIT_FAILURE, "pthread_create yuka_xmit");
 
-	if (pthread_create(&tid, &attr, sighandler, NULL) != 0) {
-		perror("pthread_create");
-		goto err;
-	}
+	if (pthread_create(&tid, &attr, sighandler, NULL) != 0)
+		err(EXIT_FAILURE, "pthread_create sighandler");
 
 	(void) pthread_attr_destroy(&attr);
 
+	/* Drop privileges now we're up and running */
+	priv_set_t *ps, *psinit;
+
+	if ((ps = priv_allocset()) == NULL)
+		err(EXIT_FAILURE, "priv_allocset()");
+	if ((psinit = priv_allocset()) == NULL)
+		err(EXIT_FAILURE, "priv_allocset()");
+	if (getppriv(PRIV_EFFECTIVE, psinit) != 0)
+		err(EXIT_FAILURE, "failed to fetch current privileges");
+	priv_basicset(ps);
+	priv_intersect(psinit, ps);
+	VERIFY0(priv_delset(ps, PRIV_FILE_LINK_ANY));
+	VERIFY0(priv_delset(ps, PRIV_NET_ACCESS));
+	VERIFY0(priv_delset(ps, PRIV_PROC_EXEC));
+	VERIFY0(priv_delset(ps, PRIV_PROC_FORK));
+	VERIFY0(priv_delset(ps, PRIV_PROC_INFO));
+	VERIFY0(priv_delset(ps, PRIV_PROC_SECFLAGS));
+	VERIFY0(priv_delset(ps, PRIV_PROC_SESSION));
+	if (setppriv(PRIV_SET, PRIV_PERMITTED, ps) != 0)
+		err(EXIT_FAILURE, "setppriv(PERMITTED)");
+	if (setppriv(PRIV_SET, PRIV_LIMIT, ps) != 0)
+		err(EXIT_FAILURE, "setppriv(LIMIT)");
+
+	priv_freeset(ps);
+	priv_freeset(psinit);
+
 	pollfds = malloc(sizeof (struct pollfd) * sessioncount);
-	if (pollfds == NULL) {
-		perror("malloc");
-		goto err;
-	}
+	if (pollfds == NULL)
+		err(EXIT_FAILURE, "malloc pollfds");
 
 	for (i = 0; i < sessioncount; i++) {
 		pollfds[i].fd = sessions[i]->fd;
@@ -1103,12 +1112,6 @@ main(int argc, char **argv)
 			printf("\r% 10d recv.", total_frames);
 	}
 
-	goto out;
-
-err:
-	ret = 1;
-
-out:
 	if (sessions != NULL) {
 		for (x = 0; x < sessioncount; x++) {
 			DlpiCloseSession(sessions[x]);

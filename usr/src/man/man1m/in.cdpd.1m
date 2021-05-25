@@ -1,125 +1,81 @@
 '\" te
-.\" Copyright 2015, 2018, 2019, Meisaka Yukara and Prominic.NET Inc., Rights Reserved.
-.\" Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
-.\" The contents of this file are subject to the terms of the Common Development and Distribution License (the "License").  You may not use this file except in compliance with the License.
-.\" You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE or http://www.opensolaris.org/os/licensing.  See the License for the specific language governing permissions and limitations under the License.
-.\" When distributing Covered Code, include this CDDL HEADER in each file and include the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the following below this CDDL HEADER, with the fields enclosed by brackets "[]" replaced with your own identifying information: Portions Copyright [yyyy] [name of copyright owner]
-.TH in.cdpd 1M "Mar 07, 2019"
-.SH NAME
-in.cdpd \- Cisco discovery agent
-.SH SYNOPSIS
-
-.LP
-.nf
-\fBin.cdpd\fR [\fB\-v\fR ...] [\fB\-d\fR] \fB\-R\fR | \fB\-r\fR [\fIdevice\fR]
-.fi
-
-.LP
-.nf
-\fBin.cdpd\fR \fB\-l\fR
-.fi
-
-.SH DESCRIPTION
-.sp
-.LP
-\fBin.cdpd\fR actively listens for other hosts, and advertises the local
-machine to connected network interfaces using the
-\fBCisco Discovery Protocol (CDP)\fR.
+.\" Copyright 2015, 2018, 2019, Meisaka Yukara and Prominic.NET Inc., Rights
+.\" Reserved.
+.\" Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+.\" The contents of this file are subject to the terms of the Common
+.\" Development and Distribution License (the "License").  You may not use this
+.\" file except in compliance with the License. .\" You can obtain a copy of the
+.\" license at usr/src/OPENSOLARIS.LICENSE or
+.\" http://www.opensolaris.org/os/licensing.  See the License for the specific
+.\" language governing permissions and limitations under the License. .\" When
+.\" distributing Covered Code, include this CDDL HEADER in each file and include
+.\" the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the
+.\" following below this CDDL HEADER, with the fields enclosed by brackets "[]"
+.\" replaced with your own identifying information: Portions Copyright [yyyy]
+.\" [name of copyright owner]
+.Dd May 25, 2021
+.Dt IN.CDPD 1M
+.Os
+.Sh NAME
+.Nm in.cdpd
+.Nd Cisco discovery agent
+.Sh SYNOPSIS
+.Nm
+.Op Fl v
+.Op Fl d
+.Fl R | Fl r
+.Op Ar device
+.Nm
+.Fl l
+.Sh DESCRIPTION
+.Nm
+actively listens for other hosts, and advertises the local machine to connected
+network interfaces using the Cisco Discovery Protocol (CDP).
 Local network interfaces available for use are those which implement
-\fBdlpi\fR(7P) and act as Ethernet provider nodes. \fBin.cdpd\fR
+.Xr dlpi 7P
+and act as Ethernet provider nodes.
+.Nm
 will connect to each provider node, and register with it to read raw datalink
 frames in order to parse CDP.
-.sp
-.LP
-When the \fBin.cdpd\fR service starts, it requests multicast promiscuous mode on
-all Ethernet style interfaces, and begins processing raw multicast frames,
-scanning for those that match the CDP multicast address and LLC header.
+.Pp
+When the
+.Nm
+service starts, it requests multicast promiscuous mode on all Ethernet style
+interfaces, and begins processing raw multicast frames, scanning for those that
+match the CDP multicast address and LLC header.
 The DLPI layer does not explicitly specify the ability to bind to, and listen
-for LLC frames, so \fBin.cdpd\fR binds to the typically unused SAP address of
-0x0000, and enables raw mode processing.
-.sp
-.LP
-The associated \fBcdpadm\fR utility can be used to display status data from
-the running daemon.
-.bp
-.SH OPTIONS
-
-.sp
-.ne 3
-.na
-\fB\fB-v\fR\fR
-.ad
-.RS 10n
-Adds verbosity. Can be specified multiple times for more output.
+for LLC frames, so
+.Nm
+binds to the typically unused SAP address of 0x0000, and enables raw mode
+processing.
+.Pp
+The associated
+.Xr cdpadm 1M
+utility can be used to display status data from the running daemon.
+.Sh OPTIONS
+.Bl -tag -width Fl
+.It Fl v
+Adds verbosity.
+Can be specified multiple times for more output.
 Prints additional details in more verbose modes.
-.RE
-
-.sp
-.ne 3
-.na
-\fB\fB-l\fR\fR
-.ad
-.RS 10n
-Lists All Physical style Ethernet interfaces in the system
-and then exits. Overrides most other options.
-.RE
-
-.sp
-.ne 3
-.na
-\fB\fB-d\fR\fR
-.ad
-.RS 10n
+.It Fl l
+Lists All Physical style Ethernet interfaces in the system and then exits.
+Overrides most other options.
+.It Fl d
 Dumps frames while running.
-.RE
-
-.sp
-.ne 3
-.na
-\fB\fB-R\fR\fR
-.ad
-.RS 10n
+.It Fl R
 Starts the service in background mode.
-.RE
-
-.sp
-.ne 3
-.na
-\fB\fB-r\fR\fR
-.ad
-.RS 10n
-Starts the service in forground mode. This is mainly used for verbose
-diagnostics, testing, frame dumps, and debugging purposes.
-.RE
-
-.bp
-.SH FILES
-
-.sp
-.ne 2
-.na
-\fB\fB/var/run/in.cdpd.pid\fR\fR
-.ad
-.na
-\fB\fB/var/run/in.cdpd_socket\fR\fR
-.ad
-.RS 12n
+.It Fl r
+Starts the service in forground mode.
+This is mainly used for verbose diagnostics, testing, frame dumps, and
+debugging purposes.
+.El
+.Sh Files
+.Bl -tag -compact -width Fl
+.It Pa /var/run/in.cdpd.pid
+.It Pa /var/run/in.cdpd_socket
 Files used by the service instance.
-.RE
-
-.SH SEE ALSO
-.sp
-.LP
-\fBcdpadm\fR(1M), \fBuname\fR(1), \fBdlpi\fR(7P)
-.SH DIAGNOSTICS
-.sp
-.LP
-.ne 2
-.na
-\fB\fBPermission denied\fR\fR
-.ad
-.sp .6
-.RS 4n
-\fBin.cdpd\fR failed to start because the calling process
-does not have appropriate privileges.
-.RE
+.El
+.Sh SEE ALSO
+.Xr cdpadm 1M ,
+.Xr dlpi 7P
