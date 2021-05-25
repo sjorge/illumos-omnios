@@ -47,10 +47,10 @@ static priv_set_t *bhyve_priv_max;
 static bool priv_debug = false;
 
 #define	DPRINTF(params) \
-    if (priv_debug) do { PRINTLN params; fflush(stdout); } while(0)
+    if (priv_debug) do { PRINTLN params; fflush(stdout); } while (0)
 
 static void
-illumos_priv_printset(char *tag, priv_set_t *set)
+illumos_priv_printset(const char *tag, priv_set_t *set)
 {
 	char *s;
 
@@ -78,7 +78,7 @@ illumos_priv_add_set(priv_set_t *set, const char *priv, const char *src)
 	VERIFY3S(pthread_equal(pthread_self(), priv_thread), !=, 0);
 	DPRINTF((" + Adding privilege %s (%s)", priv, src));
 	if (!priv_ismember(bhyve_priv_init, priv))
-		err(4, "Privilege %s (for %s) not in initial set", priv, src);
+		errx(4, "Privilege %s (for %s) not in initial set", priv, src);
 	if (priv_addset(set, priv) != 0)
 		err(4, "Failed to add %s privilege for %s", priv, src);
 }
@@ -142,8 +142,17 @@ illumos_priv_init(void)
 	 * Other privileges may be added by modules as necessary during
 	 * initialisation.
 	 */
-	illumos_priv_add_min(PRIV_PROC_CLOCK_HIGHRES, "init");
+
 	illumos_priv_add(PRIV_FILE_WRITE, "init");
+
+	/*
+	 * bhyve can work without proc_clock_highres so don't enforce that
+	 * it is present.
+	 */
+	if (priv_ismember(bhyve_priv_init, PRIV_PROC_CLOCK_HIGHRES))
+		illumos_priv_add_min(PRIV_PROC_CLOCK_HIGHRES, "init");
+	else
+		warnx("The 'proc_clock_highres' privilege is not available");
 }
 
 void
@@ -167,6 +176,11 @@ illumos_priv_lock(void)
 
 	if (setppriv(PRIV_SET, PRIV_PERMITTED, bhyve_priv_max) != 0) {
 		const char *fail = "failed to reduce permitted privileges";
+		upanic(fail, strlen(fail));
+	}
+
+	if (setppriv(PRIV_SET, PRIV_LIMIT, bhyve_priv_max) != 0) {
+		const char *fail = "failed to reduce limit privileges";
 		upanic(fail, strlen(fail));
 	}
 
