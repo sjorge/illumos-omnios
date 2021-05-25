@@ -1,112 +1,73 @@
 '\" te
-.\" Copyright 2015, 2018, 2019, Meisaka Yukara and Prominic.NET Inc., Rights Reserved.
-.\" Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
-.\" The contents of this file are subject to the terms of the Common Development and Distribution License (the "License").  You may not use this file except in compliance with the License.
-.\" You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE or http://www.opensolaris.org/os/licensing.  See the License for the specific language governing permissions and limitations under the License.
-.\" When distributing Covered Code, include this CDDL HEADER in each file and include the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the following below this CDDL HEADER, with the fields enclosed by brackets "[]" replaced with your own identifying information: Portions Copyright [yyyy] [name of copyright owner]
-.TH in.cdpd 1M "Mar 07, 2019"
-.SH NAME
-cdpadm \- administer the CDP service
-.SH SYNOPSIS
-.LP
-.nf
-\fBcdpadm\fR [\fB-f\fR \fI<format>\fR] \fIsub\-command\fR [\fIargs\fR]
-.fi
-
-.SH DESCRIPTION
-.sp
-.LP
-The \fBcdpadm\fR command is used to administer the \fBin.cdpd\fR(1M)
+.\" Copyright 2015, 2018, 2019, Meisaka Yukara and Prominic.NET Inc., Rights
+.\" Reserved.
+.\" Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+.\" The contents of this file are subject to the terms of the Common
+.\" Development and Distribution License (the "License").  You may not use this
+.\" file except in compliance with the License. .\" You can obtain a copy of the
+.\" license at usr/src/OPENSOLARIS.LICENSE or
+.\" http://www.opensolaris.org/os/licensing.  See the License for the specific
+.\" language governing permissions and limitations under the License. .\" When
+.\" distributing Covered Code, include this CDDL HEADER in each file and include
+.\" the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the
+.\" following below this CDDL HEADER, with the fields enclosed by brackets "[]"
+.\" replaced with your own identifying information: Portions Copyright [yyyy]
+.\" [name of copyright owner]
+.Dd May 25, 2021
+.Dt CDPADM 1M
+.Os
+.Sh NAME
+.Nm cdpadm
+.Nd administer the CDP service
+.Sh SYNOPSIS
+.Nm
+.Op Fl f Ar format
+.Ar subcommand
+.Op Ar args
+.Sh DESCRIPTION
+The
+.Nm
+command is used to administer the
+.Xr in.cdpd 1M
 service.
-.bp
-
-.sp
-.SS "Subcommands"
-.sp
-.LP
-The following subcommands are supported:
-.sp
-.ne 3
-.na
-\fBshow\fR \fBcdp\fR
-.br
-\fBshow\fR \fBnei\fR
-.ad
-.RS 10n
-Outputs the current CDP neighbour table. Supports output formats.
-.RE
-
-.sp
-.ne 3
-.na
-\fBshow\fR \fBdetail\fR
-.ad
-.RS 10n
+.Ss Subcommands
+.Bl -tag -width Ar
+.It Cm show cdp Ns | Ns Cm nei
+Outputs the current CDP neighbour table.
+Supports output formats, see below.
+.It Cm show detail
 Outputs detailed information about each entry in the neighbour table.
-.RE
-
-.sp
-.ne 3
-.na
-\fBreap\fR
-.ad
-.RS 10n
+.It Cm reap
 Request that dead neighbours are removed from the neighbour table.
-.RE
-
-.sp
-.ne 3
-.na
-\fBstats\fR
-.ad
-.RS 10n
+.It Cm stats
 Display packet statistics.
-.RE
-
-.ne 2
-.SS "Output Formats"
-.LP
-The \fBshow\fR commands accept one of various output format specifiers.
-These are used for data exchange with external programs and/or scripts.
-A format specifier can appear anywhere in the arguments, both before, after,
-or even in the middle of a command. Multiple specifers can included on the
-command line, but only the last one will be used.
-.sp
-.TS
-c c
-l l .
-Format	Output Type
-_
-\fInone\fR	\fBConsole formatted output\fR
-\fB-f parse\fR	\fBSemicolon seperated fields, no headers\fR
-\fB-f json\fR	\fBJSON style array of objects, one object per entry\fR
-\fB-f xml\fR	\fBXML formatted blocks\fR
-.TE
-
-.SH FILES
-.sp
-.ne 2
-.na
-\fB\fB/var/run/in.cdpd_socket\fR\fR
-.ad
-.RS 12n
+.El
+.Ss Output Formats
+The
+.Cm show
+commands accept one of various output format specifiers.
+A format specifier can appear anywhere in the arguments.
+Multiple specifers can be included on the command line, but only the last one
+will be used.
+.Bl -tag -width Ar
+.It Cm parse
+Semicolon separated fields, no headers
+.It Cm json
+JSON style array of objects, one object per entry
+.It Cm xml
+XML formatted blocks
+.El
+.Sh FILES
+.Bl -tag -width Ar
+.It Pa /var/run/in.cdpd_socket
 Socket used for communication with the CDP daemon.
-.RE
-
-.SH SEE ALSO
-.sp
-.LP
-\fBin.cdpd\fR(1M)
-
-.SH DIAGNOSTICS
-.sp
-.LP
-.ne 2
-.na
-\fBThe CDP service is not running.\fR
-.ad
-.sp .6
-.RS 4n
+.El
+.Sh DIAGNOSTICS
+.Bl -tag -width Ar
+.It Sy The CDP service is not running.
 The process failed to connect to the IPC socket, because it does not exist.
-\fBin.cdpd\fR is most likely not running.
-.RE
+.Xr in.cdpd 1M
+is most likely not running.
+.El
+.Sh SEE ALSO
+.Xr in.cdpd 1M
