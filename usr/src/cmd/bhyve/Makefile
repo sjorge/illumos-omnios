@@ -13,6 +13,7 @@
 # Copyright 2014 Pluribus Networks Inc.
 # Copyright 2020 Joyent, Inc.
 # Copyright 2020 Oxide Computer Company
+# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 #
 
 PROG =		bhyve
@@ -35,8 +36,7 @@ SRCS =	acpi.c			\
 	block_if.c		\
 	bootrom.c		\
 	console.c		\
-	consport.c		\
-	dbgport.c		\
+	config.c		\
 	fwctl.c			\
 	gdb.c			\
 	inout.c			\
@@ -44,6 +44,7 @@ SRCS =	acpi.c			\
 	mem.c			\
 	mevent.c		\
 	mptbl.c			\
+	net_backends.c		\
 	net_utils.c		\
 	pci_ahci.c		\
 	pci_e82545.c		\
@@ -64,6 +65,7 @@ SRCS =	acpi.c			\
 	pctestdev.c		\
 	pm.c			\
 	post.c			\
+	privileges.c		\
 	ps2kbd.c		\
 	ps2mouse.c		\
 	rfb.c			\
@@ -97,11 +99,6 @@ SRCS =	acpi.c			\
 	#hda_codec.c		\
 	#pci_hda.c		\
 
-# The bhyve generic net-backend stuff has been ignored by us at the moment
-# because illumos users prefer to use viona for its superior network perf.
-	#net_backends.c		\
-
-
 OBJS = $(SRCS:.c=.o)
 
 CLOBBERFILES =	$(ROOTUSRSBINPROG)
@@ -112,7 +109,8 @@ MEVENT_TEST_OBJS = $(MEVENT_TEST_SRCS:.c=.o)
 
 CLEANFILES =	$(PROG) $(MEVENT_TEST_PROG) $(MEVENT_TEST_OBJS)
 
-CFLAGS +=	$(CCVERBOSE) -_gcc=-Wimplicit-function-declaration -_gcc=-Wno-parentheses
+CFLAGS +=	$(CCVERBOSE)
+CFLAGS +=	-_gcc=-Wimplicit-function-declaration -_gcc=-Wno-parentheses
 CPPFLAGS =	-I$(COMPAT)/bhyve -I$(CONTRIB)/bhyve \
 		-I$(COMPAT)/bhyve/amd64 -I$(CONTRIB)/bhyve/amd64 \
 		-I$(CONTRIB)/bhyve/dev/usb/controller \
@@ -125,13 +123,17 @@ CPPFLAGS =	-I$(COMPAT)/bhyve -I$(CONTRIB)/bhyve \
 		-DWITHOUT_CAPSICUM
 
 pci_nvme.o := CERRWARN += -_gcc=-Wno-pointer-sign
+pci_nvme.o := CERRWARN += -_gcc10=-Wno-address-of-packed-member
 pci_nvme.o := SMOFF += kmalloc_wrong_size
+
+pci_passthru.o := CERRWARN += -_gcc10=-Wno-address-of-packed-member
+
+pci_xhci.o := CERRWARN += -_gcc10=-Wno-address-of-packed-member
 
 SMOFF += all_func_returns,leaks,no_if_block
 
 # Force c99 for everything
 CSTD=		$(CSTD_GNU99)
-C99MODE=	-xc99=%all
 
 $(PROG) := LDLIBS += \
 	-lsocket \
@@ -139,12 +141,14 @@ $(PROG) := LDLIBS += \
 	-ldlpi \
 	-ldladm \
 	-lmd \
+	-lnvpair \
 	-lcrypto \
 	-luuid \
 	-lvmmapi \
 	-lz
 NATIVE_LIBS += libz.so libcrypto.so
 $(MEVENT_TEST_PROG) := LDLIBS += -lsocket
+$(PROG) := LDFLAGS += $(ZASLR)
 
 .KEEP_STATE:
 

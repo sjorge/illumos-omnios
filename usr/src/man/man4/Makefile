@@ -16,11 +16,12 @@
 # Copyright 2015, Joyent, Inc.
 # Copyright 2018 Nexenta Systems, Inc.
 # Copyright 2018 Gary Mills
+# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 #
 
 include		$(SRC)/Makefile.master
 
-MANSECT= 	4
+MANSECT=	4
 
 _MANFILES=	Intro.4				\
 		NISLDAPmapping.4		\
@@ -205,7 +206,8 @@ _MANFILES=	Intro.4				\
 
 sparc_MANFILES=	sbus.4
 
-i386_MANFILES=	loader.conf.4			\
+i386_MANFILES=	bhyve_config.4			\
+		loader.conf.4			\
 		sysbus.4
 
 _MANLINKS=	addresses.4			\

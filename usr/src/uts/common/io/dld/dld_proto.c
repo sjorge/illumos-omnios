@@ -704,7 +704,7 @@ proto_promiscoff_req(dld_str_t *dsp, mblk_t *mp)
 	case DL_PROMISC_RX_ONLY:
 		if (!(dsp->ds_promisc & DLS_PROMISC_RX_ONLY)) {
 			dl_err = DL_NOTENAB;
-			goto failed;
+			goto failed2;
 		}
 		new_flags &= ~DLS_PROMISC_RX_ONLY;
 		break;
@@ -712,7 +712,7 @@ proto_promiscoff_req(dld_str_t *dsp, mblk_t *mp)
 	case DL_PROMISC_FIXUPS:
 		if (!(dsp->ds_promisc & DLS_PROMISC_FIXUPS)) {
 			dl_err = DL_NOTENAB;
-			goto failed;
+			goto failed2;
 		}
 		new_flags &= ~DLS_PROMISC_FIXUPS;
 		break;

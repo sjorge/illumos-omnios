@@ -170,7 +170,7 @@ miniroot.db: common.db $(MINIROOT_DESCRIPTIONS) $(CONFIGD) $(SVCCFG)
 	#
 	SVCCFG_DTD=../dtd/service_bundle.dtd.1 \
 	SVCCFG_REPOSITORY=$@ SVCCFG_CONFIGD_PATH=$(CONFIGD) \
-	$(SVCCFG) -s svc:/system/system-log \
+	$(SVCCFG) -s svc:/system/system-log:default \
 	    setprop config/log_from_remote = false
 	#
 	SVCCFG_DTD=../dtd/service_bundle.dtd.1 \

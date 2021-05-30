@@ -141,6 +141,8 @@ finalise_image()
 		' $root/etc/zones/*.xml
 		cp /usr/lib/brand/shared/common.ksh \
 		    $root/usr/lib/brand/shared/common.ksh
+		cp /usr/share/lib/xml/dtd/brand.dtd.1 \
+		    $root/usr/share/lib/xml/dtd/brand.dtd.1
 	fi
 }
 

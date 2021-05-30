@@ -63,6 +63,8 @@
 #define	DTD_ELEM_MODNAME	((const xmlChar *) "modname")
 #define	DTD_ELEM_MOUNT		((const xmlChar *) "mount")
 #define	DTD_ELEM_RESTARTINIT	((const xmlChar *) "restartinit")
+#define	DTD_ELEM_RESTARTINIT0	((const xmlChar *) "restartinit0")
+#define	DTD_ELEM_RESTARTINITREBOOT	((const xmlChar *) "restartinitreboot")
 #define	DTD_ELEM_POSTATTACH	((const xmlChar *) "postattach")
 #define	DTD_ELEM_POSTCLONE	((const xmlChar *) "postclone")
 #define	DTD_ELEM_POSTINSTALL	((const xmlChar *) "postinstall")
@@ -74,6 +76,7 @@
 #define	DTD_ELEM_PREUNINSTALL	((const xmlChar *) "preuninstall")
 #define	DTD_ELEM_PRIVILEGE	((const xmlChar *) "privilege")
 #define	DTD_ELEM_QUERY		((const xmlChar *) "query")
+#define	DTD_ELEM_SECFLAGS	((const xmlChar *) "security-flags")
 #define	DTD_ELEM_SHUTDOWN	((const xmlChar *) "shutdown")
 #define	DTD_ELEM_SYMLINK	((const xmlChar *) "symlink")
 #define	DTD_ELEM_SYSBOOT	((const xmlChar *) "sysboot")
@@ -537,6 +540,34 @@ brand_restartinit(brand_handle_t bh)
 	return (B_TRUE);
 }
 
+boolean_t
+brand_restartinit0(brand_handle_t bh)
+{
+	struct brand_handle *bhp = (struct brand_handle *)bh;
+	char val[80];
+
+	if (brand_get_value(bhp, NULL, NULL, NULL, NULL,
+	    val, sizeof (val), DTD_ELEM_RESTARTINIT0, B_FALSE, B_FALSE) == 0 &&
+	    strcmp(val, "true") == 0) {
+		return (B_TRUE);
+	}
+	return (B_FALSE);
+}
+
+boolean_t
+brand_restartinitreboot(brand_handle_t bh)
+{
+	struct brand_handle *bhp = (struct brand_handle *)bh;
+	char val[80];
+
+	if (brand_get_value(bhp, NULL, NULL, NULL, NULL,
+	    val, sizeof (val), DTD_ELEM_RESTARTINITREBOOT,
+	    B_FALSE, B_FALSE) == 0 && strcmp(val, "true") == 0) {
+		return (B_TRUE);
+	}
+	return (B_FALSE);
+}
+
 int
 brand_get_login_cmd(brand_handle_t bh, const char *username,
     char *buf, size_t len)
@@ -680,6 +711,14 @@ brand_get_query(brand_handle_t bh, const char *zonename,
 	struct brand_handle *bhp = (struct brand_handle *)bh;
 	return (brand_get_value(bhp, zonename, zonepath, NULL, NULL,
 	    buf, len, DTD_ELEM_QUERY, B_TRUE, B_TRUE));
+}
+
+int
+brand_get_secflags(brand_handle_t bh, char *buf, size_t len)
+{
+	struct brand_handle *bhp = (struct brand_handle *)bh;
+	return (brand_get_value(bhp, NULL, NULL, NULL, NULL,
+	    buf, len, DTD_ELEM_SECFLAGS, B_FALSE, B_TRUE));
 }
 
 int
