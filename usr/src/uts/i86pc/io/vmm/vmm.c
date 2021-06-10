@@ -275,8 +275,6 @@ static void vcpu_notify_event_locked(struct vcpu *vcpu, vcpu_notify_t);
 static bool vcpu_sleep_bailout_checks(struct vm *vm, int vcpuid);
 static int vcpu_vector_sipi(struct vm *vm, int vcpuid, uint8_t vector);
 
-static void vm_clear_memseg(struct vm *, int);
-
 extern int arc_virt_machine_reserve(size_t);
 extern void arc_virt_machine_release(size_t);
 
@@ -627,12 +625,6 @@ vm_cleanup(struct vm *vm, bool destroy)
 		vm->vmspace = NULL;
 		arc_virt_machine_release(vm->arc_resv);
 		vm->arc_resv = 0;
-	} else {
-		/*
-		 * Clear the first memory segment (low mem), old memory contents
-		 * could confuse the UEFI firmware.
-		 */
-		vm_clear_memseg(vm, 0);
 	}
 }
 
