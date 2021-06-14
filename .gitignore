@@ -91,11 +91,6 @@ usr/src/boot/sys/boot/i386/pmbr/pmbr
 usr/src/boot/sys/boot/i386/pxeldr/loader
 usr/src/boot/sys/boot/i386/pxeldr/pxeboot
 usr/src/boot/sys/boot/i386/pxeldr/pxeldr
-usr/src/boot/sys/boot/libcrypto/amd64/machine
-usr/src/boot/sys/boot/libcrypto/amd64/sha1-x86_64.s
-usr/src/boot/sys/boot/libcrypto/amd64/x86
-usr/src/boot/sys/boot/libcrypto/i386/machine
-usr/src/boot/sys/boot/libcrypto/i386/x86
 usr/src/boot/sys/boot/libficl/amd64/machine
 usr/src/boot/sys/boot/libficl/amd64/x86
 usr/src/boot/sys/boot/libficl/i386/machine
@@ -115,6 +110,7 @@ usr/src/boot/sys/boot/libstand/amd64/libstand_bzlib_private.h
 usr/src/boot/sys/boot/libstand/amd64/libstand_gzguts.h
 usr/src/boot/sys/boot/libstand/amd64/libstand_zutil.h
 usr/src/boot/sys/boot/libstand/amd64/machine
+usr/src/boot/sys/boot/libstand/amd64/sha1-x86_64.s
 usr/src/boot/sys/boot/libstand/amd64/x86
 usr/src/boot/sys/boot/libstand/i386/_bzlib.c
 usr/src/boot/sys/boot/libstand/i386/_crctable.c
@@ -4058,7 +4054,9 @@ usr/src/man/man9f/ddi_ufm_slot_set_imgsize.9f
 usr/src/man/man9f/ddi_ufm_slot_set_misc.9f
 usr/src/man/man9f/ddi_ufm_slot_set_version.9f
 usr/src/man/man9f/ddi_ufm_update.9f
+usr/src/man/man9f/desballoca.9f
 usr/src/man/man9f/dev_err.9f
+usr/src/man/man9f/esballoca.9f
 usr/src/man/man9f/firmware_close.9f
 usr/src/man/man9f/firmware_free.9f
 usr/src/man/man9f/firmware_get_size.9f
