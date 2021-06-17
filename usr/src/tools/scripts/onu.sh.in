@@ -157,7 +157,7 @@ update()
 	prepare_image
 
 	banner "Running image-update"
-	do_cmd pkg -R $root update -fr -C0
+	do_cmd pkg -R $root update --no-index -fr -C0
 
 	finalise_image
 }
