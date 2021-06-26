@@ -753,13 +753,14 @@ lxpr_open(vnode_t **vpp, int flag, cred_t *cr, caller_context_t *ct)
 
 	/*
 	 * If we are opening an underlying file only allow regular files,
-	 * fifos or sockets; reject the open for anything else.
+	 * directories, fifos or sockets; reject the open for anything else.
 	 * Just do it if we are opening the current or root directory.
 	 */
 	if (lxpnp->lxpr_realvp != NULL) {
 		rvp = lxpnp->lxpr_realvp;
 
-		if (type == LXPR_PID_FD_FD && rvp->v_type != VREG &&
+		if (type == LXPR_PID_FD_FD &&
+		    rvp->v_type != VREG && rvp->v_type != VDIR &&
 		    rvp->v_type != VFIFO && rvp->v_type != VSOCK) {
 			error = EACCES;
 		} else {
@@ -5714,6 +5715,8 @@ typedef enum {
 	LXCS_CPUID1_ECX,
 	LXCS_CPUID1_EDX,
 	LXCS_CPUID7_EBX,
+	LXCS_CPUID7_ECX,
+	LXCS_CPUID7_EDX,
 	LXCS_CPUIDD1_EAX,
 	LXCS_CPUIDX1_ECX,
 	LXCS_CPUIDX1_EDX,
@@ -5907,37 +5910,55 @@ lx_cpuinfo_mapping_t lx_cpuinfo_mappings[] = {
 	{ LXCS_CPUID7_EBX, 0x00000001,			"fsgsbase" },
 	{ LXCS_CPUID7_EBX, 0x00000002,			"tsc_adjust" },
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_BMI1,	"bmi1" },
-	{ LXCS_CPUID7_EBX, 0x00000010,			"hle" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_HLE,	"hle" },
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX2,	"avx2" },
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_SMEP,	"smep" },
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_BMI2,	"bmi2" },
 	{ LXCS_CPUID7_EBX, 0x00000200,			"erms" },
 	{ LXCS_CPUID7_EBX, 0x00000400,			"invpcid" },
 	{ LXCS_CPUID7_EBX, 0x00000800,			"rtm" },
-	{ LXCS_CPUID7_EBX, 0x00000000,			"cqm" },
-	{ LXCS_CPUID7_EBX, 0x00004000,			"mpx" },
-	{ LXCS_CPUID7_EBX, 0x00010000,			"avx512f" },
+	{ LXCS_CPUID7_EBX, 0x00001000,			"cqm" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_MPX,	"mpx" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512F,	"avx512f" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512DQ,	"avx512dq" },
 
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_RDSEED,	"rdseed" },
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_ADX,	"adx" },
 	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_SMAP,	"smap" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512IFMA, "avx512ifma" },
 
 	{ LXCS_CPUID7_EBX, 0x00400000,			"pcommit" },
 	{ LXCS_CPUID7_EBX, 0x00800000,			"clflushopt" },
-	{ LXCS_CPUID7_EBX, 0x01000000,			"clwb" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_CLWB,	"clwb" },
 
-	{ LXCS_CPUID7_EBX, 0x04000000,			"avx512pf" },
-	{ LXCS_CPUID7_EBX, 0x08000000,			"avx512er" },
-	{ LXCS_CPUID7_EBX, 0x10000000,			"avx512cd" },
-	{ LXCS_CPUID7_EBX, 0x20000000,			"sha_ni" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512PF,	"avx512pf" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512ER,	"avx512er" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512CD,	"avx512cd" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_SHA,	"sha_ni" },
+
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512BW,	"avx512bw" },
+	{ LXCS_CPUID7_EBX, CPUID_INTC_EBX_7_0_AVX512VL,	"avx512vl" },
+
+	/*
+	 * Intel-defined CPU features, CPUID level 0x00000007:0 (ecx)
+	 */
+	{ LXCS_CPUID7_ECX, CPUID_INTC_ECX_7_0_AVX512VBMI, "avx512vbmi" },
+	{ LXCS_CPUID7_ECX, CPUID_INTC_ECX_7_0_AVX512VPOPCDQ,
+	    "avx512_vpopcntdq" },
+
+	/*
+	 * Intel-defined CPU features, CPUID level 0x00000007:0 (edx)
+	 */
+	{ LXCS_CPUID7_EDX, CPUID_INTC_EDX_7_0_AVX5124NNIW, "avx512_4nniw" },
+	{ LXCS_CPUID7_EDX, CPUID_INTC_EDX_7_0_AVX5124FMAPS, "avx512_4fmaps" },
 
 	/*
 	 * Extended state features, CPUID level 0x0000000d:1 (eax)
 	 */
-	{ LXCS_CPUIDD1_EAX, 0x00000001,			"xsaveopt" },
-	{ LXCS_CPUIDD1_EAX, 0x00000002,			"xsavec" },
+	{ LXCS_CPUIDD1_EAX, CPUID_INTC_EAX_D_1_XSAVEOPT, "xsaveopt" },
+	{ LXCS_CPUIDD1_EAX, CPUID_INTC_EAX_D_1_XSAVEC,	"xsavec" },
 	{ LXCS_CPUIDD1_EAX, 0x00000004,			"xgetbv1" },
-	{ LXCS_CPUIDD1_EAX, 0x00000008,			"xsaves" },
+	{ LXCS_CPUIDD1_EAX, CPUID_INTC_EAX_D_1_XSAVES,	"xsaves" },
 
 	/*
 	 * Skipped:
@@ -6015,6 +6036,8 @@ lxpr_read_cpuinfo(lxpr_node_t *lxpnp, lxpr_uiobuf_t *uiobuf)
 			cpr.cp_eax = 7;
 			(void) cpuid_insn(cp, &cpr);
 			cpuid_res[LXCS_CPUID7_EBX] = cpr.cp_ebx;
+			cpuid_res[LXCS_CPUID7_ECX] = cpr.cp_ecx;
+			cpuid_res[LXCS_CPUID7_EDX] = cpr.cp_edx;
 		}
 		if (maxeax >= 0xd) {
 			cpr.cp_eax = 0xd;
@@ -6406,16 +6429,8 @@ lxpr_lookup(vnode_t *dp, char *comp, vnode_t **vpp, pathname_t *pathp,
 	 * we should never get here because the lookup
 	 * is done on the realvp for these nodes
 	 */
-	ASSERT(type != LXPR_PID_FD_FD &&
-	    type != LXPR_PID_CURDIR &&
+	ASSERT(type != LXPR_PID_CURDIR &&
 	    type != LXPR_PID_ROOTDIR);
-
-	/*
-	 * restrict lookup permission to owner or root
-	 */
-	if ((error = lxpr_access(dp, VEXEC, 0, cr, ct)) != 0) {
-		return (error);
-	}
 
 	/*
 	 * Just return the parent vnode if that's where we are trying to go.
@@ -6424,6 +6439,35 @@ lxpr_lookup(vnode_t *dp, char *comp, vnode_t **vpp, pathname_t *pathp,
 		VN_HOLD(lxpnp->lxpr_parent);
 		*vpp = lxpnp->lxpr_parent;
 		return (0);
+	}
+
+	switch (type) {
+	case LXPR_PID_FD_FD:
+	case LXPR_PID_TID_FD_FD:
+		/*
+		 * Performing a VOP_LOOKUP on the underlying vnode and emitting
+		 * the resulting vnode, without encapsulation, as our own is a
+		 * very special case when it comes to the assumptions built
+		 * into VFS.
+		 *
+		 * Since the resulting vnode is highly likely to be at some
+		 * abitrary position in another filesystem, we insist that the
+		 * VTRAVERSE flag is set on the parent.  This prevents things
+		 * such as the v_path freshness logic from mistaking the
+		 * resulting vnode as a "real" child of the parent, rather than
+		 * a consequence of this "procfs wormhole".
+		 *
+		 * Failure to establish such protections can lead to
+		 * incorrectly calculated v_paths being set on nodes reached
+		 * through these lookups.
+		 */
+		ASSERT((dp->v_flag & VTRAVERSE) != 0);
+
+		dp = lxpnp->lxpr_realvp;
+		return (VOP_LOOKUP(dp, comp, vpp, pathp, flags, rdir, cr, ct,
+                    direntflags, realpnp));
+	default:
+		break;
 	}
 
 	/*
@@ -6435,6 +6479,12 @@ lxpr_lookup(vnode_t *dp, char *comp, vnode_t **vpp, pathname_t *pathp,
 		*vpp = dp;
 		return (0);
 	}
+
+	/*
+	 * restrict lookup permission to owner or root
+	 */
+	if ((error = lxpr_access(dp, VEXEC, 0, cr, ct)) != 0)
+		return (error);
 
 	*vpp = (lxpr_lookup_function[type](dp, comp));
 	return ((*vpp == NULL) ? ENOENT : 0);
@@ -8149,8 +8199,8 @@ lxpr_readlink_exe(lxpr_node_t *lxpnp, char *buf, size_t size, cred_t *cr)
 static int
 lxpr_readlink(vnode_t *vp, uio_t *uiop, cred_t *cr, caller_context_t *ct)
 {
-	char bp[MAXPATHLEN + 1];
-	size_t buflen = sizeof (bp);
+	char *bp;
+	size_t buflen, klen;
 	lxpr_node_t *lxpnp = VTOLXP(vp);
 	vnode_t *rvp = lxpnp->lxpr_realvp;
 	pid_t pid;
@@ -8177,11 +8227,14 @@ lxpr_readlink(vnode_t *vp, uio_t *uiop, cred_t *cr, caller_context_t *ct)
 	if (vp->v_type != VLNK && lxpnp->lxpr_type != LXPR_PID_FD_FD)
 		return (EINVAL);
 
+	buflen = klen = MAXPATHLEN + 1;
+	bp = kmem_alloc(klen, KM_SLEEP);
+
 	/* Try to produce a symlink name for anything that has a realvp */
 	if (rvp != NULL) {
 		error = lxpr_doaccess(lxpnp, B_TRUE, VREAD, 0, cr, ct);
 		if (error != 0)
-			return (error);
+			goto out;
 
 		error = vnodetopath(NULL, rvp, bp, buflen, cr);
 
@@ -8199,7 +8252,7 @@ lxpr_readlink(vnode_t *vp, uio_t *uiop, cred_t *cr, caller_context_t *ct)
 			 */
 			if (lxpnp->lxpr_type != LXPR_PID_FD_FD ||
 			    lxpr_readlink_fdnode(lxpnp, bp, buflen) != 0) {
-				return (error);
+				goto out;
 			}
 		}
 	} else {
@@ -8217,18 +8270,24 @@ lxpr_readlink(vnode_t *vp, uio_t *uiop, cred_t *cr, caller_context_t *ct)
 		case LXPR_PID_CURDIR:
 		case LXPR_PID_ROOTDIR:
 		case LXPR_PID_EXE:
-			return (EACCES);
+			error = EACCES;
+			goto out;
 		default:
 			/*
 			 * Need to return error so that nothing thinks
 			 * that the symlink is empty and hence "."
 			 */
-			return (EINVAL);
+			error = EINVAL;
+			goto out;
 		}
 	}
 
 	/* copy the link data to user space */
-	return (uiomove(bp, strlen(bp), UIO_READ, uiop));
+	error = uiomove(bp, strlen(bp), UIO_READ, uiop);
+
+out:
+	kmem_free(bp, klen);
+	return (error);
 }
 
 
