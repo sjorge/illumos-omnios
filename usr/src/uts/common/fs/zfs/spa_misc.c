@@ -316,6 +316,16 @@ uint64_t zfs_deadman_checktime_ms = 5000ULL;
  */
 int zfs_deadman_enabled = -1;
 
+#if defined(__amd64__) || defined(__i386__)
+/*
+ * Should we allow the use of mechanisms that depend on saving and restoring
+ * the FPU state?  This was disabled initially due to stability issues in
+ * the kernel FPU routines; see bug 13717. As of the fixes for 13902 and
+ * 13915, it has once again been enabled.
+ */
+int zfs_fpu_enabled = 1;
+#endif
+
 /*
  * The worst case is single-sector max-parity RAID-Z blocks, in which
  * case the space requirement is exactly (VDEV_RAIDZ_MAXPARITY + 1)
