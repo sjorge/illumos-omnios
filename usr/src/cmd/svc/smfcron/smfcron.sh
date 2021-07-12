@@ -78,7 +78,6 @@ function cron_unlock {
 }
 
 function extract_jobs {
-	jobs=()
 	svccfg -s "$SMF_FMRI" listprop cronjobs | while read job; do
 		[[ "$job" = cronjobs/* ]] || continue
 		jobname="${job%% *}"
