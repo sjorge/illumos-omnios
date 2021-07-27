@@ -26,6 +26,7 @@
  * Copyright 2017 Gary Mills
  * Copyright (c) 2016, Chris Fraire <cfraire@me.com>.
  * Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2021, Tintri by DDN. All rights reserved.
  */
 
 #include <arpa/inet.h>
@@ -279,7 +280,7 @@ typedef struct show_addr_args_s {
 
 typedef struct show_if_args_s {
 	show_if_state_t *si_state;
-	ipadm_if_info_t *si_info;
+	ipadm_if_info_list_t *si_info;
 } show_if_args_t;
 
 typedef enum {
@@ -682,7 +683,7 @@ do_show_ifprop(int argc, char **argv, const char *use)
 	uint_t		proto;
 	boolean_t	m_arg = _B_FALSE;
 	char		*protostr;
-	ipadm_if_info_t	*ifinfo, *ifp;
+	ipadm_if_info_list_t *ifinfo, *ifl;
 	ipadm_status_t	status;
 	show_prop_state_t state;
 
@@ -746,8 +747,9 @@ do_show_ifprop(int argc, char **argv, const char *use)
 	if (status != IPADM_SUCCESS)
 		die("Error retrieving interface(s): %s",
 		    ipadm_status2str(status));
-	for (ifp = ifinfo; ifp; ifp = ifp->ifi_next) {
-		(void) strlcpy(state.sps_ifname, ifp->ifi_name, LIFNAMSIZ);
+	for (ifl = ifinfo; ifl != NULL; ifl = ifl->ifil_next) {
+		(void) strlcpy(state.sps_ifname, ifl->ifil_ifi.ifi_name,
+		    LIFNAMSIZ);
 		state.sps_proto = proto;
 		show_properties(&state, IPADMPROP_CLASS_IF);
 	}
@@ -1618,7 +1620,7 @@ flags2str(uint64_t flags, fmask_t *tbl, boolean_t is_bits,
 static boolean_t
 is_from_gz(const char *lifname)
 {
-	ipadm_if_info_t		*if_info;
+	ipadm_if_info_list_t	*if_info;
 	char			phyname[LIFNAMSIZ], *cp;
 	boolean_t		ret = _B_FALSE;
 	ipadm_status_t		status;
@@ -1641,7 +1643,7 @@ is_from_gz(const char *lifname)
 	if (status != IPADM_SUCCESS)
 		return (ret);
 
-	if (if_info->ifi_cflags & IFIF_L3PROTECT)
+	if (if_info->ifil_ifi.ifi_cflags & IFIF_L3PROTECT)
 		ret = _B_TRUE;
 	ipadm_free_if_info(if_info);
 	return (ret);
@@ -1896,8 +1898,8 @@ static boolean_t
 print_si_cb(ofmt_arg_t *ofarg, char *buf, uint_t bufsize)
 {
 	show_if_args_t		*arg = ofarg->ofmt_cbarg;
-	ipadm_if_info_t		*ifinfo = arg->si_info;
-	char			*ifname = ifinfo->ifi_name;
+	ipadm_if_info_list_t	*ifinfo = arg->si_info;
+	char			*ifname = ifinfo->ifil_ifi.ifi_name;
 	fmask_t intf_state[] = {
 		{ "ok",		IFIS_OK,	IPADM_ALL_BITS},
 		{ "down",	IFIS_DOWN,	IPADM_ALL_BITS},
@@ -1934,15 +1936,15 @@ print_si_cb(ofmt_arg_t *ofarg, char *buf, uint_t bufsize)
 		(void) snprintf(buf, bufsize, "%s", ifname);
 		break;
 	case SI_STATE:
-		flags2str(ifinfo->ifi_state, intf_state, _B_FALSE,
+		flags2str(ifinfo->ifil_ifi.ifi_state, intf_state, _B_FALSE,
 		    buf, bufsize);
 		break;
 	case SI_CURRENT:
-		flags2str(ifinfo->ifi_cflags, intf_cflags, _B_TRUE,
+		flags2str(ifinfo->ifil_ifi.ifi_cflags, intf_cflags, _B_TRUE,
 		    buf, bufsize);
 		break;
 	case SI_PERSISTENT:
-		flags2str(ifinfo->ifi_pflags, intf_pflags, _B_TRUE,
+		flags2str(ifinfo->ifil_ifi.ifi_pflags, intf_pflags, _B_TRUE,
 		    buf, bufsize);
 		break;
 	default:
@@ -1963,7 +1965,7 @@ do_show_if(int argc, char *argv[], const char *use)
 	ipadm_status_t		status;
 	show_if_state_t		state;
 	char			*fields_str = NULL;
-	ipadm_if_info_t		*if_info, *ptr;
+	ipadm_if_info_list_t	*if_info, *ptr;
 	show_if_args_t		sargs;
 	int			option;
 	ofmt_handle_t		ofmt;
@@ -2008,7 +2010,7 @@ do_show_if(int argc, char *argv[], const char *use)
 		    ipadm_status2str(status));
 	}
 
-	for (ptr = if_info; ptr; ptr = ptr->ifi_next) {
+	for (ptr = if_info; ptr != NULL; ptr = ptr->ifil_next) {
 		sargs.si_info = ptr;
 		ofmt_print(state.si_ofmt, &sargs);
 	}

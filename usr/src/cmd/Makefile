@@ -500,6 +500,7 @@ i386_SUBDIRS=		\
 	nvmeadm		\
 	pptadm		\
 	rdmsr		\
+	rsrvrctl	\
 	rtc		\
 	ucodeadm	\
 	xhci		\

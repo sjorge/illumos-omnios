@@ -160,20 +160,6 @@ int vm_segmap_obj(vm_object_t, off_t, size_t, struct as *, caddr_t *, uint_t,
 int vm_segmap_space(struct vmspace *, off_t, struct as *, caddr_t *, off_t,
     uint_t, uint_t, uint_t);
 void *vmspace_find_kva(struct vmspace *, uintptr_t, size_t);
-void vmm_arena_init(void);
-void vmm_arena_fini(void);
-
-struct vmm_pt_ops {
-	void * (*vpo_init)(uint64_t *);
-	void (*vpo_free)(void *);
-	uint64_t (*vpo_wired_cnt)(void *);
-	int (*vpo_is_wired)(void *, uint64_t, uint_t *);
-	int (*vpo_map)(void *, uint64_t, pfn_t, uint_t, uint_t, uint8_t);
-	uint64_t (*vpo_unmap)(void *, uint64_t, uint64_t);
-};
-
-extern struct vmm_pt_ops ept_ops;
-extern struct vmm_pt_ops rvi_ops;
 
 typedef int (*pmap_pinit_t)(struct pmap *pmap);
 
@@ -183,13 +169,12 @@ void vmspace_free(struct vmspace *);
 int vm_fault(vm_map_t, vm_offset_t, vm_prot_t, int);
 int vm_fault_quick_hold_pages(vm_map_t map, vm_offset_t addr, vm_size_t len,
     vm_prot_t prot, vm_page_t *ma, int max_count);
-void vmm_arena_fini(void);
 
-
-struct vm_object *vm_object_allocate(objtype_t, vm_pindex_t);
+struct vm_object *vm_object_allocate(objtype_t, vm_pindex_t, bool);
 void vm_object_deallocate(vm_object_t);
 void vm_object_reference(vm_object_t);
 int vm_object_set_memattr(vm_object_t, vm_memattr_t);
+pfn_t vm_object_pfn(vm_object_t, uintptr_t);
 
 #define	VM_OBJECT_WLOCK(vmo)	mutex_enter(&(vmo)->vmo_lock)
 #define	VM_OBJECT_WUNLOCK(vmo)	mutex_exit(&(vmo)->vmo_lock)
