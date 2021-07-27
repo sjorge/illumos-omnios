@@ -1412,6 +1412,7 @@ vmmdev_do_ioctl(vmm_softc_t *sc, int cmd, intptr_t arg, int md,
 		 */
 		break;
 	}
+
 	default:
 		error = ENOTTY;
 		break;

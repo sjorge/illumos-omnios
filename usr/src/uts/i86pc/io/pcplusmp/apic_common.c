@@ -25,7 +25,6 @@
 /*
  * Copyright 2019, Joyent, Inc.
  * Copyright (c) 2016, 2017 by Delphix. All rights reserved.
- * Copyright 2018 Joyent, Inc.
  * Copyright 2019 Joshua M. Clulow <josh@sysmgr.org>
  */
 
