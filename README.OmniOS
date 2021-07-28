@@ -13,7 +13,9 @@ are included in the footer.
 
 =======================================================================
 
-No pending updates.
+LX: revert /proc/<pid>/fd/ directories to symlink
+	system/zones/brand/lx
+	https://hf.omnios.org/r38/lxproc.p5p
 
 =======================================================================
 
