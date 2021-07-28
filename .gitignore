@@ -1677,6 +1677,7 @@ usr/src/cmd/rpcsvc/spray.h
 usr/src/cmd/rpcsvc/spray.x
 usr/src/cmd/rpcsvc/spray_clnt.c
 usr/src/cmd/rpcsvc/spray_svc.c
+usr/src/cmd/rsrvrctl/rsrvrctl
 usr/src/cmd/rtc/rtc
 usr/src/cmd/runat/runat
 usr/src/cmd/sa/sa1
