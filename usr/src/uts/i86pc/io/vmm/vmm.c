@@ -38,7 +38,7 @@
  * http://www.illumos.org/license/CDDL.
  *
  * Copyright 2015 Pluribus Networks Inc.
- * Copyright 2021 Joyent, Inc.
+ * Copyright 2018 Joyent, Inc.
  * Copyright 2021 Oxide Computer Company
  * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
  */
@@ -60,6 +60,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/sched.h>
 #include <sys/smp.h>
 #include <sys/systm.h>
+#include <sys/sunddi.h>
 
 #include <machine/pcb.h>
 #include <machine/smp.h>
@@ -189,9 +190,10 @@ struct vm {
 	uint16_t	threads;		/* (o) num of threads/core */
 	uint16_t	maxcpus;		/* (o) max pluggable cpus */
 	uint64_t	boot_tsc_offset;	/* (i) TSC offset at VM boot */
-	size_t		arc_resv;		/* # of pages take from ARC */
 
 	struct ioport_config ioports;		/* (o) ioport handling */
+
+	bool		mem_transient;		/* (o) alloc transient memory */
 };
 
 static int vmm_initialized;
@@ -274,9 +276,6 @@ static bool sysmem_mapping(struct vm *vm, struct mem_map *mm);
 static void vcpu_notify_event_locked(struct vcpu *vcpu, vcpu_notify_t);
 static bool vcpu_sleep_bailout_checks(struct vm *vm, int vcpuid);
 static int vcpu_vector_sipi(struct vm *vm, int vcpuid, uint8_t vector);
-
-extern int arc_virt_machine_reserve(size_t);
-extern void arc_virt_machine_release(size_t);
 
 /* Flags for vtc_status */
 #define	VTCS_FPU_RESTORED	1 /* guest FPU restored, host FPU saved */
@@ -494,7 +493,7 @@ uint_t cores_per_package = 1;
 uint_t threads_per_core = 1;
 
 int
-vm_create(const char *name, struct vm **retvm)
+vm_create(const char *name, uint64_t flags, struct vm **retvm)
 {
 	struct vm *vm;
 	struct vmspace *vmspace;
@@ -506,8 +505,8 @@ vm_create(const char *name, struct vm **retvm)
 	if (!vmm_initialized)
 		return (ENXIO);
 
-	if (name == NULL || strlen(name) >= VM_MAX_NAMELEN)
-		return (EINVAL);
+	/* Name validation has already occurred */
+	VERIFY3U(strnlen(name, VM_MAX_NAMELEN), <, VM_MAX_NAMELEN);
 
 	vmspace = VMSPACE_ALLOC(0, VM_MAXUSER_ADDRESS);
 	if (vmspace == NULL)
@@ -516,6 +515,7 @@ vm_create(const char *name, struct vm **retvm)
 	vm = malloc(sizeof (struct vm), M_VM, M_WAITOK | M_ZERO);
 	strcpy(vm->name, name);
 	vm->vmspace = vmspace;
+	vm->mem_transient = (flags & VCF_RESERVOIR_MEM) == 0;
 
 	vm->sockets = 1;
 	vm->cores = cores_per_package;	/* XXX backwards compatibility */
@@ -623,8 +623,6 @@ vm_cleanup(struct vm *vm, bool destroy)
 
 		VMSPACE_FREE(vm->vmspace);
 		vm->vmspace = NULL;
-		arc_virt_machine_release(vm->arc_resv);
-		vm->arc_resv = 0;
 	}
 }
 
@@ -714,20 +712,11 @@ vm_alloc_memseg(struct vm *vm, int ident, size_t len, bool sysmem)
 	struct mem_seg *seg;
 	vm_object_t obj;
 
-#ifndef __FreeBSD__
-	extern pgcnt_t get_max_page_get(void);
-#endif
-
 	if (ident < 0 || ident >= VM_MAX_MEMSEGS)
 		return (EINVAL);
 
 	if (len == 0 || (len & PAGE_MASK))
 		return (EINVAL);
-
-#ifndef __FreeBSD__
-	if (len > ptob(get_max_page_get()))
-		return (EINVAL);
-#endif
 
 	seg = &vm->mem_segs[ident];
 	if (seg->object != NULL) {
@@ -737,7 +726,8 @@ vm_alloc_memseg(struct vm *vm, int ident, size_t len, bool sysmem)
 			return (EINVAL);
 	}
 
-	obj = vm_object_allocate(OBJT_DEFAULT, len >> PAGE_SHIFT);
+	obj = vm_object_allocate(OBJT_DEFAULT, len >> PAGE_SHIFT,
+	    vm->mem_transient);
 	if (obj == NULL)
 		return (ENOMEM);
 
@@ -3641,21 +3631,6 @@ vm_ioport_unhook(struct vm *vm, void **cookie)
 	VERIFY(IOP_GEN_COOKIE(old_func, old_arg, port) == (uintptr_t)*cookie);
 
 	*cookie = NULL;
-}
-
-int
-vm_arc_resv(struct vm *vm, uint64_t len)
-{
-	/* Since we already have the compat macros included, we use those */
-	size_t pages = (size_t)roundup2(len, PAGE_SIZE) >> PAGE_SHIFT;
-	int err = 0;
-
-	err = arc_virt_machine_reserve(pages);
-	if (err != 0)
-		return (err);
-
-	vm->arc_resv += pages;
-	return (0);
 }
 
 int

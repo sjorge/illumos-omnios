@@ -39,7 +39,7 @@
  *
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2018 Joyent, Inc.
- * Copyright 2020 Oxide Computer Company
+ * Copyright 2021 Oxide Computer Company
  */
 
 #include <sys/cdefs.h>
@@ -1253,8 +1253,15 @@ do_open(const char *vmname)
 
 	if (lpc_bootrom())
 		romboot = true;
-
+#ifndef __FreeBSD__
+	uint64_t create_flags = 0;
+	if (get_config_bool_default("memory.use_reservoir", false)) {
+		create_flags |= VCF_RESERVOIR_MEM;
+	}
+	error = vm_create(vmname, create_flags);
+#else
 	error = vm_create(vmname);
+#endif /* __FreeBSD__ */
 	if (error) {
 		if (errno == EEXIST) {
 			if (romboot) {
@@ -1556,13 +1563,6 @@ main(int argc, char *argv[])
 #ifdef	__FreeBSD__
 	err = vm_setup_memory(ctx, memsize, VM_MMAP_ALL);
 #else
-	err = vm_arc_resv(ctx, memsize);
-	if (err != 0) {
-		(void) fprintf(stderr, "Could not shrink ARC: %s\n",
-		    strerror(err));
-		exit(4);
-	}
-
 	do {
 		errno = 0;
 		err = vm_setup_memory(ctx, memsize, VM_MMAP_ALL);

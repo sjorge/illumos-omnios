@@ -115,7 +115,7 @@ struct vmm_ops {
 extern struct vmm_ops vmm_ops_intel;
 extern struct vmm_ops vmm_ops_amd;
 
-int vm_create(const char *name, struct vm **retvm);
+int vm_create(const char *name, uint64_t flags, struct vm **retvm);
 void vm_destroy(struct vm *vm);
 int vm_reinit(struct vm *vm);
 const char *vm_name(struct vm *vm);
@@ -195,10 +195,6 @@ int vm_service_mmio_read(struct vm *vm, int cpuid, uint64_t gpa, uint64_t *rval,
     int rsize);
 int vm_service_mmio_write(struct vm *vm, int cpuid, uint64_t gpa, uint64_t wval,
     int wsize);
-
-#ifndef __FreeBSD__
-int vm_arc_resv(struct vm *vm, size_t);
-#endif
 
 #ifdef _SYS__CPUSET_H_
 cpuset_t vm_active_cpus(struct vm *vm);
