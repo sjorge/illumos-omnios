@@ -33,7 +33,7 @@ safe_dir /etc/systemd
 
 # Populate resolv.conf setup files IFF we have resolvers information.
 resolvers=`zone_attr resolvers`
-if [ -n "$resolvers" ]; then
+if [[ -n "$resolvers" ]]; then
 
     echo "# AUTOMATIC ZONE CONFIG" > $tmpfile
     _IFS=$IFS; IFS=,; for r in $resolvers; do
@@ -41,7 +41,7 @@ if [ -n "$resolvers" ]; then
     done >> $tmpfile
     IFS=$_IFS
     domain=`zone_attr dns-domain`
-    [ -n "$domain" ] && echo "search $domain" >> $tmpfile
+    [[ -n "$domain" ]] && echo "search $domain" >> $tmpfile
 
     if [ -f $ZONEROOT/etc/systemd/resolved.conf ]; then
         cf=$ZONEROOT/etc/systemd/resolved.conf
