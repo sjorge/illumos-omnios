@@ -286,8 +286,18 @@ static const struct vie_op one_byte_opcodes[256] = {
 		.op_byte = 0x8B,
 		.op_type = VIE_OP_TYPE_MOV,
 	},
+	[0xA0] = {
+		.op_byte = 0xA0,
+		.op_type = VIE_OP_TYPE_MOV,
+		.op_flags = VIE_OP_F_MOFFSET | VIE_OP_F_NO_MODRM,
+	},
 	[0xA1] = {
 		.op_byte = 0xA1,
+		.op_type = VIE_OP_TYPE_MOV,
+		.op_flags = VIE_OP_F_MOFFSET | VIE_OP_F_NO_MODRM,
+	},
+	[0xA2] = {
+		.op_byte = 0xA2,
 		.op_type = VIE_OP_TYPE_MOV,
 		.op_flags = VIE_OP_F_MOFFSET | VIE_OP_F_NO_MODRM,
 	},
@@ -924,6 +934,18 @@ vie_emulate_mov(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 			error = vie_update_register(vm, vcpuid, reg, val, size);
 		}
 		break;
+	case 0xA0:
+		/*
+		 * MOV from seg:moffset to AL
+		 * A0:		mov AL, moffs
+		 */
+		size = 1;	/* override for byte operation */
+		error = vie_mmio_read(vie, vm, vcpuid, gpa, &val, size);
+		if (error == 0) {
+			reg = VM_REG_GUEST_RAX;
+			error = vie_update_register(vm, vcpuid, reg, val, size);
+		}
+		break;
 	case 0xA1:
 		/*
 		 * MOV from seg:moffset to AX/EAX/RAX
@@ -935,6 +957,18 @@ vie_emulate_mov(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 		if (error == 0) {
 			reg = VM_REG_GUEST_RAX;
 			error = vie_update_register(vm, vcpuid, reg, val, size);
+		}
+		break;
+	case 0xA2:
+		/*
+		 * MOV from AL to seg:moffset
+		 * A2:		mov moffs, AL
+		 */
+		size = 1;	/* override for byte operation */
+		error = vm_get_register(vm, vcpuid, VM_REG_GUEST_RAX, &val);
+		if (error == 0) {
+			val &= size2mask[size];
+			error = vie_mmio_write(vie, vm, vcpuid, gpa, val, size);
 		}
 		break;
 	case 0xA3:
