@@ -17,6 +17,10 @@ LX: revert /proc/<pid>/fd/ directories to symlink
 	system/zones/brand/lx
 	https://hf.omnios.org/r38/lxproc.p5p
 
+14021 stack overflow in smbd:smbd_dc_check
+	service/file-system/smb
+	https://hf.omnios.org/r38/smbd.p5p
+
 =======================================================================
 
 =============================
