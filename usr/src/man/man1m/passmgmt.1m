@@ -1,314 +1,313 @@
 '\" te
-.\"  Copyright 1989 AT&T Copyright (c) 2007 Sun Microsystems, Inc. All Rights Reserved.
-.\" The contents of this file are subject to the terms of the Common Development and Distribution License (the "License").  You may not use this file except in compliance with the License.
-.\" You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE or http://www.opensolaris.org/os/licensing.  See the License for the specific language governing permissions and limitations under the License.
-.\" When distributing Covered Code, include this CDDL HEADER in each file and include the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the following below this CDDL HEADER, with the fields enclosed by brackets "[]" replaced with your own identifying information: Portions Copyright [yyyy] [name of copyright owner]
-.TH PASSMGMT 1M "Feb 25, 2017"
-.SH NAME
-passmgmt \- password files management
-.SH SYNOPSIS
-.LP
-.nf
-\fBpassmgmt\fR \fB-a\fR \fIoptions\fR \fIname\fR
-.fi
-
-.LP
-.nf
-\fBpassmgmt\fR \fB-m\fR \fIoptions\fR \fIname\fR
-.fi
-
-.LP
-.nf
-\fBpassmgmt\fR \fB-d\fR \fIname\fR
-.fi
-
-.SH DESCRIPTION
-.LP
-The \fBpassmgmt\fR command updates information in the password files. This
-command works with both \fB/etc/passwd\fR and \fB/etc/shadow\fR.
-.sp
-.LP
-\fBpassmgmt\fR \fB-a\fR adds an entry for user \fIname\fR to the password
-files. This command does not create any directory for the new user and the new
-login remains locked (with the string \fB*LK*\fR in the password field) until
-the \fBpasswd\fR(1) command is executed to set the password.
-.sp
-.LP
-\fBpassmgmt\fR \fB-m\fR modifies the entry for user \fIname\fR in the password
-files. The name field in the \fB/etc/shadow\fR entry and all the fields (except
-the password field) in the \fB/etc/passwd\fR entry can be modified by this
-command. Only fields entered on the command line will be modified.
-.sp
-.LP
-\fBpassmgmt\fR \fB-d\fR deletes the entry for user \fIname\fR from the password
-files. It will not remove any files that the user owns on the system; they must
+.\" All Rights Reserved.
+.\" The contents of this file are subject to the terms of the Common
+.\" Development and Distribution License (the "License").  You may not use this
+.\" file except in compliance with the License.
+.\" You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE or
+.\" http://www.opensolaris.org/os/licensing.  See the License for the specific
+.\" language governing permissions and limitations under the License.
+.\" When distributing Covered Code, include this CDDL HEADER in each file and
+.\" include the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add
+.\" the following below this CDDL HEADER, with the fields enclosed by brackets
+.\" "[]" replaced with your own identifying information:
+.\"     Portions Copyright [yyyy] [name of copyright owner]
+.\"
+.\" Copyright 1989 AT&T Copyright (c) 2007 Sun Microsystems, Inc.
+.\" Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+.Dd August 16, 2021
+.Dt PASSMGMT 1M
+.Os
+.Sh NAME
+.Nm passmgmt
+.Nd password files management
+.Sh SYNOPSIS
+.Nm /usr/lib/passmgmt
+.Fl a
+.Ar options
+.Ar name
+.Nm /usr/lib/passmgmt
+.Fl m
+.Ar options
+.Ar name
+.Nm /usr/lib/passmgmt
+.Fl d
+.Ar name
+.Sh DESCRIPTION
+The
+.Nm
+command updates information in the password files.
+This
+command works with both
+.Pa /etc/passwd
+and
+.Pa /etc/shadow .
+.Pp
+.Nm
+.Fl a
+adds an entry for user
+.Ar name
+to the password files.
+This command does not create any directory for the new user and, unless the
+.Fl p
+option is provided to specify the password hash, the new login remains locked
+.Po
+with the string
+.Sy *LK*
+in the password field
+.Pc
+until the password is changed.
+.Pp
+.Nm
+.Fl m
+modifies the entry for user
+.Ar name
+in the password files.
+The name and password field in the
+.Pa /etc/shadow
+entry and all the fields
+.Pq except the password field
+in the
+.Pa /etc/passwd
+entry can be modified by this command.
+Only fields entered on the command line will be modified.
+.Pp
+.Nm
+.Fl d
+deletes the entry for user
+.Ar name
+from the password files.
+It will not remove any files that the user owns on the system; they must
 be removed manually.
-.sp
-.LP
-\fBpassmgmt\fR can be used only by the super-user.
-.SH OPTIONS
-.ne 2
-.na
-\fB\fB\fR\fB-c\fR \fIcomment\fR\fR
-.ad
-.RS 16n
-A short description of the login, enclosed in quotes. It is limited to a
-maximum of 128 characters and defaults to an empty field.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-e\fR \fIexpire\fR\fR
-.ad
-.RS 16n
-Specify the expiration date for a login. After this date, no user will be able
-to access this login. The expire option argument is a date entered using one of
-the date formats included in the template file \fB/etc/datemsk\fR. See
-\fBgetdate\fR(3C).
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-f\fR \fIinactive\fR\fR
-.ad
-.RS 16n
+.Pp
+.Nm
+can be used only by the super-user.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl c Ar comment
+A short description of the login, enclosed in quotes.
+It is limited to a maximum of 128 characters and defaults to an empty field.
+.It Fl e Ar expire
+Specify the expiration date for a login.
+After this date, the user will be able to access this login.
+The expire option argument is a date entered using one of the date formats
+included in the template file
+.Pa /etc/datemsk .
+See
+.Xr getdate 3c .
+.It Fl f Ar inactive
 The maximum number of days allowed between uses of a login ID before that
-\fBID\fR is declared invalid. Normal values are positive integers. A value of
-\fB0\fR defeats the status.
-.sp
+.Sy ID
+is declared invalid.
+Normal values are positive integers.
+A value of
+.Sy 0
+defeats the status.
+.Pp
 Changing the password reactivates an account for the inactivity period.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB\fR\fB-g\fR \fIgid\fR\fR
-.ad
-.RS 16n
-\fBGID\fR of \fIname\fR. This number must range from 0 to the maximum
-non-negative value for the system. The default is 1.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB\fR\fB-h\fR \fIhomedir\fR\fR
-.ad
-.RS 16n
-Home directory of \fIname\fR. It is limited to a maximum of 256 characters and
-defaults to \fB/usr/\fR\fIname\fR.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-K\fR \fIkey=value\fR\fR
-.ad
-.RS 16n
-Set a \fIkey=value\fR pair. See \fBuser_attr\fR(4), \fBauth_attr\fR(4), and
-\fBprof_attr\fR(4). The valid \fIkey=value\fR pairs are defined in
-\fBuser_attr\fR(4), but the "type" key is subject to the \fBusermod\fR(1M) and
-\fBrolemod\fR(1M) restrictions. Multiple \fIkey=value\fR pairs may be added
-with multiple \fB-K\fR options.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-k\fR \fIskel_dir\fR\fR
-.ad
-.RS 16n
-A directory that contains skeleton information (such as \fB\&.profile\fR) that
-can be copied into a new user's home directory. This directory must already
-exist. The system provides the \fB/etc/skel\fR directory that can be used for
-this purpose.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-l\fR \fIlogname\fR\fR
-.ad
-.RS 16n
-This option changes the \fIname\fR to \fIlogname\fR. It is used only with the
-\fB-m\fR option. The total size of each login entry is limited to a maximum of
-511 bytes in each of the password files.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-o\fR\fR
-.ad
-.RS 16n
-This option allows a \fBUID\fR to be non-unique. It is used only with the
-\fB-u\fR option.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB\fR\fB-s\fR \fIshell\fR\fR
-.ad
-.RS 16n
-Login shell for \fIname\fR. It should be the full pathname of the program that
-will be executed when the user logs in. The maximum size of \fIshell\fR is 256
-characters. The default is for this field to be empty and to be interpreted as
-\fB/usr/bin/sh\fR.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB\fR\fB-u\fR \fIuid\fR\fR
-.ad
-.RS 16n
-\fBUID\fR of the \fIname\fR. This number must range from 0 to the maximum
-non-negative value for the system. It defaults to the next available \fBUID\fR
-greater than 99. Without the \fB-o\fR option, it enforces the uniqueness of a
-\fBUID.\fR
-.RE
-
-.SH FILES
-.in +2
-.nf
-\fB/etc/passwd\fR
-\fB/etc/shadow\fR
-\fB/etc/opasswd\fR
-\fB/etc/oshadow\fR		
-.fi
-.in -2
-.sp
-
-.SH ATTRIBUTES
-.LP
-See \fBattributes\fR(5) for descriptions of the following attributes:
-.sp
-
-.sp
-.TS
-box;
-c | c
-l | l .
-ATTRIBUTE TYPE	ATTRIBUTE VALUE
-_
-Interface Stability	Evolving
-.TE
-
-.SH SEE ALSO
-.LP
-\fBpasswd\fR(1), \fBrolemod\fR(1M), \fBuseradd\fR(1M), \fBuserdel\fR(1M),
-\fBusermod\fR(1M), \fBauth_attr\fR(4), \fBpasswd\fR(4), \fBprof_attr\fR(4),
-\fBshadow\fR(4), \fBuser_attr\fR(4), \fBattributes\fR(5)
-.SH EXIT STATUS
-.LP
-The \fBpassmgmt\fR command exits with one of the following values:
-.sp
-.ne 2
-.na
-\fB\fB0\fR\fR
-.ad
-.RS 5n
+.It Fl g Ar gid
+The group ID for the login.
+This number must range from 0 to the maximum non-negative value for the system.
+The default is 1.
+.It Fl h Ar homedir
+Home directory of
+.Ar name .
+It is limited to a maximum of 256 characters and defaults to
+.Pa /usr/ Ns Ar name .
+.It Fl K Ar key Ns = Ns Ar value
+Set a
+.Ar key Ns = Ns Ar value
+pair.
+See
+.Xr user_attr 4 ,
+.Xr auth_attr 4 ,
+and
+.Xr prof_attr 4 .
+The valid
+.Ar key Ns = Ns Ar value
+pairs are defined in
+.Xr user_attr 4 ,
+but the "type" key is subject to the
+.Xr usermod 1m
+and
+.Xr rolemod 1m
+restrictions.
+Multiple
+.Ar key Ns = Ns Ar value
+pairs may be added with multiple
+.Fl K
+options.
+.It Fl k Ar skel_dir
+A directory that contains skeleton information
+.Po
+such as
+.Pa \&.profile
+.Pc
+that can be copied into a new user's home directory.
+This directory must already exist.
+The system provides the
+.Pa /etc/skel
+directory that can be used for this purpose.
+.It Fl l Ar logname
+This option changes the
+.Ar name
+to
+.Ar logname .
+It is used only with the
+.Fl m
+option.
+The total size of each login entry is limited to a maximum of 511 bytes in each
+of the password files.
+.It Fl o
+This option allows a
+.Sy UID
+to be non-unique.
+It is used only with the
+.Fl u
+option.
+.It Fl p Ar hash
+Password hash for
+.Ar name .
+It should be an encrypted password generated by
+.Xr crypt 3c .
+The default value for this field is
+.Sy *LK*
+which
+results in any newly added login remaining locked until the password is
+changed.
+.It Fl s Ar shell
+Login shell for
+.Ar name .
+It should be the full pathname of the program that will be executed when the
+user logs in.
+The maximum size of
+.Ar shell
+is 256 characters.
+The default is for this field to be empty and to be interpreted as
+.Pa /usr/bin/sh .
+.It Fl u Ar uid
+.Sy UID
+of the
+.Ar name .
+This number must range from 0 to the maximum non-negative value for the system.
+It defaults to the next available
+.Sy UID
+greater than 99.
+Without the
+.Fl o
+option,
+.Nm
+enforces the uniqueness of a
+.Sy UID .
+.El
+.Sh FILES
+.Bl -item -compact
+.It
+.Pa /etc/passwd
+.It
+.Pa /etc/shadow
+.It
+.Pa /etc/user_attr
+.It
+.Pa /etc/opasswd
+.It
+.Pa /etc/oshadow
+.It
+.Pa /etc/ouser_attr
+.El
+.Sh EXIT STATUS
+The
+.Nm
+command exits with one of the following values:
+.Bl -tag -width Ds
+.It Sy 0
 Success.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB1\fR\fR
-.ad
-.RS 5n
+.It Sy 1
 Permission denied.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB2\fR\fR
-.ad
-.RS 5n
-Invalid command syntax. Usage message of the \fBpassmgmt\fR command is
-displayed.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB3\fR\fR
-.ad
-.RS 5n
+.It Sy 2
+Invalid command syntax.
+Usage message of the
+.Nm
+command is displayed.
+.It Sy 3
 Invalid argument provided to option.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB4\fR\fR
-.ad
-.RS 5n
+.It Sy 4
 UID in use.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB5\fR\fR
-.ad
-.RS 5n
-Inconsistent password files (for example, \fIname\fR is in the
-\fB/etc/passwd\fR file and not in the \fB/etc/shadow\fR file, or vice versa).
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB6\fR\fR
-.ad
-.RS 5n
-Unexpected failure. Password files unchanged.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB7\fR\fR
-.ad
-.RS 5n
-Unexpected failure. Password file(s) missing.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB8\fR\fR
-.ad
-.RS 5n
-Password file(s) busy. Try again later.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB9\fR\fR
-.ad
-.RS 5n
-\fIname\fR does not exist (if \fB-m\fR or \fB-d\fR is specified), already
-exists (if \fB-a\fR is specified), or \fBlogname\fR already exists (if
-\fB\fR\fB-m\fR \fB-l\fR is specified).
-.RE
-
-.SH NOTES
-.LP
-Do not use a colon (\fB:\fR) or \fBRETURN\fR as part of an argument. It is
-interpreted as a field separator in the password file. The \fBpassmgmt\fR
-command will be removed in a future release. Its functionality has been
-replaced and enhanced by \fBuseradd\fR, \fBuserdel\fR, and \fBusermod\fR. These
-commands are currently available.
-.sp
-.LP
-This command only modifies password definitions in the local \fB/etc/passwd\fR
-and \fB/etc/shadow\fR files. If a network nameservice
-is being used to supplement the local files with additional entries,
-\fBpassmgmt\fR cannot change information supplied by the network nameservice.
+.It Sy 5
+Inconsistent password files
+.Po
+for example,
+.Ar name
+is in the
+.Pa /etc/passwd
+file and not in the
+.Pa /etc/shadow
+file, or vice versa
+.Pc .
+.It Sy 6
+Unexpected failure.
+Password files unchanged.
+.It Sy 7
+Unexpected failure.
+Password file(s) missing.
+.It Sy 8
+Password file(s) busy.
+Try again later.
+.It Sy 9
+.Ar name
+does not exist
+.Po
+if
+.Fl m
+or
+.Fl d
+is specified
+.Pc ,
+already exists
+.Po
+if
+.Fl a
+is specified
+.Pc ,
+or
+.Ar logname
+already exists
+.Po
+if
+.Fl m
+.Fl l
+is specified
+.Pc .
+.El
+.Sh INTERFACE STABILITY
+The command line interface of
+.Nm
+is
+.Sy Evolving .
+.Sh SEE ALSO
+.Xr passwd 1 ,
+.Xr rolemod 1m ,
+.Xr useradd 1m ,
+.Xr userdel 1m ,
+.Xr usermod 1m ,
+.Xr crypt 3c ,
+.Xr auth_attr 4 ,
+.Xr passwd 4 ,
+.Xr prof_attr 4 ,
+.Xr shadow 4 ,
+.Xr user_attr 4 ,
+.Xr attributes 5
+.Sh NOTES
+A NEWLINE or a colon
+.Pq Sy \&:
+cannot be used as part of an argument.
+.Pq \&: is interpreted as a field separator in the password file .
+.Pp
+This command only modifies password definitions in the local
+.Pa /etc/passwd
+and
+.Pa /etc/shadow
+files.
+If a network nameservice is being used to supplement the local files with
+additional entries,
+.Nm
+cannot change information supplied by the network nameservice.
