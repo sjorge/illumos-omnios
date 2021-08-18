@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 1988, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2020 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*	Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T	*/
@@ -42,10 +42,12 @@
 #include <secdb.h>
 #include <user_attr.h>
 #include <nss.h>
+#include <crypt.h>
 
 #define	CMT_SIZE	(128+1)	/* Argument sizes + 1 (for '\0') */
 #define	DIR_SIZE	(256+1)
 #define	SHL_SIZE	(256+1)
+#define	HASH_SIZE	(CRYPT_MAXCIPHERTEXTLEN+1)
 #define	ENTRY_LENGTH	512	/* Max length of an /etc/passwd entry */
 #define	UID_MIN		100	/* Lower bound of default UID */
 
@@ -61,8 +63,9 @@
 #define	D_MASK		01000
 #define	F_MASK		02000
 #define	E_MASK		04000
+#define	P_MASK		010000
 
-#define	UATTR_MASK	010000
+#define	UATTR_MASK	020000
 
 					/* flags for info_mask */
 #define	LOGNAME_EXIST	01		/* logname exists */
@@ -367,7 +370,7 @@ main(int argc, char **argv)
 	/* parse the command line */
 
 	while ((c = getopt(argc, argv,
-	    "ml:c:h:u:g:s:f:e:k:A:P:R:T:oadK:")) != -1) {
+	    "ml:c:h:u:g:s:f:e:k:p:A:P:R:T:oadK:")) != -1) {
 
 		switch (c) {
 		case 'm':
@@ -496,6 +499,21 @@ main(int argc, char **argv)
 				bad_arg("Invalid argument to option -g");
 			break;
 
+		case 'p' :
+			/* The password hash */
+
+			if ((D_MASK|P_MASK) & optn_mask)
+				bad_usage("Invalid combination of options");
+
+			if (strlen(optarg) > (size_t)HASH_SIZE ||
+			    strpbrk(optarg, ":\n") != NULL) {
+				bad_arg("Invalid argument to option -p");
+			}
+
+			optn_mask |= P_MASK;
+			shadow_st.sp_pwdp = optarg;
+			break;
+
 		case 's' :
 			/* The shell */
 
@@ -606,7 +624,7 @@ main(int argc, char **argv)
 	    ((optn_mask & M_MASK) &&
 	    !(optn_mask &
 	    (L_MASK|C_MASK|H_MASK|U_MASK|G_MASK|S_MASK|F_MASK|
-	    E_MASK|UATTR_MASK))))
+	    E_MASK|P_MASK|UATTR_MASK))))
 		bad_usage("Invalid command syntax");
 
 	/* null string argument or bad characters ? */
@@ -643,8 +661,9 @@ main(int argc, char **argv)
 
 	if ((!((M_MASK & optn_mask) && !(L_MASK & optn_mask))) ||
 	    ((M_MASK & optn_mask) && ((E_MASK & optn_mask) ||
-	    (F_MASK & optn_mask))))
+	    (F_MASK & optn_mask) || (P_MASK & optn_mask)))) {
 		info_mask |= BOTH_FILES;
+	}
 
 	if ((D_MASK|L_MASK|UATTR_MASK) & optn_mask)
 		info_mask |= UATTR_FILE;
@@ -958,7 +977,7 @@ main(int argc, char **argv)
 	} /* end-of-while-loop */
 
 	if (error >= 1) {
-		msg = "%s: Bad entry found in /etc/passwd.  Run pwconv.\n";
+		msg = BAD_ENT_MESSAGE;
 		fprintf(stderr, gettext(msg), prognamp);
 	}
 
@@ -1083,6 +1102,9 @@ main(int argc, char **argv)
 					if (E_MASK & optn_mask)
 						sp_ptr1p->sp_expire =
 						    shadow_st.sp_expire;
+					if (P_MASK & optn_mask)
+						sp_ptr1p->sp_pwdp =
+						    shadow_st.sp_pwdp;
 
 					ck_s_sz(sp_ptr1p);
 				}
@@ -1519,9 +1541,9 @@ bad_usage(char *sp)
 		(void) fprintf(stderr, "%s: %s\n", prognamp, gettext(sp));
 	(void) fprintf(stderr, gettext("Usage:\n\
 %s -a [-c comment] [-h homedir] [-u uid [-o]] [-g gid] \n\
-	    [-s shell] [-f inactive] [-e expire] name\n\
+	    [-s shell] [-f inactive] [-e expire] [-p hash] name\n\
 %s -m  -c comment | -h homedir | -u uid [-o] | -g gid |\n\
-	    -s shell | -f inactive | -e expire	|  -l logname  name\n\
+	    -s shell | -f inactive | -e expire | -p hash | -l logname name\n\
 %s -d name\n"), prognamp, prognamp, prognamp);
 	if (info_mask & LOCKED)
 		ulckpwdf();
