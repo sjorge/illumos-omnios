@@ -16441,11 +16441,7 @@ ql_pci_config_get8(ql_adapter_state_t *ha, off_t off)
 		    (uint8_t *)(ha->sbus_config_base + off)));
 	}
 
-#ifdef KERNEL_32
-	return (pci_config_getb(ha->pci_handle, off));
-#else
 	return (pci_config_get8(ha->pci_handle, off));
-#endif
 }
 
 uint16_t
@@ -16456,11 +16452,7 @@ ql_pci_config_get16(ql_adapter_state_t *ha, off_t off)
 		    (uint16_t *)(ha->sbus_config_base + off)));
 	}
 
-#ifdef KERNEL_32
-	return (pci_config_getw(ha->pci_handle, off));
-#else
 	return (pci_config_get16(ha->pci_handle, off));
-#endif
 }
 
 uint32_t
@@ -16471,11 +16463,7 @@ ql_pci_config_get32(ql_adapter_state_t *ha, off_t off)
 		    (uint32_t *)(ha->sbus_config_base + off)));
 	}
 
-#ifdef KERNEL_32
-	return (pci_config_getl(ha->pci_handle, off));
-#else
 	return (pci_config_get32(ha->pci_handle, off));
-#endif
 }
 
 void
@@ -16485,11 +16473,7 @@ ql_pci_config_put8(ql_adapter_state_t *ha, off_t off, uint8_t val)
 		ddi_put8(ha->sbus_config_handle,
 		    (uint8_t *)(ha->sbus_config_base + off), val);
 	} else {
-#ifdef KERNEL_32
-		pci_config_putb(ha->pci_handle, off, val);
-#else
 		pci_config_put8(ha->pci_handle, off, val);
-#endif
 	}
 }
 
@@ -16500,11 +16484,7 @@ ql_pci_config_put16(ql_adapter_state_t *ha, off_t off, uint16_t val)
 		ddi_put16(ha->sbus_config_handle,
 		    (uint16_t *)(ha->sbus_config_base + off), val);
 	} else {
-#ifdef KERNEL_32
-		pci_config_putw(ha->pci_handle, off, val);
-#else
 		pci_config_put16(ha->pci_handle, off, val);
-#endif
 	}
 }
 
@@ -16515,11 +16495,7 @@ ql_pci_config_put32(ql_adapter_state_t *ha, off_t off, uint32_t val)
 		ddi_put32(ha->sbus_config_handle,
 		    (uint32_t *)(ha->sbus_config_base + off), val);
 	} else {
-#ifdef KERNEL_32
-		pci_config_putl(ha->pci_handle, off, val);
-#else
 		pci_config_put32(ha->pci_handle, off, val);
-#endif
 	}
 }
 
