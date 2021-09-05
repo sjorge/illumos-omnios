@@ -3504,6 +3504,7 @@ usr/src/man/man3c/mbsrtowcs_l.3c
 usr/src/man/man3c/mbstowcs_l.3c
 usr/src/man/man3c/mbtowc_l.3c
 usr/src/man/man3c/memmem.3c
+usr/src/man/man3c/memrchr.3c
 usr/src/man/man3c/mkfifoat.3c
 usr/src/man/man3c/mtx_destroy.3c
 usr/src/man/man3c/mtx_init.3c
@@ -4246,6 +4247,8 @@ usr/src/test/libc-tests/tests/fpround/fpround_test.i386
 usr/src/test/libc-tests/tests/i18n/bindtextdomain_test
 usr/src/test/libc-tests/tests/i18n/bindtextdomain_test.amd64
 usr/src/test/libc-tests/tests/i18n/bindtextdomain_test.i386
+usr/src/test/libc-tests/tests/memchr.32
+usr/src/test/libc-tests/tests/memchr.64
 usr/src/test/libc-tests/tests/memset_s.32
 usr/src/test/libc-tests/tests/memset_s.64
 usr/src/test/libc-tests/tests/newlocale/newlocale_test
