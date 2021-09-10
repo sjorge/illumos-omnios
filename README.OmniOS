@@ -13,17 +13,13 @@ are included in the footer.
 
 =======================================================================
 
-LX: revert /proc/<pid>/fd/ directories to symlink
-	system/zones/brand/lx
-	https://hf.omnios.org/r38/lxproc.p5p
-
-14021 stack overflow in smbd:smbd_dc_check
-	service/file-system/smb
-	https://hf.omnios.org/r38/smbd.p5p
-
-13965 loader: open file list should be dynamic
-	system/boot/loader
-	https://hf.omnios.org/r38/loader.p5p
+14035 viona mishandles merged-rx packets
+13783 viona should operate page-wise
+14032 viona miscounts rx bytes copied
+14026 livelock in vmm_drv interface
+13686 bhyve should emulate mov-to-%cr
+13380 Add virtio-9p (aka VirtFS) filesystem sharing to bhyve
+	system/bhyve
 
 =======================================================================
 
