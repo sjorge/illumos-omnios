@@ -35,6 +35,7 @@
  *
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2019 Joyent, Inc.
+ * Copyright 2021 Oxide Computer Company
  */
 
 #include <sys/types.h>
@@ -92,7 +93,7 @@ viona_worker_rx(viona_vring_t *ring, viona_link_t *link)
 	ASSERT(MUTEX_HELD(&ring->vr_lock));
 	ASSERT3U(ring->vr_state, ==, VRS_RUN);
 
-	*ring->vr_used_flags |= VRING_USED_F_NO_NOTIFY;
+	viona_ring_disable_notify(ring);
 
 	do {
 		if (vmm_drv_lease_expired(ring->vr_lease)) {
@@ -134,7 +135,7 @@ viona_worker_rx(viona_vring_t *ring, viona_link_t *link)
 	mac_rx_barrier(link->l_mch);
 	mutex_enter(&ring->vr_lock);
 
-	*ring->vr_used_flags &= ~VRING_USED_F_NO_NOTIFY;
+	viona_ring_enable_notify(ring);
 }
 
 static size_t
@@ -333,14 +334,17 @@ viona_recv_merged(viona_vring_t *ring, const mblk_t *mp, size_t msz)
 
 	/*
 	 * If there is any space remaining in the first buffer after writing
-	 * the header, fill it with frame data.
+	 * the header, fill it with frame data.  The size of the header itself
+	 * is accounted for later.
 	 */
 	if (iov[0].iov_len > hdr_sz) {
 		buf = iov[0].iov_base + hdr_sz;
 		len = iov[0].iov_len - hdr_sz;
 
-		chunk += viona_copy_mblk(mp, copied, buf, len, &end);
-		copied += chunk;
+		size_t copy_len;
+		copy_len = viona_copy_mblk(mp, copied, buf, len, &end);
+		chunk += copy_len;
+		copied += copy_len;
 	}
 	i = 1;
 
@@ -349,8 +353,10 @@ viona_recv_merged(viona_vring_t *ring, const mblk_t *mp, size_t msz)
 			buf = iov[i].iov_base;
 			len = iov[i].iov_len;
 
-			chunk += viona_copy_mblk(mp, copied, buf, len, &end);
-			copied += chunk;
+			size_t copy_len;
+			copy_len = viona_copy_mblk(mp, copied, buf, len, &end);
+			chunk += copy_len;
+			copied += copy_len;
 			i++;
 		}
 
@@ -583,9 +589,7 @@ pad_drop:
 	}
 
 	membar_enter();
-	if ((*ring->vr_avail_flags & VRING_AVAIL_F_NO_INTERRUPT) == 0) {
-		viona_intr_ring(ring);
-	}
+	viona_intr_ring(ring, B_FALSE);
 
 	/* Free successfully received frames */
 	if (mprx != NULL) {

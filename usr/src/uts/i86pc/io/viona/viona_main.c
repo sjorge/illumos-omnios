@@ -35,7 +35,7 @@
  *
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2019 Joyent, Inc.
- * Copyright 2020 Oxide Computer Company
+ * Copyright 2021 Oxide Computer Company
  */
 
 /*
@@ -163,7 +163,7 @@
  * this limitation and can avoid extra copying before the buffers are accessed
  * directly by the NIC.  When a guest designates buffers to be transmitted,
  * viona translates the guest-physical addresses contained in the ring
- * descriptors to host-virtual addresses via vmm_dr_gpa2kva().  That pointer is
+ * descriptors to host-virtual addresses via viona_hold_page().  That pointer is
  * wrapped in an mblk_t using a preallocated viona_desb_t for the desballoc().
  * Doing so increments vr_xfer_outstanding, preventing the ring from being
  * reset (allowing the link to drop its vmm handle to the guest) until all
@@ -171,7 +171,7 @@
  * the viona_desb_t entries is done during the VRS_INIT stage of the ring
  * worker thread.  The ring size informs that allocation as the number of
  * concurrent transmissions is limited by the number of descriptors in the
- * ring.  This minimizes allocation in the transmit hot-path by aqcuiring those
+ * ring.  This minimizes allocation in the transmit hot-path by acquiring those
  * fixed-size resources during initialization.
  *
  * This optimization depends on the underlying NIC driver freeing the mblks in
