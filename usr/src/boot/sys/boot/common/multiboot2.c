@@ -76,6 +76,7 @@ static bool keep_bs = false;
 static bool have_framebuffer = false;
 static vm_offset_t load_addr;
 static vm_offset_t entry_addr;
+bool has_boot_services = true;
 
 /*
  * Validate tags in info request. This function is provided just to
@@ -1223,8 +1224,10 @@ multiboot2_exec(struct preloaded_file *fp)
 				break;
 
 			status = BS->ExitBootServices(IH, key);
-			if (status == EFI_SUCCESS)
+			if (status == EFI_SUCCESS) {
+				has_boot_services = false;
 				break;
+			}
 			i--;
 		}
 		if (status != EFI_SUCCESS) {
@@ -1284,7 +1287,8 @@ multiboot2_exec(struct preloaded_file *fp)
 		 * fix the mb_mod_start and mb_mod_end.
 		 */
 		mp->mb_mod_start = efi_physaddr(module, tmp, map,
-		    map_size / desc_size, desc_size, mp->mb_mod_end);
+		    map_size / desc_size, desc_size, mfp->f_addr,
+		    mp->mb_mod_end);
 		if (mp->mb_mod_start == 0)
 			panic("Could not find memory for module");
 
@@ -1300,7 +1304,8 @@ multiboot2_exec(struct preloaded_file *fp)
 	chunk = &relocator->rel_chunklist[i++];
 	chunk->chunk_vaddr = (EFI_VIRTUAL_ADDRESS)(uintptr_t)mbi;
 	chunk->chunk_paddr = efi_physaddr(module, tmp, map,
-	    map_size / desc_size, desc_size, mbi->mbi_total_size);
+	    map_size / desc_size, desc_size, (uintptr_t)mbi,
+	    mbi->mbi_total_size);
 	chunk->chunk_size = mbi->mbi_total_size;
 	STAILQ_INSERT_TAIL(head, chunk, chunk_next);
 
