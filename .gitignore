@@ -2386,8 +2386,7 @@ usr/src/cmd/vt/vtdaemon
 usr/src/cmd/vt/vtinfo
 usr/src/cmd/vt/vtxlock
 usr/src/cmd/vtfontcvt/vtfontcvt
-usr/src/cmd/w/amd64/w
-usr/src/cmd/w/i386/w
+usr/src/cmd/w/w
 usr/src/cmd/w/w.dc
 usr/src/cmd/wall/wall
 usr/src/cmd/which/which
