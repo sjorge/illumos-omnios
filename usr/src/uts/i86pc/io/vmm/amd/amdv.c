@@ -133,7 +133,7 @@ amd_iommu_invalidate_tlb(void *domain)
 	printf("amd_iommu_invalidate_tlb: not implemented\n");
 }
 
-struct iommu_ops iommu_ops_amd = {
+const struct iommu_ops iommu_ops_amd = {
 	amd_iommu_init,
 	amd_iommu_cleanup,
 	amd_iommu_enable,
