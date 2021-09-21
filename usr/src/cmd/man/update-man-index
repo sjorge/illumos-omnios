@@ -9,7 +9,8 @@
 # source. A copy of the CDDL is also available via the Internet at
 # http://www.illumos.org/license/CDDL.
 #
-# Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
+# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+# Copyright 2021 Richard L. Hamilton <rlhamil@smart.net>
 #
 
 [ -f /lib/svc/share/smf_include.sh ] || exit 1
@@ -46,11 +47,18 @@ IFS="$oIFS"
 
 MANPATH=
 for p in "${!manpath[@]}"; do
+	[ -d "$p" -a -f "$p/whatis" ] && \
+	    [ -z "`find "$p/" -type f -newer "$p/whatis"`" ] && \
+	    continue
 	MANPATH+="${MANPATH:+:}$p"
 done
 
-echo "Rebuilding man page index using $MANPATH"
-export MANPATH
-/usr/bin/man -w
+if [ -n "$MANPATH" ]; then
+	echo "Rebuilding man page index using $MANPATH"
+	export MANPATH
+	/usr/bin/man -w
+else
+	echo "Man pages are up-to-date"
+fi
 
 exit 0
