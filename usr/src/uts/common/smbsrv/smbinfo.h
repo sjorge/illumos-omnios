@@ -238,14 +238,10 @@ const char *smbnative_lm_str(smb_version_t *);
 #define	SMB_VERS_3_11		0x311	/* "3.11" */
 
 #define	SMB3_HASH_SHA512	1
-#define	SMB3_HASH_MAX		SMB3_HASH_SHA512
 
 #define	SMB3_CIPHER_NONE	0
 #define	SMB3_CIPHER_AES128_CCM	1
 #define	SMB3_CIPHER_AES128_GCM	2
-#define	SMB3_CIPHER_AES256_CCM	3
-#define	SMB3_CIPHER_AES256_GCM	4
-#define	SMB3_CIPHER_MAX		SMB3_CIPHER_AES256_GCM
 
 #ifdef __cplusplus
 }
