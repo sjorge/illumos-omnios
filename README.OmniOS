@@ -21,6 +21,15 @@ are included in the footer.
 13380 Add virtio-9p (aka VirtFS) filesystem sharing to bhyve
 	system/bhyve
 
+14098 handle failure when muxing non-device streams
+	system/kernel
+
+14089 gfx_private: do not read from WC memory
+	boot/loader
+
+update-man-index should not unecessarily rebuild indices
+	system/man
+
 =======================================================================
 
 =============================
