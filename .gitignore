@@ -3409,6 +3409,8 @@ usr/src/man/man3c/cnd_wait.3c
 usr/src/man/man3c/duplocale.3c
 usr/src/man/man3c/epoll_create1.3c
 usr/src/man/man3c/epoll_pwait.3c
+usr/src/man/man3c/eventfd_read.3c
+usr/src/man/man3c/eventfd_write.3c
 usr/src/man/man3c/explicit_bzero.3c
 usr/src/man/man3c/ffsl.3c
 usr/src/man/man3c/ffsll.3c
@@ -4345,6 +4347,8 @@ usr/src/test/libmlrpc-tests/tests/netrlogon/samlogon_tests/samlogon
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test-cleanup
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test-setup
+usr/src/test/os-tests/tests/eventfd.32
+usr/src/test/os-tests/tests/eventfd.64
 usr/src/test/os-tests/tests/file-locking/acquire-lock.32
 usr/src/test/os-tests/tests/file-locking/acquire-lock.64
 usr/src/test/os-tests/tests/file-locking/runtests.32
