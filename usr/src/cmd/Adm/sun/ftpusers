@@ -12,13 +12,9 @@ nuucp
 dladm
 netadm
 netcfg
-smmsp
 listen
 gdm
 xvm
-mysql
-openldap
-webservd
 nobody
 noaccess
 nobody4
