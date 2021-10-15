@@ -28,6 +28,7 @@ pkg:/library/security/openssl
 pkg:/library/security/openssl-10
 pkg:/library/security/openssl-11
 pkg:/library/security/openssl-30
+pkg:/library/security/openssl-3
 pkg:/library/security/trousers
 pkg:/library/zlib
 pkg:/ooce/runtime/expect
