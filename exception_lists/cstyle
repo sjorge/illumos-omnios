@@ -1391,3 +1391,4 @@ usr/src/uts/i86pc/io/vmm/amd/amdvi_*.[ch]
 usr/src/uts/i86pc/io/vmm/amd/ivrs_*.c
 usr/src/uts/i86pc/sys/vmm.h
 usr/src/uts/i86pc/sys/vmm_dev.h
+usr/src/lib/lib9p/common/*
