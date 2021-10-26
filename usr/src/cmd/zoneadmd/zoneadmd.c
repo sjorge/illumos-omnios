@@ -1131,12 +1131,13 @@ zone_bootup(zlog_t *zlogp, const char *bootargs, int zstate)
 	}
 	if (restart_init0 && zone_setattr(zoneid, ZONE_ATTR_INITRESTART0,
 	    NULL, 0) == -1) {
-		zerror(zlogp, B_TRUE, "could not set zone init-no-restart-0");
+		zerror(zlogp, B_TRUE,
+		    "could not set zone init-restart-on-exit-0");
 		goto bad;
 	}
 	if (restart_initreboot && zone_setattr(zoneid, ZONE_ATTR_INITREBOOT,
 	    NULL, 0) == -1) {
-		zerror(zlogp, B_TRUE, "could not set zone init-reboot");
+		zerror(zlogp, B_TRUE, "could not set zone reboot-on-init-exit");
 		goto bad;
 	}
 

@@ -4552,8 +4552,9 @@ secflags_parse_check(secflagset_t *flagset, const char *flagstr, char *descr,
 	secflagdelta_t delt;
 
 	if (secflags_parse(NULL, flagstr, &delt) == -1) {
-		zerror(zlogp, B_FALSE, "%s security-flags: '%s' are invalid",
-		    descr, flagstr);
+		zerror(zlogp, B_FALSE,
+		    "failed to parse %s security-flags '%s': %s",
+		    descr, flagstr, strerror(errno));
 		return (Z_BAD_PROPERTY);
 	}
 
@@ -4594,7 +4595,7 @@ setup_zone_secflags(zone_dochandle_t handle, zlog_t *zlogp, zoneid_t zoneid)
 
 		if ((bh = brand_open(brand_name)) == NULL) {
 			zerror(zlogp, B_FALSE,
-			    "unable to determine brand name");
+			    "unable to find brand named %s", brand_name);
 			return (Z_BAD_PROPERTY);
 		}
 		if (brand_get_secflags(bh, flagstr, sizeof (flagstr)) != 0) {
