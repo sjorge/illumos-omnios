@@ -380,7 +380,7 @@ zone_init_exit(zone_t *z, int why, int what)
 	 */
 	if (!z->zone_restart_init) {
 		/*
-		 * The zone has been setup to halt when init exits.
+		 * The zone has been set up to halt when init exits.
 		 */
 		z->zone_init_status = wstat(why, what);
 		(void) zone_kadmin(A_SHUTDOWN, AD_HALT, NULL, zone_kcred());
@@ -443,14 +443,13 @@ zone_init_exit(zone_t *z, int why, int what)
 		/*
 		 * No restart modifiers on the zone, attempt to restart init.
 		 */
-		if (restart_init(what, why) == 0) {
+		if (restart_init(what, why) == 0)
 			return (B_TRUE);
-		}
 	}
 
-
 	/*
-	 * The restart failed, the zone will shut down.
+	 * The restart failed, or the criteria for a restart are not met;
+	 * the zone will shut down.
 	 */
 	z->zone_init_status = wstat(why, what);
 	(void) zone_kadmin(A_SHUTDOWN, AD_HALT, NULL, zone_kcred());

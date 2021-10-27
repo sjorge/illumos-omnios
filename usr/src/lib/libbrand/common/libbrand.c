@@ -525,15 +525,16 @@ brand_get_initname(brand_handle_t bh, char *buf, size_t len)
 	    buf, len, DTD_ELEM_INITNAME, B_FALSE, B_FALSE));
 }
 
-boolean_t
-brand_restartinit(brand_handle_t bh)
+static boolean_t
+i_brand_restartinit(brand_handle_t bh, const xmlChar *tagname, boolean_t deflt)
 {
 	struct brand_handle *bhp = (struct brand_handle *)bh;
 	char val[80];
 
 	if (brand_get_value(bhp, NULL, NULL, NULL, NULL,
-	    val, sizeof (val), DTD_ELEM_RESTARTINIT, B_FALSE, B_FALSE) != 0)
-		return (B_TRUE);
+	    val, sizeof (val), tagname, B_FALSE, B_FALSE) != 0) {
+		return (deflt);
+	}
 
 	if (strcmp(val, "false") == 0)
 		return (B_FALSE);
@@ -541,31 +542,21 @@ brand_restartinit(brand_handle_t bh)
 }
 
 boolean_t
+brand_restartinit(brand_handle_t bh)
+{
+	return (i_brand_restartinit(bh, DTD_ELEM_RESTARTINIT, B_TRUE));
+}
+
+boolean_t
 brand_restartinit0(brand_handle_t bh)
 {
-	struct brand_handle *bhp = (struct brand_handle *)bh;
-	char val[80];
-
-	if (brand_get_value(bhp, NULL, NULL, NULL, NULL,
-	    val, sizeof (val), DTD_ELEM_RESTARTINIT0, B_FALSE, B_FALSE) == 0 &&
-	    strcmp(val, "true") == 0) {
-		return (B_TRUE);
-	}
-	return (B_FALSE);
+	return (i_brand_restartinit(bh, DTD_ELEM_RESTARTINIT0, B_FALSE));
 }
 
 boolean_t
 brand_restartinitreboot(brand_handle_t bh)
 {
-	struct brand_handle *bhp = (struct brand_handle *)bh;
-	char val[80];
-
-	if (brand_get_value(bhp, NULL, NULL, NULL, NULL,
-	    val, sizeof (val), DTD_ELEM_RESTARTINITREBOOT,
-	    B_FALSE, B_FALSE) == 0 && strcmp(val, "true") == 0) {
-		return (B_TRUE);
-	}
-	return (B_FALSE);
+	return (i_brand_restartinit(bh, DTD_ELEM_RESTARTINITREBOOT, B_FALSE));
 }
 
 int

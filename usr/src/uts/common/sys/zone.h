@@ -625,7 +625,7 @@ typedef struct zone {
 	boolean_t	zone_restart_init;	/* Restart init if it dies? */
 	boolean_t	zone_reboot_on_init_exit; /* Reboot if init dies? */
 	boolean_t	zone_restart_init_0;	/* Restart only if it exits 0 */
-	boolean_t	zone_setup_app_contract; /* setup contract? */
+	boolean_t	zone_setup_app_contract; /* set up contract? */
 	struct brand	*zone_brand;		/* zone's brand */
 	void		*zone_brand_data;	/* store brand specific data */
 	id_t		zone_defaultcid;	/* dflt scheduling class id */
