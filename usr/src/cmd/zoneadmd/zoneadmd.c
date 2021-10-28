@@ -781,108 +781,6 @@ mount_early_fs(void *data, const char *spec, const char *dir,
 }
 
 /*
- * env variable name format
- *	_ZONECFG;{resource name};{identifying attr. name};{property name}
- */
-static void
-set_zonecfg_env(char *rsrc, char *attr, char *name, char *val)
-{
-	char *p;
-	/* Enough for maximal name, rsrc + attr, & slop for ZONECFG & _'s */
-	char nm[2 * MAXNAMELEN + 32];
-
-	if (attr == NULL)
-		(void) snprintf(nm, sizeof (nm), "_ZONECFG_%s_%s", rsrc,
-		    name);
-	else
-		(void) snprintf(nm, sizeof (nm), "_ZONECFG_%s_%s_%s", rsrc,
-		    attr, name);
-
-	p = nm;
-	while ((p = strchr(p, '-')) != NULL)
-		*p++ = '_';
-
-	(void) setenv(nm, val, 1);
-}
-
-/*
- * Export zonecfg network and device properties into environment for the boot
- * and state change hooks.
- * If debug is true, export the brand hook debug env. variable as well.
- *
- * We could export more of the config in the future, as necessary.
- */
-static int
-setup_subproc_env()
-{
-	int res;
-	struct zone_nwiftab ntab;
-	struct zone_devtab dtab;
-	char net_resources[MAXNAMELEN * 2];
-	char dev_resources[MAXNAMELEN * 2];
-
-	net_resources[0] = '\0';
-	if ((res = zonecfg_setnwifent(snap_hndl)) != Z_OK)
-		goto done;
-
-	while (zonecfg_getnwifent(snap_hndl, &ntab) == Z_OK) {
-		struct zone_res_attrtab *rap;
-		char *phys;
-
-		phys = ntab.zone_nwif_physical;
-
-		(void) strlcat(net_resources, phys, sizeof (net_resources));
-		(void) strlcat(net_resources, " ", sizeof (net_resources));
-
-		set_zonecfg_env(RSRC_NET, phys, "physical", phys);
-
-		set_zonecfg_env(RSRC_NET, phys, "address",
-		    ntab.zone_nwif_address);
-		set_zonecfg_env(RSRC_NET, phys, "allowed-address",
-		    ntab.zone_nwif_allowed_address);
-		set_zonecfg_env(RSRC_NET, phys, "defrouter",
-		    ntab.zone_nwif_defrouter);
-		set_zonecfg_env(RSRC_NET, phys, "global-nic",
-		    ntab.zone_nwif_gnic);
-		set_zonecfg_env(RSRC_NET, phys, "mac-addr", ntab.zone_nwif_mac);
-		set_zonecfg_env(RSRC_NET, phys, "vlan-id",
-		    ntab.zone_nwif_vlan_id);
-
-		for (rap = ntab.zone_nwif_attrp; rap != NULL;
-		    rap = rap->zone_res_attr_next)
-			set_zonecfg_env(RSRC_NET, phys, rap->zone_res_attr_name,
-			    rap->zone_res_attr_value);
-	}
-
-	(void) zonecfg_endnwifent(snap_hndl);
-
-	if ((res = zonecfg_setdevent(snap_hndl)) != Z_OK)
-		goto done;
-
-	while (zonecfg_getdevent(snap_hndl, &dtab) == Z_OK) {
-		struct zone_res_attrtab *rap;
-		char *match;
-
-		match = dtab.zone_dev_match;
-
-		(void) strlcat(dev_resources, match, sizeof (dev_resources));
-		(void) strlcat(dev_resources, " ", sizeof (dev_resources));
-
-		for (rap = dtab.zone_dev_attrp; rap != NULL;
-		    rap = rap->zone_res_attr_next)
-			set_zonecfg_env(RSRC_DEV, match,
-			    rap->zone_res_attr_name, rap->zone_res_attr_value);
-	}
-
-	(void) zonecfg_enddevent(snap_hndl);
-
-	res = Z_OK;
-
-done:
-	return (res);
-}
-
-/*
  * If retstr is not NULL, the output of the subproc is returned in the str,
  * otherwise it is output using zerror().  Any memory allocated for retstr
  * should be freed by the caller.
@@ -905,11 +803,6 @@ do_subproc(zlog_t *zlogp, char *cmdbuf, char **retstr)
 		rd_cnt = 0;
 	} else {
 		inbuf = buf;
-	}
-
-	if (setup_subproc_env() != Z_OK) {
-		zerror(zlogp, B_FALSE, "failed to setup environment");
-		return (-1);
 	}
 
 	file = popen(cmdbuf, "r");
