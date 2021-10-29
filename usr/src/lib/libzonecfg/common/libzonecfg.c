@@ -7921,6 +7921,10 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 
 	if (child_pid == 0) {
 		const char *argv[6], **ap;
+		const char *envp[] = {
+			"PATH=" ZONEADMD_PATH,
+			NULL
+		};
 
 		/* child process */
 		prepare_audit_context(zone_name);
@@ -7935,7 +7939,8 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 		}
 		*ap = NULL;
 
-		(void) execv("/usr/lib/zones/zoneadmd", (char * const *)argv);
+		(void) execve("/usr/lib/zones/zoneadmd",
+		    (char * const *)argv, (char * const *)envp);
 		/*
 		 * TRANSLATION_NOTE
 		 * zoneadmd is a literal that should not be translated.

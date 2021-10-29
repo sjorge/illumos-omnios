@@ -39,6 +39,8 @@ extern "C" {
 #define	TEXT_DOMAIN	"SYS_TEST"	/* Use this only if it wasn't */
 #endif
 
+#define	ZONEADMD_PATH	"/usr/sbin:/usr/bin"
+
 typedef enum {
 	PZE_MODIFY = -1,
 	PZE_REMOVE = 0,
