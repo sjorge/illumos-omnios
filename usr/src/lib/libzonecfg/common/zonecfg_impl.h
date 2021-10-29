@@ -21,12 +21,12 @@
 /*
  * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
+ *
+ * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #ifndef _ZONECFG_IMPL_H
 #define	_ZONECFG_IMPL_H
-
-#pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 #ifdef	__cplusplus
 extern "C" {
