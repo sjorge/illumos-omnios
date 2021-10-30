@@ -12,7 +12,7 @@
 
 #
 # Copyright 2016 Joyent, Inc.
-# Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
+# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 #
 
 #
@@ -71,15 +71,16 @@ if [[ -f $fnm || -h $fnm ]]; then
 	mv -f $tmpfile $fnm
 fi
 
-src_fnm=$ZONEROOT/etc/init/console.conf
-tgt_fnm=$ZONEROOT/etc/init/console.override
-if [[ -f $src_fnm && ! -f $tgt_fnm && ! -h $tgt_fnm ]] then
-	sed -e 's/lxc/smartos/' $src_fnm > /tmp/console.conf.$$
-	mv /tmp/console.conf.$$ $tgt_fnm
-fi
+if [ -d $ZONEROOT/etc/init ]; then
+	src_fnm=$ZONEROOT/etc/init/console.conf
+	tgt_fnm=$ZONEROOT/etc/init/console.override
+	if [[ -f $src_fnm && ! -f $tgt_fnm && ! -h $tgt_fnm ]] then
+		sed -e 's/lxc/smartos/' $src_fnm > /tmp/console.conf.$$
+		mv /tmp/console.conf.$$ $tgt_fnm
+	fi
 
-fnm=$ZONEROOT/etc/init/container-detect.override
-if [[ ! -f $fnm && ! -h $fnm ]] then
+	fnm=$ZONEROOT/etc/init/container-detect.override
+	if [[ ! -f $fnm && ! -h $fnm ]] then
 	cat <<'DONE' > $fnm
 description "Track if upstart is running in a container"
 
@@ -97,13 +98,13 @@ pre-start script
     exit 0
 end script
 DONE
-fi
+	fi
 
-# XXX need to add real mounting into this svc definition
+	# XXX need to add real mounting into this svc definition
 
-fnm=$ZONEROOT/etc/init/mountall.override
-if [[ ! -h $fnm ]] then
-	cat <<DONE > $fnm
+	fnm=$ZONEROOT/etc/init/mountall.override
+	if [[ ! -h $fnm ]] then
+		cat <<DONE > $fnm
 description	"Mount filesystems on boot"
 
 start on startup
@@ -132,6 +133,7 @@ script
     /sbin/initctl emit --no-wait filesystem
 end script
 DONE
+	fi
 fi
 
 #

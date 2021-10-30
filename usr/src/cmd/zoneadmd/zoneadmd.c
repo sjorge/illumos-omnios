@@ -780,106 +780,17 @@ mount_early_fs(void *data, const char *spec, const char *dir,
 	return (0);
 }
 
-/*
- * env variable name format
- *	_ZONECFG;{resource name};{identifying attr. name};{property name}
- */
-static void
-set_zonecfg_env(char *rsrc, char *attr, char *name, char *val)
+void
+nwifent_free_attrs(struct zone_nwiftab *np)
 {
-	char *p;
-	/* Enough for maximal name, rsrc + attr, & slop for ZONECFG & _'s */
-	char nm[2 * MAXNAMELEN + 32];
+	struct zone_res_attrtab *rap;
 
-	if (attr == NULL)
-		(void) snprintf(nm, sizeof (nm), "_ZONECFG_%s_%s", rsrc,
-		    name);
-	else
-		(void) snprintf(nm, sizeof (nm), "_ZONECFG_%s_%s_%s", rsrc,
-		    attr, name);
+	for (rap = np->zone_nwif_attrp; rap != NULL; ) {
+		struct zone_res_attrtab *tp = rap;
 
-	p = nm;
-	while ((p = strchr(p, '-')) != NULL)
-		*p++ = '_';
-
-	(void) setenv(nm, val, 1);
-}
-
-/*
- * Export zonecfg network and device properties into environment for the boot
- * and state change hooks.
- * If debug is true, export the brand hook debug env. variable as well.
- *
- * We could export more of the config in the future, as necessary.
- */
-static int
-setup_subproc_env()
-{
-	int res;
-	struct zone_nwiftab ntab;
-	struct zone_devtab dtab;
-	char net_resources[MAXNAMELEN * 2];
-	char dev_resources[MAXNAMELEN * 2];
-
-	net_resources[0] = '\0';
-	if ((res = zonecfg_setnwifent(snap_hndl)) != Z_OK)
-		goto done;
-
-	while (zonecfg_getnwifent(snap_hndl, &ntab) == Z_OK) {
-		struct zone_res_attrtab *rap;
-		char *phys;
-
-		phys = ntab.zone_nwif_physical;
-
-		(void) strlcat(net_resources, phys, sizeof (net_resources));
-		(void) strlcat(net_resources, " ", sizeof (net_resources));
-
-		set_zonecfg_env(RSRC_NET, phys, "physical", phys);
-
-		set_zonecfg_env(RSRC_NET, phys, "address",
-		    ntab.zone_nwif_address);
-		set_zonecfg_env(RSRC_NET, phys, "allowed-address",
-		    ntab.zone_nwif_allowed_address);
-		set_zonecfg_env(RSRC_NET, phys, "defrouter",
-		    ntab.zone_nwif_defrouter);
-		set_zonecfg_env(RSRC_NET, phys, "global-nic",
-		    ntab.zone_nwif_gnic);
-		set_zonecfg_env(RSRC_NET, phys, "mac-addr", ntab.zone_nwif_mac);
-		set_zonecfg_env(RSRC_NET, phys, "vlan-id",
-		    ntab.zone_nwif_vlan_id);
-
-		for (rap = ntab.zone_nwif_attrp; rap != NULL;
-		    rap = rap->zone_res_attr_next)
-			set_zonecfg_env(RSRC_NET, phys, rap->zone_res_attr_name,
-			    rap->zone_res_attr_value);
+		rap = rap->zone_res_attr_next;
+		free(tp);
 	}
-
-	(void) zonecfg_endnwifent(snap_hndl);
-
-	if ((res = zonecfg_setdevent(snap_hndl)) != Z_OK)
-		goto done;
-
-	while (zonecfg_getdevent(snap_hndl, &dtab) == Z_OK) {
-		struct zone_res_attrtab *rap;
-		char *match;
-
-		match = dtab.zone_dev_match;
-
-		(void) strlcat(dev_resources, match, sizeof (dev_resources));
-		(void) strlcat(dev_resources, " ", sizeof (dev_resources));
-
-		for (rap = dtab.zone_dev_attrp; rap != NULL;
-		    rap = rap->zone_res_attr_next)
-			set_zonecfg_env(RSRC_DEV, match,
-			    rap->zone_res_attr_name, rap->zone_res_attr_value);
-	}
-
-	(void) zonecfg_enddevent(snap_hndl);
-
-	res = Z_OK;
-
-done:
-	return (res);
 }
 
 /*
@@ -895,6 +806,8 @@ do_subproc(zlog_t *zlogp, char *cmdbuf, char **retstr)
 	FILE *file;
 	int status;
 	int rd_cnt;
+	int fds[2];
+	pid_t child;
 
 	if (retstr != NULL) {
 		if ((*retstr = malloc(1024)) == NULL) {
@@ -907,36 +820,100 @@ do_subproc(zlog_t *zlogp, char *cmdbuf, char **retstr)
 		inbuf = buf;
 	}
 
-	if (setup_subproc_env() != Z_OK) {
-		zerror(zlogp, B_FALSE, "failed to setup environment");
+	if (pipe(fds) != 0) {
+		zerror(zlogp, B_TRUE, "failed to create pipe for subprocess");
 		return (-1);
 	}
 
-	file = popen(cmdbuf, "r");
-	if (file == NULL) {
-		zerror(zlogp, B_TRUE, "could not launch: %s", cmdbuf);
+	if ((child = fork()) == 0) {
+		int in;
+
+		/*
+		 * SIGINT is currently ignored.  It probably shouldn't be so
+		 * hard to kill errant children, so we revert to SIG_DFL.
+		 * SIGHUP and SIGUSR1 are used to perform log rotation.  We
+		 * leave those as-is because we don't want a 'pkill -HUP
+		 * zoneadmd' to kill this child process before exec().  On
+		 * exec(), SIGHUP and SIGUSR1 will become SIG_DFL.
+		 */
+		(void) sigset(SIGINT, SIG_DFL);
+
+		/*
+		 * Do not call zerror() in child process zerror() is not
+		 * designed to handle multiple processes logging. Rather,
+		 * write all errors to the pipe.
+		 */
+		if (dup2(fds[1], STDERR_FILENO) == -1) {
+			(void) snprintf(buf, sizeof (buf),
+			    "subprocess failed to dup2(STDERR_FILENO): %s\n",
+			    strerror(errno));
+			(void) write(fds[1], buf, strlen(buf));
+			_exit(127);
+		}
+		if (dup2(fds[1], STDOUT_FILENO) == -1) {
+			perror("subprocess failed to dup2(STDOUT_FILENO)");
+			_exit(127);
+		}
+		/*
+		 * Some children may try to read from stdin. Be sure that the
+		 * first file that a child opens doesn't get stdin's file
+		 * descriptor.
+		 */
+		if ((in = open("/dev/null", O_RDONLY)) == -1 ||
+		    dup2(in, STDIN_FILENO) == -1) {
+			perror("subprocess failed to set up STDIN_FILENO");
+			_exit(127);
+		}
+		closefrom(STDERR_FILENO + 1);
+
+		(void) execl("/bin/sh", "sh", "-c", cmdbuf, NULL);
+
+		perror("subprocess execl failed");
+		_exit(127);
+	} else if (child == -1) {
+		zerror(zlogp, B_TRUE, "failed to create subprocess for '%s'",
+		    cmdbuf);
+		(void) close(fds[0]);
+		(void) close(fds[1]);
 		return (-1);
 	}
 
+	(void) close(fds[1]);
+
+	file = fdopen(fds[0], "r");
 	while (fgets(inbuf, 1024, file) != NULL) {
 		if (retstr == NULL) {
-			if (zlogp != &logsys)
+			if (zlogp != &logsys) {
+				int last = strlen(inbuf) - 1;
+
+				if (inbuf[last] == '\n')
+					inbuf[last] = '\0';
 				zerror(zlogp, B_FALSE, "%s", inbuf);
+			}
 		} else {
 			char *p;
 
 			rd_cnt += 1024 - 1;
 			if ((p = realloc(*retstr, rd_cnt + 1024)) == NULL) {
 				zerror(zlogp, B_FALSE, "out of memory");
-				(void) pclose(file);
-				return (-1);
+				break;
 			}
 
 			*retstr = p;
 			inbuf = *retstr + rd_cnt;
 		}
 	}
-	status = pclose(file);
+
+	while (fclose(file) != 0) {
+		assert(errno == EINTR);
+	}
+	while (waitpid(child, &status, 0) == -1) {
+		if (errno != EINTR) {
+			zerror(zlogp, B_TRUE,
+			    "failed to get exit status of '%s'", cmdbuf);
+			return (-1);
+		}
+	}
 
 	if (WIFSIGNALED(status)) {
 		zerror(zlogp, B_FALSE, "%s unexpectedly terminated due to "

@@ -4934,7 +4934,7 @@ get_pool_sched_class(char *poolname, char *class, int clsize)
 	pool_conf_t *poolconf;
 	pool_t *pool;
 	pool_elem_t *pe;
-	pool_value_t *pv = pool_value_alloc();
+	pool_value_t *pv;
 	const char *sched_str;
 
 	if (pool_get_status(&status) != PO_SUCCESS || status != POOL_ENABLED)
@@ -4955,15 +4955,23 @@ get_pool_sched_class(char *poolname, char *class, int clsize)
 		return (Z_NO_POOL);
 	}
 
+	if ((pv = pool_value_alloc()) == NULL) {
+		(void) pool_conf_close(poolconf);
+		pool_conf_free(poolconf);
+		return (Z_NO_POOL);
+	}
+
 	pe = pool_to_elem(poolconf, pool);
 	if (pool_get_property(poolconf, pe, "pool.scheduler", pv) !=
 	    POC_STRING) {
 		(void) pool_conf_close(poolconf);
+		pool_value_free(pv);
 		pool_conf_free(poolconf);
 		return (Z_NO_ENTRY);
 	}
 	(void) pool_value_get_string(pv, &sched_str);
 	(void) pool_conf_close(poolconf);
+	pool_value_free(pv);
 	pool_conf_free(poolconf);
 	if (strlcpy(class, sched_str, clsize) >= clsize)
 		return (Z_TOO_BIG);
@@ -7913,6 +7921,10 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 
 	if (child_pid == 0) {
 		const char *argv[6], **ap;
+		const char *envp[] = {
+			"PATH=" ZONEADMD_PATH,
+			NULL
+		};
 
 		/* child process */
 		prepare_audit_context(zone_name);
@@ -7927,7 +7939,8 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 		}
 		*ap = NULL;
 
-		(void) execv("/usr/lib/zones/zoneadmd", (char * const *)argv);
+		(void) execve("/usr/lib/zones/zoneadmd",
+		    (char * const *)argv, (char * const *)envp);
 		/*
 		 * TRANSLATION_NOTE
 		 * zoneadmd is a literal that should not be translated.
