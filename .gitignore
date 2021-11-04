@@ -4345,6 +4345,8 @@ usr/src/test/os-tests/tests/clock_gettime.64
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test-cleanup
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test-setup
+usr/src/test/os-tests/tests/definit/definit_test.32
+usr/src/test/os-tests/tests/definit/definit_test.64
 usr/src/test/os-tests/tests/eventfd.32
 usr/src/test/os-tests/tests/eventfd.64
 usr/src/test/os-tests/tests/file-locking/acquire-lock.32
