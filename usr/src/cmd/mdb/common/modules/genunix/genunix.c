@@ -99,6 +99,7 @@
 #include "pci.h"
 #include "pg.h"
 #include "rctl.h"
+#include "refhash.h"
 #include "sobj.h"
 #include "streams.h"
 #include "sysevent.h"
@@ -4794,6 +4795,10 @@ static const mdb_walker_t walkers[] = {
 		rctl_set_walk_step, NULL },
 	{ "rctl_val", "given a rctl_t, walk all rctl_val entries associated",
 		rctl_val_walk_init, rctl_val_walk_step },
+
+	/* from refhash.c */
+	{ REFHASH_WALK_NAME, REFHASH_WALK_DESC,
+		refhash_walk_init, refhash_walk_step, NULL },
 
 	/* from sobj.c */
 	{ "blocked", "walk threads blocked on a given sobj",

@@ -24,7 +24,7 @@
  * Copyright (c) 2003, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Joyent, Inc.
  * Copyright 2015 Nexenta Systems, Inc. All rights reserved.
- * Copyright 2015 Joyent Inc.
+ * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #include <libsysevent.h>
@@ -63,6 +63,7 @@
 #include <prof_attr.h>
 #include <sys/debug.h>
 #include <os_dtd.h>
+#include <definit.h>
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -1198,26 +1199,26 @@ zonecfg_refresh_index_file(zone_dochandle_t handle)
  * Strategy:
  *
  * New zone 'foo' configuration:
- * 	Create tmpfile (zonecfg.xxxxxx)
- * 	Write XML to tmpfile
- * 	Rename tmpfile to xmlfile (zonecfg.xxxxxx -> foo.xml)
- * 	Add entry to index file
- * 	If it fails, delete foo.xml, leaving nothing behind.
+ *	Create tmpfile (zonecfg.xxxxxx)
+ *	Write XML to tmpfile
+ *	Rename tmpfile to xmlfile (zonecfg.xxxxxx -> foo.xml)
+ *	Add entry to index file
+ *	If it fails, delete foo.xml, leaving nothing behind.
  *
  * Save existing zone 'foo':
- * 	Make backup of foo.xml -> .backup
- * 	Create tmpfile (zonecfg.xxxxxx)
- * 	Write XML to tmpfile
- * 	Rename tmpfile to xmlfile (zonecfg.xxxxxx -> foo.xml)
- * 	Modify index file as needed
- * 	If it fails, recover from .backup -> foo.xml
+ *	Make backup of foo.xml -> .backup
+ *	Create tmpfile (zonecfg.xxxxxx)
+ *	Write XML to tmpfile
+ *	Rename tmpfile to xmlfile (zonecfg.xxxxxx -> foo.xml)
+ *	Modify index file as needed
+ *	If it fails, recover from .backup -> foo.xml
  *
  * Rename 'foo' to 'bar':
- * 	Create tmpfile (zonecfg.xxxxxx)
- * 	Write XML to tmpfile
- * 	Rename tmpfile to xmlfile (zonecfg.xxxxxx -> bar.xml)
- * 	Add entry for 'bar' to index file, Remove entry for 'foo' (refresh)
- * 	If it fails, delete bar.xml; foo.xml is left behind.
+ *	Create tmpfile (zonecfg.xxxxxx)
+ *	Write XML to tmpfile
+ *	Rename tmpfile to xmlfile (zonecfg.xxxxxx -> bar.xml)
+ *	Add entry for 'bar' to index file, Remove entry for 'foo' (refresh)
+ *	If it fails, delete bar.xml; foo.xml is left behind.
  */
 static int
 zonecfg_save_impl(zone_dochandle_t handle, char *filename)
@@ -7878,6 +7879,90 @@ prepare_audit_context(const char *zone_name)
 	(void) adt_end_session(ah);
 }
 
+static const char **
+get_zoneadmd_envp()
+{
+	const char **envp = NULL;
+	size_t envlen;
+	size_t envslot = 0;
+	const char *tok;
+	void *dstate;
+
+	/*
+	 * This initial array size is enough to hold the two variables
+	 * set below, up to five additional entries from /etc/default/init,
+	 * and the NULL terminator. /etc/default/init commonly includes only
+	 * TZ, LANG and LC_ALL. The array will be grown if necessary by
+	 * doubling the size whenever it is full.
+	 */
+	envlen = 8;
+
+	if ((envp = reallocarray(NULL, envlen, sizeof (char *))) == NULL)
+		return (NULL);
+
+	/*
+	 * See the comment above zonecfg_init_lock_file() for details on the
+	 * implementation of the locking mechanism.
+	 * zoneadmd is started with an inherited lock, indicated by the
+	 * environment variable being set. Once the starting zoneadm exits,
+	 * zoneadmd may persist and will continue to believe that it has the
+	 * lock. This is okay as long as the only things that connect to the
+	 * zoneadmd door and cause it to do work that requires a lock have
+	 * grabbed the lock in advance, which zoneadm does in all cases today.
+	 */
+	envp[envslot++] = zoneadm_lock_held;
+
+	if (asprintf((char **)&tok, "PATH=%s", ZONEADMD_PATH) == -1) {
+		free(envp);
+		return (NULL);
+	}
+	envp[envslot++] = tok;
+
+	if (definit_open(DEFINIT_DEFAULT_FILE, &dstate) != 0) {
+		envp[envslot] = NULL;
+		return (envp);
+	}
+
+	while ((tok = definit_token(dstate)) != NULL) {
+
+		if (strncmp(tok, "CMASK=", 6) == 0) {
+			long t;
+
+			t = strtol(tok + 6, NULL, 8);
+
+			if (t <= 077 && t >= 0)
+				(void) umask((int)t);
+			continue;
+		}
+
+		/*
+		 * Always ensure there is space for a terminating
+		 * NULL in addition to the new entry being added.
+		 */
+		if (envslot + 2 >= envlen) {
+			const char **newenvp;
+
+			envlen *= 2;
+			newenvp = reallocarray(envp, envlen, sizeof (char *));
+			if (newenvp == NULL)
+				goto out;
+			envp = newenvp;
+		}
+
+		envp[envslot] = strdup(tok);
+		if (envp[envslot] == NULL)
+			goto out;
+		envslot++;
+	}
+
+out:
+	(void) definit_close(dstate);
+
+	envp[envslot] = NULL;
+
+	return (envp);
+}
+
 static int
 start_zoneadmd(const char *zone_name, boolean_t lock)
 {
@@ -7921,10 +8006,7 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 
 	if (child_pid == 0) {
 		const char *argv[6], **ap;
-		const char *envp[] = {
-			"PATH=" ZONEADMD_PATH,
-			NULL
-		};
+		const char **envp;
 
 		/* child process */
 		prepare_audit_context(zone_name);
@@ -7939,6 +8021,7 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 		}
 		*ap = NULL;
 
+		envp = get_zoneadmd_envp();
 		(void) execve("/usr/lib/zones/zoneadmd",
 		    (char * const *)argv, (char * const *)envp);
 		/*
