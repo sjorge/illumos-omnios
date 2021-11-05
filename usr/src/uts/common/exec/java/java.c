@@ -57,7 +57,7 @@
 #if defined(__sparc)
 char *jexec = "/usr/java/jre/lib/sparc/jexec";
 #elif defined(__x86)
-char *jexec = "/usr/java/jre/lib/i386/jexec";
+char *jexec = "/usr/libexec/amd64/jexec";
 #else
 #error "Unknown ISA"
 #endif
