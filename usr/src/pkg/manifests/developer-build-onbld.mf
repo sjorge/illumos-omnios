@@ -27,7 +27,7 @@
 # Copyright 2014 Garrett D'Amore <garrett@damore.org>
 # Copyright 2019 Joyent, Inc.
 # Copyright 2016 Toomas Soome <tsoome@me.com>
-# Copyright 2020 OmniOS Community Edition (OmniOSce) Association.
+# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 #
 
 set name=pkg.fmri value=pkg:/developer/build/onbld@$(PKGVERS)
@@ -196,6 +196,9 @@ $(python3tools_ONLY)file \
     path=opt/onbld/lib/python$(PYTHON3_VERSION)/onbld/Checks/Mapfile.py \
     mode=0444
 $(python3tools_ONLY)file \
+    path=opt/onbld/lib/python$(PYTHON3_VERSION)/onbld/Checks/PkgFmt.py \
+    mode=0444
+$(python3tools_ONLY)file \
     path=opt/onbld/lib/python$(PYTHON3_VERSION)/onbld/Checks/ProcessCheck.py \
     mode=0444
 $(python3tools_ONLY)file \
@@ -242,6 +245,9 @@ $(python3tools_ONLY)file \
     mode=0444
 $(python3tools_ONLY)file \
     path=opt/onbld/lib/python$(PYTHON3_VERSION)/onbld/Checks/__pycache__/Mapfile.cpython$(PYTHON3_PKGVERS).pyc \
+    mode=0444
+$(python3tools_ONLY)file \
+    path=opt/onbld/lib/python$(PYTHON3_VERSION)/onbld/Checks/__pycache__/PkgFmt.cpython$(PYTHON3_PKGVERS).pyc \
     mode=0444
 $(python3tools_ONLY)file \
     path=opt/onbld/lib/python$(PYTHON3_VERSION)/onbld/Checks/__pycache__/ProcessCheck.cpython$(PYTHON3_PKGVERS).pyc \
@@ -338,6 +344,12 @@ $(python2tools_ONLY)file \
     mode=0444
 $(python2tools_ONLY)file \
     path=opt/onbld/lib/python$(PYTHON_VERSION)/onbld/Checks/Mapfile.pyc \
+    mode=0444
+$(python2tools_ONLY)file \
+    path=opt/onbld/lib/python$(PYTHON_VERSION)/onbld/Checks/PkgFmt.py \
+    mode=0444
+$(python2tools_ONLY)file \
+    path=opt/onbld/lib/python$(PYTHON_VERSION)/onbld/Checks/PkgFmt.pyc \
     mode=0444
 $(python2tools_ONLY)file \
     path=opt/onbld/lib/python$(PYTHON_VERSION)/onbld/Checks/ProcessCheck.py \
