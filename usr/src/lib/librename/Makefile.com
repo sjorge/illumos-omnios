@@ -15,7 +15,7 @@
 
 LIBRARY =	librename.a
 VERS =		.1
-OBJECTS =	librename.o \
+OBJECTS =	librename.o
 
 include ../../Makefile.lib
 

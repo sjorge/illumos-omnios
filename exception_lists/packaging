@@ -390,14 +390,12 @@ usr/lib/sparcv9/libcmdutils.so		sparc
 #
 usr/lib/librename.so
 usr/lib/amd64/librename.so		i386
-usr/lib/sparcv9/librename.so		sparc
 usr/include/librename.h
 #
 # Private libidspace
 #
 usr/lib/libidspace.so
 usr/lib/amd64/libidspace.so		i386
-usr/lib/sparcv9/libidspace.so		sparc
 usr/include/libidspace.h
 #
 # Private libbunyan

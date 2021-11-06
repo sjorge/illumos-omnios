@@ -17,7 +17,6 @@ include ../../Makefile.ctf
 include ../../Makefile.ctf.post
 
 CSTD = $(CSTD_GNU99)
-C99LMODE = -Xc99=%all
 CFLAGS += $(CCVERBOSE)
 LDLIBS += -lctf
 NATIVE_LIBS += libctf.so libc.so
