@@ -29,9 +29,9 @@ install :=	TARGET = install
 
 all clean clobber: $(SUBDIRS)
 
-install: 	$(SUBDIRS) install_h
+install:	$(SUBDIRS) install_h
 
-install_h: 	$(ROOTHDRS)
+install_h:	$(ROOTHDRS)
 
 check:		$(CHECKHDRS)
 

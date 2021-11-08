@@ -71,9 +71,6 @@ INC_PATH	+= -I$(SRC)/common
 INC_PATH	+= -I$(COMMONBASE)/zfs
 INC_PATH	+= -I$(UTSBASE)/i86pc
 
-CPPFLAGS	+= -I$(UTSBASE)/i86pc
-C99LMODE=	-Xc99=%all
-
 #
 # For now, disable these warnings; maintainers should endeavor
 # to investigate and remove these for maximum coverage.
