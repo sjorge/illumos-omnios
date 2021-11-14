@@ -69,6 +69,8 @@
 #include <sys/siginfo.h>
 #include <sys/random.h>
 
+#include <core_shstrtab.h>
+
 #if defined(__x86)
 #include <sys/comm_page_util.h>
 #include <sys/fp.h>
@@ -107,71 +109,6 @@ uint_t elf_nphdr_max = 1000;
 uint_t elf_nshdr_max = 10000;
 size_t elf_shstrtab_max = 100 * 1024;
 #endif
-
-
-
-typedef enum {
-	STR_CTF,
-	STR_SYMTAB,
-	STR_DYNSYM,
-	STR_STRTAB,
-	STR_DYNSTR,
-	STR_SHSTRTAB,
-	STR_NUM
-} shstrtype_t;
-
-static const char *shstrtab_data[] = {
-	".SUNW_ctf",
-	".symtab",
-	".dynsym",
-	".strtab",
-	".dynstr",
-	".shstrtab"
-};
-
-typedef struct shstrtab {
-	uint_t	sst_ndx[STR_NUM];
-	uint_t	sst_cur;
-} shstrtab_t;
-
-static void
-shstrtab_init(shstrtab_t *s)
-{
-	bzero(&s->sst_ndx, sizeof (s->sst_ndx));
-	s->sst_cur = 1;
-}
-
-static uint_t
-shstrtab_ndx(shstrtab_t *s, shstrtype_t type)
-{
-	uint_t ret;
-
-	if ((ret = s->sst_ndx[type]) != 0)
-		return (ret);
-
-	ret = s->sst_ndx[type] = s->sst_cur;
-	s->sst_cur += strlen(shstrtab_data[type]) + 1;
-
-	return (ret);
-}
-
-static size_t
-shstrtab_size(const shstrtab_t *s)
-{
-	return (s->sst_cur);
-}
-
-static void
-shstrtab_dump(const shstrtab_t *s, char *buf)
-{
-	uint_t i, ndx;
-
-	*buf = '\0';
-	for (i = 0; i < STR_NUM; i++) {
-		if ((ndx = s->sst_ndx[i]) != 0)
-			(void) strcpy(buf + ndx, shstrtab_data[i]);
-	}
-}
 
 static int
 dtrace_safe_phdr(Phdr *phdrp, struct uarg *args, uintptr_t base)
@@ -1973,26 +1910,41 @@ elf_copy_scn(elf_core_ctx_t *ctx, const Shdr *src, vnode_t *src_vp, Shdr *dst)
 }
 
 /*
+ * The design of this check is intentional.
+ * In particular, we want to capture any sections that begin with '.debug_' for
+ * a few reasons:
+ *
+ * 1) Various revisions to the DWARF spec end up changing the set of section
+ *    headers that exist. This ensures that we don't need to change the kernel
+ *    to get a new version.
+ *
+ * 2) Other software uses .debug_ sections for things which aren't DWARF. This
+ *    allows them to be captured as well.
+ */
+#define	IS_DEBUGSECTION(name) (strncmp(name, ".debug_", strlen(".debug_")) == 0)
+
+/*
  * Walk sections for a given ELF object, counting (or copying) those of
- * interest (CTF, symtab, strtab).
+ * interest (CTF, symtab, strtab, .debug_*).
  */
 static uint_t
 elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
-    Shdr *v, uint_t idx, uint_t remain, shstrtab_t *shstrtab)
+    Shdr *v, uint_t idx, uint_t remain, shstrtab_t *shstrtab, int *errp)
 {
 	Ehdr ehdr;
 	const core_content_t content = ctx->ecc_content;
 	cred_t *credp = ctx->ecc_credp;
 	Shdr *ctf = NULL, *symtab = NULL, *strtab = NULL;
 	uintptr_t off = 0;
-	uint_t nshdrs, shstrndx, nphdrs, count = 0;
+	uint_t nshdrs, shstrndx, nphdrs, ndebug, count = 0;
 	u_offset_t *doffp = &ctx->ecc_doffset;
 	boolean_t ctf_link = B_FALSE;
 	caddr_t shbase;
 	size_t shsize, shstrsize;
 	char *shstrbase;
 
-	if ((content & (CC_CONTENT_CTF | CC_CONTENT_SYMTAB)) == 0) {
+	if ((content &
+	    (CC_CONTENT_CTF | CC_CONTENT_SYMTAB | CC_CONTENT_DEBUG)) == 0) {
 		return (0);
 	}
 
@@ -2004,6 +1956,7 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 
 	/* Starting at index 1 skips SHT_NULL which is expected at index 0 */
 	off = ehdr.e_shentsize;
+	ndebug = 0;
 	for (uint_t i = 1; i < nshdrs; i++, off += ehdr.e_shentsize) {
 		Shdr *shdr, *symchk = NULL, *strchk;
 		const char *name;
@@ -2030,6 +1983,10 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		    (content & CC_CONTENT_SYMTAB) != 0 &&
 		    strcmp(name, shstrtab_data[STR_SYMTAB]) == 0) {
 			symchk = shdr;
+		} else if ((content & CC_CONTENT_DEBUG) != 0 &&
+		    IS_DEBUGSECTION(name)) {
+			ndebug++;
+			continue;
 		} else {
 			continue;
 		}
@@ -2049,7 +2006,8 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		symtab = symchk;
 		strtab = strchk;
 
-		if (symtab != NULL && ctf != NULL) {
+		if (symtab != NULL && ctf != NULL &&
+		    (content & CC_CONTENT_DEBUG) == 0) {
 			/* No other shdrs are of interest at this point */
 			break;
 		}
@@ -2059,6 +2017,7 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		count += 1;
 	if (symtab != NULL)
 		count += 2;
+	count += ndebug;
 	if (v == NULL || count == 0 || count > remain) {
 		count = MIN(count, remain);
 		goto done;
@@ -2068,7 +2027,11 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 	if (ctf != NULL) {
 		elf_ctx_resize_scratch(ctx, ctf->sh_size);
 
-		v[idx].sh_name = shstrtab_ndx(shstrtab, STR_CTF);
+		if (!shstrtab_ndx(shstrtab,
+		    shstrtab_data[STR_CTF], &v[idx].sh_name)) {
+			*errp = ENOMEM;
+			goto done;
+		}
 		v[idx].sh_addr = (Addr)(uintptr_t)saddr;
 		v[idx].sh_type = SHT_PROGBITS;
 		v[idx].sh_addralign = 4;
@@ -2093,17 +2056,29 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 
 	/* output SYMTAB/STRTAB sections */
 	if (symtab != NULL) {
+		shstrtype_t symtab_type, strtab_type;
 		uint_t symtab_name, strtab_name;
 
 		elf_ctx_resize_scratch(ctx,
 		    MAX(symtab->sh_size, strtab->sh_size));
 
 		if (symtab->sh_type == SHT_DYNSYM) {
-			symtab_name = shstrtab_ndx(shstrtab, STR_DYNSYM);
-			strtab_name = shstrtab_ndx(shstrtab, STR_DYNSTR);
+			symtab_type = STR_DYNSYM;
+			strtab_type = STR_DYNSTR;
 		} else {
-			symtab_name = shstrtab_ndx(shstrtab, STR_SYMTAB);
-			strtab_name = shstrtab_ndx(shstrtab, STR_STRTAB);
+			symtab_type = STR_SYMTAB;
+			strtab_type = STR_STRTAB;
+		}
+
+		if (!shstrtab_ndx(shstrtab,
+		    shstrtab_data[symtab_type], &symtab_name)) {
+			*errp = ENOMEM;
+			goto done;
+		}
+		if (!shstrtab_ndx(shstrtab,
+		    shstrtab_data[strtab_type], &strtab_name)) {
+			*errp = ENOMEM;
+			goto done;
 		}
 
 		v[idx].sh_name = symtab_name;
@@ -2137,6 +2112,48 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		idx++;
 	}
 
+	if (ndebug == 0)
+		goto done;
+
+	/* output DEBUG sections */
+	off = 0;
+	for (uint_t i = 1; i < nshdrs; i++, off += ehdr.e_shentsize) {
+		const char *name;
+		Shdr *shdr;
+
+		shdr = (Shdr *)(shbase + off);
+		if (shdr->sh_name >= shstrsize || shdr->sh_type == SHT_NULL)
+			continue;
+
+		name = shstrbase + shdr->sh_name;
+
+		if (!IS_DEBUGSECTION(name))
+			continue;
+
+		elf_ctx_resize_scratch(ctx, shdr->sh_size);
+
+		if (!shstrtab_ndx(shstrtab, name, &v[idx].sh_name)) {
+			*errp = ENOMEM;
+			goto done;
+		}
+
+		v[idx].sh_addr = (Addr)(uintptr_t)saddr;
+		v[idx].sh_type = shdr->sh_type;
+		v[idx].sh_addralign = shdr->sh_addralign;
+		*doffp = roundup(*doffp, v[idx].sh_addralign);
+		v[idx].sh_offset = *doffp;
+		v[idx].sh_size = shdr->sh_size;
+		v[idx].sh_link = 0;
+		v[idx].sh_entsize = shdr->sh_entsize;
+		v[idx].sh_info = shdr->sh_info;
+
+		elf_copy_scn(ctx, shdr, mvp, &v[idx]);
+		idx++;
+
+		if (--ndebug == 0)
+			break;
+	}
+
 done:
 	kmem_free(shstrbase, shstrsize);
 	kmem_free(shbase, shsize);
@@ -2164,7 +2181,8 @@ elf_process_scns(elf_core_ctx_t *ctx, Shdr *v, uint_t nv, uint_t *nshdrsp)
 	if (v != NULL) {
 		ASSERT(nv != 0);
 
-		shstrtab_init(&shstrtab);
+		if (!shstrtab_init(&shstrtab))
+			return (ENOMEM);
 		remain = nv;
 	} else {
 		ASSERT(nv == 0);
@@ -2196,8 +2214,9 @@ elf_process_scns(elf_core_ctx_t *ctx, Shdr *v, uint_t nv, uint_t *nshdrsp)
 		if (seg->s_ops != &segvn_ops ||
 		    SEGOP_GETVP(seg, seg->s_base, &mvp) != 0 ||
 		    mvp == lastvp || mvp == NULL || mvp->v_type != VREG ||
-		    (segsize = pr_getsegsize(seg, 1)) == 0)
+		    (segsize = pr_getsegsize(seg, 1)) == 0) {
 			continue;
+		}
 
 		eaddr = saddr + segsize;
 		prot = pr_getprot(seg, 1, &tmp, &saddr, &naddr, eaddr);
@@ -2211,7 +2230,9 @@ elf_process_scns(elf_core_ctx_t *ctx, Shdr *v, uint_t nv, uint_t *nshdrsp)
 			continue;
 
 		count = elf_process_obj_scns(ctx, mvp, saddr, v, idx, remain,
-		    &shstrtab);
+		    &shstrtab, &error);
+		if (error != 0)
+			goto done;
 
 		ASSERT(count <= remain);
 		ASSERT(v == NULL || (idx + count) < nv);
@@ -2235,10 +2256,15 @@ elf_process_scns(elf_core_ctx_t *ctx, Shdr *v, uint_t nv, uint_t *nshdrsp)
 		cmn_err(CE_WARN, "elfcore: core dump failed for "
 		    "process %d; address space is changing",
 		    ctx->ecc_p->p_pid);
-		return (EIO);
+		error = EIO;
+		goto done;
 	}
 
-	v[idx].sh_name = shstrtab_ndx(&shstrtab, STR_SHSTRTAB);
+	if (!shstrtab_ndx(&shstrtab, shstrtab_data[STR_SHSTRTAB],
+	    &v[idx].sh_name)) {
+		error = ENOMEM;
+		goto done;
+	}
 	v[idx].sh_size = shstrtab_size(&shstrtab);
 	v[idx].sh_addralign = 1;
 	v[idx].sh_offset = ctx->ecc_doffset;
@@ -2254,6 +2280,10 @@ elf_process_scns(elf_core_ctx_t *ctx, Shdr *v, uint_t nv, uint_t *nshdrsp)
 	if (error == 0) {
 		ctx->ecc_doffset += v[idx].sh_size;
 	}
+
+done:
+	if (v != NULL)
+		shstrtab_fini(&shstrtab);
 
 	return (error);
 }
@@ -2302,7 +2332,7 @@ top:
 	 * Count the number of section headers we're going to need.
 	 */
 	nshdrs = 0;
-	if (content & (CC_CONTENT_CTF | CC_CONTENT_SYMTAB)) {
+	if (content & (CC_CONTENT_CTF | CC_CONTENT_SYMTAB | CC_CONTENT_DEBUG)) {
 		VERIFY0(elf_process_scns(&ctx, NULL, 0, &nshdrs));
 	}
 	AS_LOCK_EXIT(as);

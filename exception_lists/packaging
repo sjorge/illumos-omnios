@@ -398,6 +398,10 @@ usr/lib/libidspace.so
 usr/lib/amd64/libidspace.so		i386
 usr/include/libidspace.h
 #
+# VXLAN
+#
+usr/include/sys/vxlan.h
+#
 # Private libbunyan
 #
 usr/lib/libbunyan.so
@@ -414,7 +418,6 @@ usr/include/libvarpd_provider.h
 usr/include/sys/overlay.h
 usr/include/sys/overlay_common.h
 usr/include/sys/overlay_target.h
-usr/include/sys/vxlan.h
 usr/lib/libvarpd.so
 usr/lib/amd64/libvarpd.so
 #
@@ -961,3 +964,10 @@ opt/onbld/man/man1onbld/sgsmsg.1onbld
 # The built link-editor demos are not delivered
 #
 opt/SUNWonld/
+
+#
+# Libraries that are built for tests whose compilation symlinks are only
+# needed at build time.
+#
+opt/os-tests/tests/cores/libdumper.so
+opt/os-tests/tests/cores/amd64/libdumper.so	i386
