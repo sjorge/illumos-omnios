@@ -4343,6 +4343,9 @@ usr/src/test/libmlrpc-tests/tests/netrlogon/samlogon_tests/run_samlogon_tests
 usr/src/test/libmlrpc-tests/tests/netrlogon/samlogon_tests/samlogon
 usr/src/test/os-tests/tests/clock_gettime.32
 usr/src/test/os-tests/tests/clock_gettime.64
+usr/src/test/os-tests/tests/cores/dumper/dumper.32
+usr/src/test/os-tests/tests/cores/dumper/dumper.64
+usr/src/test/os-tests/tests/cores/secmapper/secmapper
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test-cleanup
 usr/src/test/os-tests/tests/ddi_ufm/ufm-test-setup
@@ -4553,9 +4556,9 @@ usr/src/tools/ndrgen/ndrgen
 usr/src/tools/ndrgen/ndrgen1
 usr/src/tools/ndrgen/y.tab.c
 usr/src/tools/ndrgen/y.tab.h
-usr/src/tools/onbld/Checks/py3/python3.9/
-usr/src/tools/onbld/Scm/py3/python3.9/
-usr/src/tools/onbld/py3/python3.9/
+usr/src/tools/onbld/Checks/py3/python3.10/
+usr/src/tools/onbld/Scm/py3/python3.10/
+usr/src/tools/onbld/py3/python3.10/
 usr/src/tools/proto/
 usr/src/tools/protocmp/protocmp
 usr/src/tools/protolist/protolist
