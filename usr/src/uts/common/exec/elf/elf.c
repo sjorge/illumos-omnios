@@ -2628,8 +2628,9 @@ exclude:
 			size_t towrite = phdr[i].p_filesz;
 			size_t curoff = 0;
 
-			if (zeropg == NULL)
+			if (zeropg == NULL) {
 				zeropg = kmem_zalloc(elf_zeropg_sz, KM_SLEEP);
+			}
 
 			error = 0;
 			while (towrite != 0) {
@@ -2644,16 +2645,13 @@ exclude:
 				towrite -= len;
 				curoff += len;
 			}
-
-			if (error == 0)
-				continue;
 		} else {
 			error = core_seg(p, vp, phdr[i].p_offset,
 			    (caddr_t)(uintptr_t)phdr[i].p_vaddr,
 			    phdr[i].p_filesz, rlimit, credp);
-			if (error == 0)
-				continue;
 		}
+		if (error == 0)
+			continue;
 
 		if ((sig = lwp->lwp_cursig) == 0) {
 			/*
