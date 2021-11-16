@@ -35,62 +35,59 @@
 <include global_zone_only_component>
 <include omnios_only>
 set name=pkg.fmri value=pkg:/system/zones/brand/lx@$(PKGVERS)
-set name=pkg.description value="Support for the 'lx' Brand"
 set name=pkg.summary value="lx Brand"
+set name=pkg.description value="Support for the 'lx' Brand"
 set name=info.classification \
     value="org.opensolaris.category.2008:Applications/System Utilities"
 set name=variant.arch value=i386
-dir path=etc group=sys
-dir path=etc/zones group=sys
-dir path=kernel group=sys
-dir path=kernel/fs group=sys
-dir path=kernel/fs/$(ARCH64) group=sys
-dir path=kernel/socketmod group=sys
-dir path=kernel/socketmod/$(ARCH64) group=sys
-dir path=usr group=sys
-dir path=usr/include group=bin
-dir path=usr/include/sys group=bin
-dir path=usr/kernel group=sys
-dir path=usr/kernel/brand group=sys
-dir path=usr/kernel/brand/$(ARCH64) group=sys
-dir path=usr/kernel/drv group=sys
-dir path=usr/kernel/drv/$(ARCH64) group=sys
-dir path=usr/kernel/dtrace group=sys
-dir path=usr/kernel/dtrace/$(ARCH64) group=sys
-dir path=usr/kernel/fs group=sys
-dir path=usr/kernel/fs/$(ARCH64) group=sys
-dir path=usr/kernel/strmod group=sys
-dir path=usr/kernel/strmod/$(ARCH64) group=sys
-dir path=usr/lib
-dir path=usr/lib/brand
-dir path=usr/lib/brand/lx
-dir path=usr/lib/brand/lx/$(ARCH64)
-dir path=usr/lib/brand/lx/ld
-dir path=usr/lib/brand/lx/ld/64
-dir path=usr/lib/devfsadm group=sys
-dir path=usr/lib/devfsadm/linkmod group=sys
-dir path=usr/share
-dir path=usr/share/man
-dir path=usr/share/man/man7fs
-driver name=lx_ptm perms="lx_ptmajor 0666 root sys"
-driver name=lx_systrace perms="* 0644 root sys"
-driver name=lxautofs perms="lxautofs 0600 root sys"
+dir  path=etc group=sys
+dir  path=etc/zones group=sys
+dir  path=kernel group=sys
+dir  path=kernel/fs group=sys
+dir  path=kernel/fs/$(ARCH64) group=sys
+dir  path=kernel/socketmod group=sys
+dir  path=kernel/socketmod/$(ARCH64) group=sys
 file path=kernel/socketmod/$(ARCH64)/lx_netlink mode=0755
+dir  path=usr group=sys
+dir  path=usr/include group=bin
+dir  path=usr/include/sys group=bin
+dir  path=usr/kernel group=sys
+dir  path=usr/kernel/brand group=sys
+dir  path=usr/kernel/brand/$(ARCH64) group=sys
 file path=usr/kernel/brand/$(ARCH64)/lx_brand group=sys mode=0755
+dir  path=usr/kernel/drv group=sys
+dir  path=usr/kernel/drv/$(ARCH64) group=sys
 file path=usr/kernel/drv/$(ARCH64)/lx_ptm group=sys mode=0755
 file path=usr/kernel/drv/$(ARCH64)/lx_systrace group=sys mode=0755
 file path=usr/kernel/drv/$(ARCH64)/lxautofs group=sys mode=0755
 file path=usr/kernel/drv/lx_ptm.conf group=sys
 file path=usr/kernel/drv/lx_systrace.conf group=sys
 file path=usr/kernel/drv/lxautofs.conf group=sys
+dir  path=usr/kernel/dtrace group=sys
+dir  path=usr/kernel/dtrace/$(ARCH64) group=sys
+hardlink path=usr/kernel/dtrace/$(ARCH64)/lx_systrace \
+    target=../../../kernel/drv/$(ARCH64)/lx_systrace
+dir  path=usr/kernel/fs group=sys
+dir  path=usr/kernel/fs/$(ARCH64) group=sys
 file path=usr/kernel/fs/$(ARCH64)/lx_cgroup group=sys mode=0755
 file path=usr/kernel/fs/$(ARCH64)/lx_devfs group=sys mode=0755
 file path=usr/kernel/fs/$(ARCH64)/lx_proc group=sys mode=0755
 file path=usr/kernel/fs/$(ARCH64)/lx_sysfs group=sys mode=0755
+hardlink path=usr/kernel/fs/$(ARCH64)/lxautofs \
+    target=../../../kernel/drv/$(ARCH64)/lxautofs
+dir  path=usr/kernel/strmod group=sys
+dir  path=usr/kernel/strmod/$(ARCH64) group=sys
+dir  path=usr/lib
 file path=usr/lib/$(ARCH64)/lx_brand.so.1
+dir  path=usr/lib/brand
+dir  path=usr/lib/brand/lx
+dir  path=usr/lib/brand/lx/$(ARCH64)
 file path=usr/lib/brand/lx/$(ARCH64)/lx_librtld_db.so.1
 file path=usr/lib/brand/lx/$(ARCH64)/lx_vdso.so.1 mode=0755
+link path=usr/lib/brand/lx/64 target=$(ARCH64)
 file path=usr/lib/brand/lx/etc_default_nfs group=sys mode=0444
+dir  path=usr/lib/brand/lx/ld
+dir  path=usr/lib/brand/lx/ld/64
 file path=usr/lib/brand/lx/ld/64/ld.config group=sys
 file path=usr/lib/brand/lx/ld/ld.config group=sys
 file path=usr/lib/brand/lx/ltp_skiplist group=sys mode=0444
@@ -108,12 +105,16 @@ file path=usr/lib/brand/lx/lx_support mode=0755
 file path=usr/lib/brand/lx/lx_vdso.so.1 mode=0755
 file path=usr/lib/brand/lx/lxinit mode=0555
 file path=usr/lib/brand/lx/pts_ignorelist mode=0444
+dir  path=usr/lib/devfsadm group=sys
+dir  path=usr/lib/devfsadm/linkmod group=sys
 file path=usr/lib/devfsadm/linkmod/SUNW_lx_link_$(ARCH).so group=sys
 file path=usr/lib/lx_brand.so.1
-hardlink path=usr/kernel/dtrace/$(ARCH64)/lx_systrace \
-    target=../../../kernel/drv/$(ARCH64)/lx_systrace
-hardlink path=usr/kernel/fs/$(ARCH64)/lxautofs \
-    target=../../../kernel/drv/$(ARCH64)/lxautofs
+dir  path=usr/share
+dir  path=usr/share/man
+dir  path=usr/share/man/man7fs
+driver name=lx_ptm perms="lx_ptmajor 0666 root sys"
+driver name=lx_systrace perms="* 0644 root sys"
+driver name=lxautofs perms="lxautofs 0600 root sys"
 legacy pkg=SUNWlxr arch=$(ARCH) category=system \
     desc="Support for the 'lx' Brand" \
     hotline="Please contact your local service provider" \
@@ -126,7 +127,6 @@ legacy pkg=SUNWlxu arch=$(ARCH) category=system \
     version=11.11,REV=2009.11.11
 license cr_Sun license=cr_Sun
 license lic_CDDL license=lic_CDDL
-link path=usr/lib/brand/lx/64 target=$(ARCH64)
-depend fmri=archiver/gnu-tar type=require
-depend fmri=driver/inotify type=require
-depend fmri=system/zones/brand/lx/platform type=require
+depend type=require fmri=archiver/gnu-tar
+depend type=require fmri=driver/inotify
+depend type=require fmri=system/zones/brand/lx/platform
