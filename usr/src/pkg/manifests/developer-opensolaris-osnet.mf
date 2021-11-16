@@ -25,12 +25,12 @@
 # Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
 
 set name=pkg.fmri value=pkg:/developer/opensolaris/osnet@$(PKGVERS)
-set name=pkg.description \
-    value="Dependencies required to build the OS/Net Consolidation."
 set name=pkg.summary \
+    value="Dependencies required to build the OS/Net Consolidation."
+set name=pkg.description \
     value="Dependencies required to build the OS/Net Consolidation."
 set name=info.classification \
     value="org.opensolaris.category.2008:Development/Distribution Tools"
 set name=org.opensolaris.noincorp value=true
 set name=variant.arch value=$(ARCH)
-depend fmri=developer/illumos-tools type=require
+depend type=require fmri=developer/illumos-tools
