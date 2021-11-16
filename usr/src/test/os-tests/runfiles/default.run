@@ -59,10 +59,6 @@ tests = ['sigqueue_queue_size']
 user = root
 tests = ['sdevfs_eisdir']
 
-[/opt/os-tests/tests/timer]
-user = root
-tests = ['timer_limit']
-
 [/opt/os-tests/tests/stress]
 user = root
 tests = ['dladm-kstat']
@@ -135,3 +131,8 @@ post = ksensor_fini
 
 [/opt/os-tests/tests/stackalign]
 tests = ['stackalign.32', 'stackalign.64']
+
+[/opt/os-tests/tests/cores]
+user = root
+pre = core_prereqs
+tests = ['coretests']
