@@ -182,7 +182,7 @@ miniroot.db: common.db $(MINIROOT_DESCRIPTIONS)
 	# values by applying a profile yet, we need to set them explicitly
 	# with svccfg commands.
 	#
-	$(CONFIGD_ENV) $(SVCCFG) -s svc:/system/system-log \
+	$(CONFIGD_ENV) $(SVCCFG) -s svc:/system/system-log:default \
 	    setprop config/log_from_remote = false
 	$(CONFIGD_ENV) $(SVCCFG) -s svc:/network/rpc/bind \
 	    setprop config/local_only = true
