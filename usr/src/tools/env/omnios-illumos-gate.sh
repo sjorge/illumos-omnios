@@ -14,9 +14,9 @@ export JAVA_ROOT=/usr/jdk/openjdk11.0
 export JAVA_HOME=$JAVA_ROOT
 export BLD_JAVA_11=
 
-export BUILDPY2=
+export BUILDPY2='#'
 export BUILDPY3=
-export BUILDPY2TOOLS=
+export BUILDPY2TOOLS='#'
 export BUILDPY3TOOLS=
 export PYTHON3_VERSION=3.10
 export PYTHON3_PKGVERS=-310
