@@ -23,6 +23,7 @@
 #
 # Copyright 2019 Joyent, Inc.
 # Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
+# Copyright 2021 Racktop Systems, Inc.
 
 #
 #	Path to the base of the uts directory tree (usually /usr/src/uts).
@@ -117,6 +118,10 @@ $(OBJS_DIR)/instr_size.o :=	EXTRA_OPTIONS	= -I$(SRC)/common/dis/i386
 # output from gcc can end up confusing studio.
 #
 $(OBJS_DIR)/comm_page_ctf.o :=	CERRWARN += -_cc=-erroff=E_TKNS_IGNORED_AT_END_OF_DIR
+
+# tscc_hyperv.o needs a few hyperv headers in $(UTSBASE)/intel
+$(OBJS_DIR)/tscc_hyperv.o := INC_PATH += -I$(UTSBASE)/intel/io/hyperv
+$(OBJS_DIR)/tscc_hyperv.o := INC_PATH += -I$(UTSBASE)/intel/io/hyperv/vmbus
 
 CFLAGS += -DDIS_MEM
 
