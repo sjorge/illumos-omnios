@@ -39,6 +39,7 @@
 
 /*
  * Copyright (c) 2017 by Delphix. All rights reserved.
+ * Copyright 2021 Racktop Systems, Inc.
  */
 
 #ifndef _SYS_HYPERV_H
@@ -47,6 +48,7 @@
 #include <sys/hyperv_illumos.h>
 
 #define	MSR_HV_TIME_REF_COUNT		0x40000020
+#define	MSR_HV_TSC_FREQUENCY		0x40000022
 
 #define	CPUID_HV_MSR_TIME_REFCNT	0x0002	/* MSR_HV_TIME_REF_COUNT */
 #define	CPUID_HV_MSR_SYNIC		0x0004	/* MSRs for SynIC */
@@ -56,6 +58,7 @@
 #define	CPUID_HV_MSR_HYPERCALL		0x0020
 #define	CPUID_HV_MSR_VP_INDEX		0x0040	/* MSR_HV_VP_INDEX */
 #define	CPUID_HV_MSR_GUEST_IDLE		0x0400	/* MSR_HV_GUEST_IDLE */
+#define	CPUID_HV_MSR_TSC_FREQ		0x0800
 
 #define	HYPERV_TIMER_NS_FACTOR		100ULL
 #define	HYPERV_TIMER_FREQ		(NANOSEC / HYPERV_TIMER_NS_FACTOR)
