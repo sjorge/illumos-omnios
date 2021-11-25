@@ -30,11 +30,14 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <definit.h>
+
+/* Tokens are separated by spaces, tabs and newlines. */
+#define	SEPARATORS " \t\n"
 
 typedef struct definit {
 	FILE *di_fp;
 	char *di_line;
-	size_t di_len;
 	char *di_tok;
 } definit_t;
 
@@ -42,29 +45,35 @@ int
 definit_open(const char *file, void **statep)
 {
 	FILE *fp;
-	definit_t *state;
+	int _errno;
+	definit_t *state = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL)
 		return (-1);
 
-	if ((state = malloc(sizeof (*state))) == NULL) {
-		int _errno = errno;
-		(void) fclose(fp);
-		errno = _errno;
-		return (-1);
-	}
+	if ((state = calloc(1, sizeof (*state))) == NULL)
+		goto err;
+
+	if ((state->di_line = calloc(DEFINIT_MAXLINE, sizeof (char))) == NULL)
+		goto err;
 
 	state->di_fp = fp;
-	state->di_line = NULL;
-	state->di_len = 0;
-	state->di_tok = NULL;
-
 	*statep = state;
 
 	return (0);
+
+err:
+	_errno = errno;
+	(void) fclose(fp);
+	if (state != NULL) {
+		free(state->di_line);
+		free(state);
+	}
+	errno = _errno;
+	return (-1);
 }
 
-int
+void
 definit_close(void *statep)
 {
 	definit_t *state = statep;
@@ -72,41 +81,51 @@ definit_close(void *statep)
 	(void) fclose(state->di_fp);
 	free(state->di_line);
 	free(state);
-
-	return (0);
 }
+
+/*
+ * This parser was written to produce the same output as the ones it replaced
+ * in init and svc.startd. As such it has some shortcomings:
+ * - Values may be quoted but the quotes are just stripped and separators such
+ *   as whitespace are not treated specially within quotes;
+ * - Lines which are longer than DEFINIT_MAXLINE -1 bytes are split. Tokens
+ *   which span a split will be truncated, one way or another.
+ * - Comments at the end of a line (after a token) are not supported.
+ * These could be corrected in the future if strict backwards compatibility is
+ * not required.
+ */
 
 static char *
 definit_nextline(definit_t *state)
 {
-	ssize_t cnt;
+	char *line;
 
-	while ((cnt = getline(&state->di_line, &state->di_len,
-	    state->di_fp)) != -1) {
+	while ((line = fgets(state->di_line, DEFINIT_MAXLINE, state->di_fp))
+	    != NULL) {
 		boolean_t inquotes;
-		char *line = state->di_line;
 		char *p, *bp;
 		size_t wslength;
 
 		/*
-		 * Discard newline
-		 */
-		p = line;
-		(void) strsep(&p, "\n");
-
-		/*
 		 * Ignore blank or comment lines.
 		 */
-		if (cnt == 0 || line[0] == '#' || line[0] == '\0' ||
-		    (wslength = strspn(line, " \t\n")) == strlen(line) ||
-		    strchr(line, '#') == line + wslength) {
+		if (line[0] == '#' || line[0] == '\0' ||
+		    (wslength = strspn(line, SEPARATORS)) == strlen(line) ||
+		    line[wslength] == '#') {
 			continue;
 		}
 
 		/*
-		 * First make a pass through the line and remove any
-		 * quote characters and change any non-quoted semicolons to
-		 * blanks so they will be treated as token separators below.
+		 * Make a pass through the line and:
+		 * - Replace any non-quoted semicolons with spaces;
+		 * - Remove any quote characters.
+		 *
+		 * While walking this, 'p' is the current position in the line
+		 * and, if any characters have been found which need to be
+		 * removed, 'bp' tracks the position in the line where
+		 * subsequent characters need to be written in order to close
+		 * the gap; 'bp' trails 'p'.
+		 * If 'bp' is NULL, no characters to remove have been found.
 		 */
 		inquotes = B_FALSE;
 		for (p = line, bp = NULL; *p != '\0'; p++) {
@@ -131,10 +150,12 @@ definit_nextline(definit_t *state)
 			*bp = '\0';
 
 		/*
-		 * Tokens within the line are separated by blanks
-		 * and tabs.
+		 * Perform an initial strtok_r() call on the new line.
+		 * definit_token() will repeatedly call strtok_r() until the
+		 * line is consumed, and then call this function again for
+		 * more input.
 		 */
-		if ((p = strtok_r(line, " \t", &state->di_tok)) != NULL)
+		if ((p = strtok_r(line, SEPARATORS, &state->di_tok)) != NULL)
 			return (p);
 	}
 
@@ -151,7 +172,7 @@ definit_token(void *statep)
 		tok = NULL;
 
 		if (state->di_tok != NULL)
-			tok = strtok_r(NULL, " \t", &state->di_tok);
+			tok = strtok_r(NULL, SEPARATORS, &state->di_tok);
 
 		if (tok == NULL)
 			tok = definit_nextline(state);

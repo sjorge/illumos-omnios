@@ -35,8 +35,7 @@ main(int argc, char **argv)
 	while ((p = definit_token(state)) != NULL)
 		printf(":%s:\n", p);
 
-	if (definit_close(state) != 0)
-		err(EXIT_FAILURE, "definit_close failed");
+	definit_close(state);
 
 	return (0);
 }

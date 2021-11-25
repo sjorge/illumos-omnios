@@ -396,7 +396,7 @@ struct amdvi_softc {
 	uint16_t	pci_seg;	/* IOMMU PCI domain/segment. */
 	uint16_t	pci_rid;	/* PCI BDF of IOMMU */
 	/* ACPI device configuration for end points. */
-	struct 		ivhd_dev_cfg *dev_cfg;
+	struct		ivhd_dev_cfg *dev_cfg;
 	int		dev_cfg_cnt;
 	int		dev_cfg_cap;
 

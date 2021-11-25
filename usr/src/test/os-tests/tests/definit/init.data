@@ -20,6 +20,7 @@ TZ=UTC
  	TZSTI=UTCSTI
 	 TZTSI=UTCTSI
  	 	 	 TZMI=UTCMI
+; LEADING=semicolon
 
 # Quoted assignment, quotes do not have to match nor be balanced. They are
 # just stripped early in parsing.
@@ -53,6 +54,17 @@ MULTISSS1=multisss1 ; MULTISSS2=multisss2 ; MULTISSS3=multisss3
 PLAIN
 OK=1 NOEQUALS
 ANOTHER BAD=54 IGNORED
+
+# Tokens with a comment after, the comment will be parsed for tokens
+THIS=this 	# not a comment so if it includes THAT=that then it's found
+
+# Line which is at the maximum allowed length (512 characters including newline)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Z=b
+
+# Lines which exceed the maximum allowed length (last item will be truncated)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            X=cccccc
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            YYYYYY=d
 
 # More complex examples
 UMEM_DEBUG="default"; MAXIMUS BOB=fred; SUE='test' BARNEY=dino
