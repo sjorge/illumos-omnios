@@ -2135,6 +2135,7 @@ usr/src/cmd/svc/profile/check_open.notcovered
 usr/src/cmd/svc/rootisramdisk/rootisramdisk
 usr/src/cmd/svc/seed/common.db
 usr/src/cmd/svc/seed/global.db
+usr/src/cmd/svc/seed/lib/
 usr/src/cmd/svc/seed/miniroot.db
 usr/src/cmd/svc/seed/nonglobal.db
 usr/src/cmd/svc/servinfo/servinfo
@@ -3987,6 +3988,7 @@ usr/src/man/man3utempter/utempter_remove_added_record.3utempter
 usr/src/man/man3utempter/utempter_remove_record.3utempter
 usr/src/man/man3uuid/uuid_unparse_lower.3uuid
 usr/src/man/man3uuid/uuid_unparse_upper.3uuid
+usr/src/man/man4/TIMEZONE.4
 usr/src/man/man4/ipf.conf.4
 usr/src/man/man4/ipf6.conf.4
 usr/src/man/man4/ipmon.conf.4
@@ -4220,6 +4222,9 @@ usr/src/test/elf-tests/tests/linker-sets/in-use-check
 usr/src/test/elf-tests/tests/linker-sets/simple
 usr/src/test/elf-tests/tests/mapfiles/assert/test-assert
 usr/src/test/elf-tests/tests/mapfiles/parser/test-parser
+usr/src/test/elf-tests/tests/relocs/amd64/gotpcrelx/gotpcrelx
+usr/src/test/elf-tests/tests/relocs/amd64/gotpcrelx/rex_gotpcrelx
+usr/src/test/elf-tests/tests/relocs/i386/got32x/got32x
 usr/src/test/elf-tests/tests/string-merge/simple
 usr/src/test/elf-tests/tests/tls/amd64/ie/amd64-ie-test
 usr/src/test/elf-tests/tests/tls/amd64/ld/amd64-ld-test
