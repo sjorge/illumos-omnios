@@ -1932,8 +1932,8 @@ killproc(pid_t pid)
 /*
  * Set up the default environment for all procs to be forked from init.
  * Read the values from the /etc/default/init file, except for PATH.  If
- * there's not enough room in the environment array, the environment
- * lines that don't fit are silently discarded.
+ * there is not enough room in the environment array, the environment
+ * lines that don't fit are discarded and a message is written to the console.
  */
 void
 init_env()
@@ -1974,14 +1974,20 @@ init_env()
 			t = strtol(strchr(tokp, '=') + 1, NULL, 8);
 
 			/* Sanity */
-			if (t <= 077 && t >= 0)
+			if (t >= DEFINIT_MIN_UMASK && t <= DEFINIT_MAX_UMASK)
 				cmask = (int)t;
 			(void) umask(cmask);
 			continue;
 		}
 		glob_envp[glob_envn] = strdup(tokp);
-		if (glob_envp[glob_envn] == NULL ||
-		    ++glob_envn >= MAXENVENT - 1) {
+		if (glob_envp[glob_envn] == NULL) {
+			console(B_TRUE, "Out of memory building environment, "
+			    "truncated.\n");
+			break;
+		}
+		if (++glob_envn >= MAXENVENT - 1) {
+			console(B_TRUE, "Too many variables in %s; "
+			    "environment not fully initialized.\n", ENVFILE);
 			break;
 		}
 	}
@@ -1991,7 +1997,7 @@ init_env()
 	 */
 	glob_envp[glob_envn] = NULL;
 
-	(void) definit_close(dstate);
+	definit_close(dstate);
 }
 
 /*

@@ -111,7 +111,7 @@ init_env()
 	/* Append a null pointer to the environment array to mark its end. */
 	glob_envp[i] = NULL;
 
-	(void) definit_close(dstate);
+	definit_close(dstate);
 
 	/*
 	 * Get the zonename once; it is used to set SMF_ZONENAME for methods.

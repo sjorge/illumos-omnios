@@ -24,12 +24,20 @@ extern "C" {
  * Routines for parsing the default init file, /etc/default/init.
  * Used by init, svc.startd and libzonecfg for setting up a default
  * environment.
+ *
+ * After calling definit_open(), callers should call definit_token() in a loop
+ * until it returns NULL, indicating that all tokens in the file have been
+ * processed. To clean up when finished, call definit_close().
  */
 
 #define	DEFINIT_DEFAULT_FILE	"/etc/default/init"
+#define	DEFINIT_MAXLINE		512
+
+#define	DEFINIT_MIN_UMASK	0
+#define	DEFINIT_MAX_UMASK	077
 
 int definit_open(const char *, void **);
-int definit_close(void *);
+void definit_close(void *);
 const char *definit_token(void *);
 
 #ifdef	__cplusplus

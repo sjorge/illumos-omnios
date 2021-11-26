@@ -7880,13 +7880,13 @@ prepare_audit_context(const char *zone_name)
 }
 
 static const char **
-get_zoneadmd_envp()
+get_zoneadmd_envp(void)
 {
 	const char **envp = NULL;
 	size_t envlen;
 	size_t envslot = 0;
 	const char *tok;
-	void *dstate;
+	void *dstate = NULL;
 
 	/*
 	 * This initial array size is enough to hold the two variables
@@ -7897,7 +7897,7 @@ get_zoneadmd_envp()
 	 */
 	envlen = 8;
 
-	if ((envp = reallocarray(NULL, envlen, sizeof (char *))) == NULL)
+	if ((envp = recallocarray(NULL, 0, envlen, sizeof (char *))) == NULL)
 		return (NULL);
 
 	/*
@@ -7919,8 +7919,16 @@ get_zoneadmd_envp()
 	envp[envslot++] = tok;
 
 	if (definit_open(DEFINIT_DEFAULT_FILE, &dstate) != 0) {
-		envp[envslot] = NULL;
-		return (envp);
+		if (errno == ENOENT) {
+			/*
+			 * If the configuration file does not exist, return the
+			 * environment populated so far (with PATH and the
+			 * zoneadm lock).
+			 */
+			envp[envslot] = NULL;
+			return (envp);
+		}
+		goto err;
 	}
 
 	while ((tok = definit_token(dstate)) != NULL) {
@@ -7930,7 +7938,7 @@ get_zoneadmd_envp()
 
 			t = strtol(tok + 6, NULL, 8);
 
-			if (t <= 077 && t >= 0)
+			if (t >= DEFINIT_MIN_UMASK && t <= DEFINIT_MAX_UMASK)
 				(void) umask((int)t);
 			continue;
 		}
@@ -7942,25 +7950,37 @@ get_zoneadmd_envp()
 		if (envslot + 2 >= envlen) {
 			const char **newenvp;
 
-			envlen *= 2;
-			newenvp = reallocarray(envp, envlen, sizeof (char *));
+			newenvp = recallocarray(envp, envlen, envlen * 2,
+			    sizeof (char *));
 			if (newenvp == NULL)
-				goto out;
+				goto err;
 			envp = newenvp;
+			envlen *= 2;
 		}
 
 		envp[envslot] = strdup(tok);
 		if (envp[envslot] == NULL)
-			goto out;
+			goto err;
 		envslot++;
 	}
 
-out:
-	(void) definit_close(dstate);
-
+	definit_close(dstate);
 	envp[envslot] = NULL;
-
 	return (envp);
+
+err:
+	if (dstate != NULL)
+		definit_close(dstate);
+
+	/*
+	 * The first slot in envp is 'zoneadm_lock_held' and should not be
+	 * freed.
+	 */
+	while (--envslot > 0)
+		free((void *)envp[envslot]);
+	free(envp);
+
+	return (NULL);
 }
 
 static int
@@ -8022,6 +8042,12 @@ start_zoneadmd(const char *zone_name, boolean_t lock)
 		*ap = NULL;
 
 		envp = get_zoneadmd_envp();
+		if (envp == NULL) {
+			zperror(gettext(
+			    "could not build environment for zoneadmd"));
+			_exit(1);
+		}
+
 		(void) execve("/usr/lib/zones/zoneadmd",
 		    (char * const *)argv, (char * const *)envp);
 		/*

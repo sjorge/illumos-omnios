@@ -39,7 +39,7 @@ CSTD = $(CSTD_GNU99)
 LDLIBS += -lpam -lbsm -lcontract -lscf
 CERRWARN += -_gcc=-Wno-parentheses
 CERRWARN += $(CNOWARN_UNINIT)
-CLOBBERFILES= $(STATIC) $(OBJS)
+CLOBBERFILES= $(STATIC)
 CPPFLAGS += -I$(SRC)/common/definit
 CPPFLAGS += -DBOOTBANNER1='"$(BOOTBANNER1)"'
 CPPFLAGS += -DBOOTBANNER2='"$(BOOTBANNER2)"'
@@ -69,7 +69,11 @@ $(PROG):	$(OBJS)
 	$(POST_PROCESS)
 
 %.o:	$(SRC)/common/bootbanner/%.c
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	$(COMPILE.c) $<
+	$(POST_PROCESS_O)
+
+%.o:	$(SRC)/common/definit/%.c
+	$(COMPILE.c) $<
 	$(POST_PROCESS_O)
 
 %.o:	$(SRC)/common/definit/%.c
@@ -80,5 +84,6 @@ test:
 	rtest $(PROG)
 
 clean:
+	$(RM) $(OBJS)
 
 include ../Makefile.targ

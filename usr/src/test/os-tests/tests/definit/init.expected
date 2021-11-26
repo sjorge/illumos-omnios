@@ -4,6 +4,7 @@
 :TZSTI=UTCSTI:
 :TZTSI=UTCTSI:
 :TZMI=UTCMI:
+:LEADING=semicolon:
 :CMASK1=001:
 :CMASK2=002:
 :CMASK3=003:
@@ -43,6 +44,11 @@
 :SMULTISSS3=smultisss3:
 :OK=1:
 :BAD=54:
+:THIS=this:
+:THAT=that:
+:Z=b:
+:X=c:
+:YYY=d:
 :UMEM_DEBUG=default:
 :BOB=fred:
 :SUE=test:
