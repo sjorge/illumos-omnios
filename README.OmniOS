@@ -20,6 +20,10 @@ are included in the footer.
 
 	https://hf.omnios.org/r38/13768_mpapi.p5p
 
+13689 Want AWS ENA driver
+	driver/network/ena
+	entire
+
 =======================================================================
 
 =============================
