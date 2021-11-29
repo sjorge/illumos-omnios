@@ -1235,7 +1235,6 @@ file path=usr/lib/vtdaemon mode=0555
 file path=usr/lib/vtinfo mode=0555
 file path=usr/lib/vtxlock mode=0555
 file path=usr/sadm/bin/puttext mode=0555
-file path=usr/sadm/install/miniroot.db group=sys mode=0444
 file path=usr/sadm/install/scripts/i.ipsecalgs group=sys mode=0555
 file path=usr/sadm/install/scripts/i.kcfconf group=sys mode=0555
 file path=usr/sadm/install/scripts/i.kmfconf group=sys mode=0555
