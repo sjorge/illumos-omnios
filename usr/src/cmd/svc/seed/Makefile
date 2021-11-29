@@ -139,7 +139,7 @@ SVCCFG = ../svccfg/svccfg-native
 
 .KEEP_STATE:
 
-all: global.db nonglobal.db miniroot.db
+all: global.db nonglobal.db
 
 $(CONFIGD): FRC
 	@cd ../configd; pwd; $(MAKE) native
@@ -189,7 +189,7 @@ miniroot.db: common.db $(MINIROOT_DESCRIPTIONS)
 
 .PARALLEL: global.db nonglobal.db miniroot.db
 
-install: install_global install_nonglobal install_miniroot
+install: install_global install_nonglobal
 
 install_global: global.db
 	$(RM) $(LIBSVCSEED)/global.db
