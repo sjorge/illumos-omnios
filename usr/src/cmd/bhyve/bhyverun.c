@@ -1162,13 +1162,36 @@ vm_loop(struct vmctx *ctx, int vcpu, uint64_t startrip)
 		switch (rc) {
 		case VMEXIT_CONTINUE:
 			break;
+#ifdef __FreeBSD__
 		case VMEXIT_ABORT:
 			abort();
 		default:
 			exit(4);
+#else
+		default:
+			goto persist;
+#endif
 		}
 	}
 	fprintf(stderr, "vm_run error %d, errno %d\n", error, errno);
+#ifndef __FreeBSD__
+	rc = VMEXIT_CONTINUE;
+persist:
+	if (get_config_bool_default("debug.persist", false)) {
+		fprintf(stderr, "VM has terminated with rc=%d, "
+		    "sleeping due to debug.persist option.\n", rc);
+		for (;;)
+			sleep(3600);
+	}
+	switch (rc) {
+	case VMEXIT_CONTINUE:
+		return;
+	case VMEXIT_ABORT:
+		abort();
+	default:
+		exit(4);
+	}
+#endif
 }
 
 static int
