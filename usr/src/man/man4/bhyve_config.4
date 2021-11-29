@@ -155,6 +155,13 @@ No VM will be started.
 Enable debug messages relating to privilege management.
 These messages are sent to
 .Dv stdout .
+.It Va debug.persist Ta bool Ta false Ta
+A debugging option that causes the VM to persist after it terminates.
+This can be used, for example, to keep a zone up after VM termination so that
+the VM can be inspected with the
+.Fl b
+option of
+.Xr mdb 1 .
 .El
 .Ss x86-Specific Settings
 .Bl -column "x86.vmexit_on_pause" "integer" "Default"
