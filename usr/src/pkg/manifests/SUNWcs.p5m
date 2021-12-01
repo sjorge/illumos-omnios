@@ -1315,7 +1315,6 @@ hardlink path=usr/sadm/bin/valtime target=../../../usr/bin/cktime
 hardlink path=usr/sadm/bin/valuid target=../../../usr/bin/ckuid
 hardlink path=usr/sadm/bin/valyorn target=../../../usr/bin/ckyorn
 dir  path=usr/sadm/install
-file path=usr/sadm/install/miniroot.db group=sys mode=0444
 dir  path=usr/sadm/install/scripts
 file path=usr/sadm/install/scripts/i.ipsecalgs group=sys mode=0555
 file path=usr/sadm/install/scripts/i.kcfconf group=sys mode=0555
