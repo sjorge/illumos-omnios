@@ -1999,8 +1999,8 @@ vmm_do_vm_destroy_locked(vmm_softc_t *sc, boolean_t clean_zsd,
 		list_insert_tail(&vmm_destroy_list, sc);
 		sc->vmm_flags |= VMM_DESTROY;
 	} else {
-		vm_destroy(sc->vmm_vm);
 		vmm_kstat_fini(sc);
+		vm_destroy(sc->vmm_vm);
 		ddi_soft_state_free(vmm_statep, minor);
 		id_free(vmm_minors, minor);
 		*hma_release = B_TRUE;
@@ -2243,6 +2243,7 @@ vmm_close(dev_t dev, int flag, int otyp, cred_t *credp)
 	 */
 	if (sc->vmm_flags & VMM_DESTROY) {
 		list_remove(&vmm_destroy_list, sc);
+		vmm_kstat_fini(sc);
 		vm_destroy(sc->vmm_vm);
 		ddi_soft_state_free(vmm_statep, minor);
 		id_free(vmm_minors, minor);
