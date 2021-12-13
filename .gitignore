@@ -2136,7 +2136,6 @@ usr/src/cmd/svc/rootisramdisk/rootisramdisk
 usr/src/cmd/svc/seed/common.db
 usr/src/cmd/svc/seed/global.db
 usr/src/cmd/svc/seed/lib/
-usr/src/cmd/svc/seed/miniroot.db
 usr/src/cmd/svc/seed/nonglobal.db
 usr/src/cmd/svc/servinfo/servinfo
 usr/src/cmd/svc/smfcron/smfcron
