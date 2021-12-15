@@ -43,7 +43,7 @@ INSTALL_TARGET	= $(BINARY) $(ROOTMODULE)
 #
 
 INC_PATH += -I$(UTSBASE)/intel/io/hyperv
-LDFLAGS += -dy -N misc/hyperv -N drv/hv_vmbus
+LDFLAGS += -N misc/hyperv -N drv/hv_vmbus
 
 CFLAGS += $(CCVERBOSE)
 

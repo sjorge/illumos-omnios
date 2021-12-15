@@ -46,7 +46,7 @@ INSTALL_TARGET	= $(BINARY) $(ROOTMODULE)
 INC_PATH += -I$(UTSBASE)/intel/io/hyperv
 
 CFLAGS += $(CCVERBOSE)
-LDFLAGS += -dy -N misc/scsi -N misc/hyperv -N drv/hv_vmbus
+LDFLAGS += -N misc/scsi -N misc/hyperv -N drv/hv_vmbus
 
 #
 #	Default build targets.

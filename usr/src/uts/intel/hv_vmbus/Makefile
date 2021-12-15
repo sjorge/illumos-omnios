@@ -29,7 +29,7 @@ INSTALL_TARGET=	$(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
 INC_PATH +=	-I$(UTSBASE)/intel/io/hyperv
 INC_PATH +=	-I$(UTSBASE)/i86pc
 CPPFLAGS +=	-D_MACHDEP
-LDFLAGS	+=	-dy -N misc/hyperv
+LDFLAGS	+=	-N misc/hyperv
 
 C99MODE=	-xc99=%all
 C99LMODE=	-Xc99=%all
