@@ -50,8 +50,8 @@ INSTALL_TARGET	= $(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
 #
 # Overrides
 #
-CFLAGS 		+= $(CCVERBOSE)
-LDFLAGS 	+= -dy -Ndrv/dld -Nmisc/dls -Nmisc/mac -Ndrv/ip
+CFLAGS		+= $(CCVERBOSE)
+LDFLAGS		+= -Ndrv/dld -Nmisc/dls -Nmisc/mac -Ndrv/ip
 
 CERRWARN	+= -_gcc=-Wno-unused-label
 CERRWARN	+= -_gcc=-Wno-switch

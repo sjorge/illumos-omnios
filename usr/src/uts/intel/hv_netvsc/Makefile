@@ -27,7 +27,7 @@ ALL_TARGET=	$(BINARY) $(CONFMOD)
 INSTALL_TARGET=	$(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
 
 INC_PATH +=	-I$(UTSBASE)/intel/io/hyperv
-LDFLAGS	+=	-dy -N misc/hyperv -N drv/hv_vmbus -N misc/mac
+LDFLAGS	+=	-N misc/hyperv -N drv/hv_vmbus -N misc/mac
 
 .KEEP_STATE:
 
