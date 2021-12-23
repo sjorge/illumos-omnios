@@ -189,8 +189,7 @@ ntp_adjtime(struct timex *tp)
 
 		/*
 		 * If the frequency offset was adjusted, then set tod_needsync
-		 * since it implies someone (probably chrony) is watching over
-		 * the system clock.
+		 * since it implies someone is watching over the system clock.
 		 */
 		int s = hr_clock_lock();
 		tod_needsync = 1;
