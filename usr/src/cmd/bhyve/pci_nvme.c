@@ -514,6 +514,18 @@ pci_nvme_init_ctrldata(struct pci_nvme_softc *sc)
 	cd->ver = 0x00010300;
 
 	cd->oacs = 1 << NVME_CTRLR_DATA_OACS_FORMAT_SHIFT;
+#ifndef __FreeBSD__
+	/*
+	 * Reported upstream against https://reviews.freebsd.org/D32953
+	 * which introduced support for the namespace attribute changed AEN
+	 * and the corresponding changed namespace log page, without setting
+	 * the bit in oaes. A future sync will likely include this
+	 * definition in usr/src/contrib/bhyve/dev/nvme/nvme.h once it's
+	 * fixed there.
+	 */
+#define	NVME_CTRLR_DATA_OAES_NSCHANGE_SHIFT	(8)
+	cd->oaes = 1 << NVME_CTRLR_DATA_OAES_NSCHANGE_SHIFT;
+#endif
 	cd->acl = 2;
 	cd->aerl = 4;
 
