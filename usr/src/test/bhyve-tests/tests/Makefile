@@ -9,46 +9,40 @@
 # http://www.illumos.org/license/CDDL.
 #
 
-# Copyright 2021, Richard Lowe.
+# Copyright 2022 Oxide Computer Company
 
 include $(SRC)/cmd/Makefile.cmd
+include $(SRC)/cmd/Makefile.cmd.64
 include $(SRC)/test/Makefile.com
 
-PROG =	exclude-kmod	\
-	exclude-so	\
-	exclude-exec	\
-	include-reloc	\
-	unknown-os
+PROG =	memmap
 
-DATAFILES =	Makefile.test exclude.s stub.c
-
-ROOTOPTPKG = $(ROOT)/opt/elf-tests
-TESTDIR = $(ROOTOPTPKG)/tests/sections/shf-exclude
+ROOTOPTPKG = $(ROOT)/opt/bhyve-tests
+TESTDIR = $(ROOTOPTPKG)/tests
 
 CMDS = $(PROG:%=$(TESTDIR)/%)
 $(CMDS) := FILEMODE = 0555
 
-DATA = $(DATAFILES:%=$(TESTDIR)/%)
-$(DATA) := FILEMODE = 0444
+CSTD=		$(CSTD_GNU99)
+CPPFLAGS =	-I$(COMPAT)/bhyve -I$(CONTRIB)/bhyve \
+		-I$(COMPAT)/bhyve/amd64 -I$(CONTRIB)/bhyve/amd64 \
+		$(CPPFLAGS.master) \
+		-I$(SRC)/uts/i86pc/io/vmm \
+		-I$(SRC)/uts/i86pc
+$(PROG) := LDLIBS += \
+	-lvmmapi
 
-all:
+all: $(PROG)
 
-install: all $(CMDS) $(DATA)
+install: all $(CMDS)
 
 clobber: clean
+	-$(RM) $(PROG)
 
-clean:
-	-$(RM) $(CLEANFILES)
-
-$(CMDS): $(TESTDIR)
-
-$(DATA): $(TESTDIR)
+$(CMDS): $(TESTDIR) $(PROG)
 
 $(TESTDIR):
 	$(INS.dir)
 
 $(TESTDIR)/%: %
 	$(INS.file)
-
-$(TESTDIR)/%: %.sh
-	$(INS.rename)
