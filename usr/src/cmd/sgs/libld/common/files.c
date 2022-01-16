@@ -1414,7 +1414,7 @@ invalid_section(const char *name, Ifl_desc *ifl, Shdr *shdr, Elf_Scn *scn,
  * exit:
  *	Returns True (1) if the names match, and False (0) otherwise.
  */
-inline static int
+static int
 is_name_cmp(const char *is_name, const char *match_name, size_t match_len)
 {
 	/*
@@ -2676,10 +2676,15 @@ process_elf(Ifl_desc *ifl, Elf *elf, Ofl_desc *ofl)
 		} else {
 			/*
 			 * If this section is below SHT_LOSUNW then we don't
-			 * really know what to do with it, issue a warning
-			 * message but do the basic section processing anyway.
+			 * really know what to do with it.
+			 *
+			 * If SHF_EXCLUDE is set we're being told we should
+			 * (or may) ignore the section.	 Otherwise issue a
+			 * warning message but do the basic section processing
+			 * anyway.
 			 */
-			if (row < (Word)SHT_LOSUNW) {
+			if ((row < (Word)SHT_LOSUNW) &&
+			    ((shdr->sh_flags & SHF_EXCLUDE) == 0)) {
 				Conv_inv_buf_t inv_buf;
 
 				ld_eprintf(ofl, ERR_WARNING,
