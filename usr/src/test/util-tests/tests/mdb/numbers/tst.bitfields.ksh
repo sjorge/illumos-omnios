@@ -1,3 +1,5 @@
+#!/usr/bin/ksh
+#
 #
 # This file and its contents are supplied under the terms of the
 # Common Development and Distribution License ("CDDL"), version 1.0.
@@ -10,19 +12,19 @@
 #
 
 #
-# Copyright 2018 Joyent, Inc.
+# Copyright 2021 Oxide Computer Company
 #
 
-include ../Makefile.com
+#
+# Sanity check parts of bitfields.
+#
 
-SRCS =		bhyvetest
-SCRIPTS =	$(SRCS:%=$(ROOTBIN)/%)
+set -o pipefail
 
-SCRIPTS :=	FILEMODE = 0555
-CLOBBERFILES =	$(SCRIPTS)
+tst_root="$(dirname $0)/.."
+tst_prog="$tst_root/progs/bitfields"
+tst_outfile="/tmp/mdb.bitfield.out.$$"
+tst_exp="$0.out"
 
-install: $(SCRIPTS)
-
-lint:
-
-include ../Makefile.targ
+$MDB -e "first::print -t broken_t" $tst_prog > $ODIR/stdout
+$MDB -e "second::print -t broken6491_t" $tst_prog >> $ODIR/stdout
