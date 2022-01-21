@@ -13,16 +13,8 @@ are included in the footer.
 
 =======================================================================
 
-13768 mpapi is too clever with its ioctls tripping SSP
-	system/kernel
-	system/mpathadm
-	system/library/storage/libmpapi
-
-	https://hf.omnios.org/r38/13768_mpapi.p5p
-
-13689 Want AWS ENA driver
-	driver/network/ena
-	entire
+14329 sys/atomic.h: 5066 got the order of ifdef/endif wrong
+	system/header
 
 =======================================================================
 
