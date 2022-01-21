@@ -32,7 +32,7 @@ sparc_MACHDIR = sparc
 i386_MACHDIR = intel
 
 sparc_SUBDIRS = sparc sun4u sun4v
-i386_SUBDIRS = intel i86pc i86xpv
+i386_SUBDIRS = intel i86pc
 
 MACHDIR = $($(MACH)_MACHDIR)
 SUBDIRS = tools $($(MACH)_SUBDIRS) demo

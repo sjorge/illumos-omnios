@@ -2043,13 +2043,6 @@ file path=opt/SUNWdtrt/tst/common/vars/tst.uid.d mode=0444
 file path=opt/SUNWdtrt/tst/common/vars/tst.walltimestamp.d mode=0444
 dir  path=opt/SUNWdtrt/tst/common/version
 file path=opt/SUNWdtrt/tst/common/version/tst.1.0.d mode=0444
-$(i386_ONLY)dir path=opt/SUNWdtrt/tst/i86xpv
-$(i386_ONLY)dir path=opt/SUNWdtrt/tst/i86xpv/xdt
-$(i386_ONLY)file path=opt/SUNWdtrt/tst/i86xpv/xdt/tst.basic.ksh mode=0444
-$(i386_ONLY)file path=opt/SUNWdtrt/tst/i86xpv/xdt/tst.hvmenable.ksh mode=0444
-$(i386_ONLY)file path=opt/SUNWdtrt/tst/i86xpv/xdt/tst.memenable.ksh mode=0444
-$(i386_ONLY)file path=opt/SUNWdtrt/tst/i86xpv/xdt/tst.schedargs.ksh mode=0444
-$(i386_ONLY)file path=opt/SUNWdtrt/tst/i86xpv/xdt/tst.schedenable.ksh mode=0444
 legacy pkg=SUNWdtrt category=internal \
     desc="DTrace Test Suite Internal Distribution" \
     hotline="Contact the DTrace discussion forum" name="DTrace Test Suite"

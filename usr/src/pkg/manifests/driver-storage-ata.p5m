@@ -48,12 +48,6 @@ dir  path=platform/i86pc/kernel/drv group=sys
 dir  path=platform/i86pc/kernel/drv/$(ARCH64) group=sys
 file path=platform/i86pc/kernel/drv/$(ARCH64)/pci-ide group=sys
 file path=platform/i86pc/kernel/drv/pci-ide.conf group=sys
-dir  path=platform/i86xpv group=sys
-dir  path=platform/i86xpv/kernel group=sys
-dir  path=platform/i86xpv/kernel/drv group=sys
-dir  path=platform/i86xpv/kernel/drv/$(ARCH64) group=sys
-file path=platform/i86xpv/kernel/drv/$(ARCH64)/pci-ide group=sys
-file path=platform/i86xpv/kernel/drv/pci-ide.conf group=sys
 dir  path=usr/share/man
 dir  path=usr/share/man/man7d
 file path=usr/share/man/man7d/ata.7d

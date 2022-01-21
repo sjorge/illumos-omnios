@@ -1732,15 +1732,6 @@ $(i386_ONLY)file path=usr/platform/i86pc/include/vm/hat_pte.h
 $(i386_ONLY)file path=usr/platform/i86pc/include/vm/hment.h
 $(i386_ONLY)file path=usr/platform/i86pc/include/vm/htable.h
 $(i386_ONLY)file path=usr/platform/i86pc/include/vm/kboot_mmu.h
-$(i386_ONLY)dir path=usr/platform/i86xpv group=sys
-$(i386_ONLY)dir path=usr/platform/i86xpv/include
-$(i386_ONLY)dir path=usr/platform/i86xpv/include/sys
-$(i386_ONLY)file path=usr/platform/i86xpv/include/sys/balloon.h
-$(i386_ONLY)file path=usr/platform/i86xpv/include/sys/machprivregs.h
-$(i386_ONLY)file path=usr/platform/i86xpv/include/sys/xen_mmu.h
-$(i386_ONLY)file path=usr/platform/i86xpv/include/sys/xpv_impl.h
-$(i386_ONLY)dir path=usr/platform/i86xpv/include/vm
-$(i386_ONLY)file path=usr/platform/i86xpv/include/vm/seg_mf.h
 $(sparc_ONLY)dir path=usr/platform/sun4u group=sys
 $(sparc_ONLY)dir path=usr/platform/sun4u/include
 $(sparc_ONLY)dir path=usr/platform/sun4u/include/sys
@@ -2200,11 +2191,6 @@ $(i386_ONLY)link path=usr/share/src/uts/i86pc/sys \
     target=../../../../platform/i86pc/include/sys
 $(i386_ONLY)link path=usr/share/src/uts/i86pc/vm \
     target=../../../../platform/i86pc/include/vm
-$(i386_ONLY)dir path=usr/share/src/uts/i86xpv
-$(i386_ONLY)link path=usr/share/src/uts/i86xpv/sys \
-    target=../../../../platform/i86xpv/include/sys
-$(i386_ONLY)link path=usr/share/src/uts/i86xpv/vm \
-    target=../../../../platform/i86xpv/include/vm
 $(sparc_ONLY)dir path=usr/share/src/uts/sun4u
 $(sparc_ONLY)link path=usr/share/src/uts/sun4u/sys \
     target=../../../../platform/sun4u/include/sys
