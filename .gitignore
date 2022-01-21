@@ -315,6 +315,10 @@ usr/src/cmd/beadm/beadm
 usr/src/cmd/bhhwcompat/bhhwcompat
 usr/src/cmd/bhyve/bhyve
 usr/src/cmd/bhyve/mevent_test
+usr/src/cmd/bhyve/test/tests/mevent/lists_delete
+usr/src/cmd/bhyve/test/tests/mevent/read_disable
+usr/src/cmd/bhyve/test/tests/mevent/read_pause
+usr/src/cmd/bhyve/test/tests/mevent/read_requeue
 usr/src/cmd/bhyvectl/bhyvectl
 usr/src/cmd/biosdev/biosdev
 usr/src/cmd/bnu/bnuconvert
@@ -4487,6 +4491,8 @@ usr/src/test/util-tests/tests/libsff/libsff_lengths
 usr/src/test/util-tests/tests/libsff/libsff_opts
 usr/src/test/util-tests/tests/libsff/libsff_strings
 usr/src/test/util-tests/tests/libsff/libsff_wave
+usr/src/test/util-tests/tests/mdb/progs/bitfields
+usr/src/test/util-tests/tests/mdb/progs/number_symbol
 usr/src/test/util-tests/tests/mergeq/mqt
 usr/src/test/util-tests/tests/smbios/smbios
 usr/src/test/util-tests/tests/workq/wqt
