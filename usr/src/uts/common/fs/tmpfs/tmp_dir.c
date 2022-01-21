@@ -55,6 +55,7 @@ static int tdiraddentry(struct tmpnode *, struct tmpnode *, char *,
 #define	T_HASH_SIZE	8192		/* must be power of 2 */
 #define	T_MUTEX_SIZE	64
 
+/* Non-static so compilers won't constant-fold these away. */
 clock_t tmpfs_rename_backoff_delay = 1;
 unsigned int tmpfs_rename_backoff_tries = 0;
 unsigned long tmpfs_rename_loops = 0;
@@ -300,7 +301,12 @@ tdirenter(
 			 * nonzero, return EBUSY after that number of tries.
 			 */
 			while (!rw_tryenter(&tp->tn_rwlock, RW_WRITER)) {
+				/*
+				 * Sloppy, but this is a diagnostic so atomic
+				 * increment would be overkill.
+				 */
 				tmpfs_rename_loops++;
+
 				if (tmpfs_rename_backoff_tries != 0) {
 					if (tries > tmpfs_rename_backoff_tries)
 						return (EBUSY);
