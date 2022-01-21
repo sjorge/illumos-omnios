@@ -1097,6 +1097,7 @@ kmem_freepages(void *addr, pgcnt_t npages)
 	kmem_free(addr, ptob(npages));
 }
 
+#ifdef __sparc
 /*
  * segkmem_page_create_large() allocates a large page to be used for the kmem
  * caches. If kpr is enabled we ask for a relocatable page unless requested
@@ -1243,6 +1244,7 @@ segkmem_free_one_lp(caddr_t addr, size_t size)
 
 	/* page_unresv() is done by the caller */
 }
+#endif /* __sparc */
 
 /*
  * This function is called to import new spans into the vmem arenas like
@@ -1387,6 +1389,7 @@ segkmem_free_lp(vmem_t *vmp, void *inaddr, size_t size)
 	}
 }
 
+#ifdef __sparc
 /*
  * segkmem_alloc_lpi() imports virtual memory from large page heap arena
  * into kmem_lp arena. In the process it maps the imported segment with
@@ -1439,6 +1442,7 @@ segkmem_free_lpi(vmem_t *vmp, void *inaddr, size_t size)
 
 	vmem_free(vmp, inaddr, size);
 }
+#endif /* __sparc */
 
 /*
  * This function is called at system boot time by kmem_init right after
