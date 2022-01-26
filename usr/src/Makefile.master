@@ -152,7 +152,7 @@ BUILDPERL32=	$(POUND_SIGN)
 BUILDPY2=	$(POUND_SIGN)
 BUILDPY2TOOLS=	$(POUND_SIGN)
 
-GNUC_ROOT=	/opt/gcc-7
+GNUC_ROOT=	/opt/gcc-10
 GCCLIBDIR=	$(GNUC_ROOT)/lib
 GCCLIBDIR64=	$(GNUC_ROOT)/lib/$(MACH64)
 
@@ -925,9 +925,9 @@ SPRO_ROOT=		$(BUILD_TOOLS)/SUNWspro
 SPRO_VROOT=		$(SPRO_ROOT)/SS12
 GNU_ROOT=		/usr
 
-$(__GNUC)PRIMARY_CC=	gcc7,$(GNUC_ROOT)/bin/gcc,gnu
+$(__GNUC)PRIMARY_CC=	gcc10,$(GNUC_ROOT)/bin/gcc,gnu
 $(__SUNC)PRIMARY_CC=	studio12,$(SPRO_VROOT)/bin/cc,sun
-$(__GNUC)PRIMARY_CCC=	gcc7,$(GNUC_ROOT)/bin/g++,gnu
+$(__GNUC)PRIMARY_CCC=	gcc10,$(GNUC_ROOT)/bin/g++,gnu
 $(__SUNC)PRIMARY_CCC=	studio12,$(SPRO_VROOT)/bin/CC,sun
 
 CW_CC_COMPILERS=	$(PRIMARY_CC:%=--primary %) $(SHADOW_CCS:%=--shadow %)
