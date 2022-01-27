@@ -1193,6 +1193,7 @@ mwlWaitForCmdComplete(struct mwl_softc *sc, uint16_t cmdCode)
 #undef MAX_WAIT_FW_COMPLETE_ITERATIONS
 }
 
+#ifdef DEBUG
 static const char *
 mwlcmdname(int cmd)
 {
@@ -1252,6 +1253,7 @@ mwlcmdname(int cmd)
 	return (buf);
 #undef CMD
 }
+#endif /* DEBUG */
 
 static void
 dumpresult(struct mwl_softc *sc, int showresult)

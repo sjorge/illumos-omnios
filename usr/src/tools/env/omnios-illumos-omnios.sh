@@ -5,11 +5,9 @@
 # Enable the non-DEBUG build
 NIGHTLY_OPTIONS=${NIGHTLY_OPTIONS/F/}
 
-export GNUC_ROOT=/opt/gcc-7/
 export ON_CLOSED_BINS=/opt/onbld/closed
 
 # On OmniOS, gcc resides in /opt/gcc-<version> - adjust variables
-export GNUC_ROOT=/opt/gcc-7/
 for name in PRIMARY_CC PRIMARY_CCC SHADOW_CCS SHADOW_CCCS; do
         typeset -n var=$name
         var="`echo $var | sed '
@@ -17,6 +15,15 @@ for name in PRIMARY_CC PRIMARY_CCC SHADOW_CCS SHADOW_CCCS; do
                 s^/opt/gcc/^/opt/gcc-^
         '`"
 done
+
+# OmniOS is built with a gcc-10 primary compiler and gcc-7 secondary. This is
+# currently the inverse of illumos-gate. The illumos-gate switch to gcc-10 is
+# https://www.illumos.org/issues/14421
+export GNUC_ROOT=/opt/gcc-10/
+PRIMARY_CC=${PRIMARY_CC//gcc-7/gcc-10}
+PRIMARY_CCC=${PRIMARY_CC//gcc-7/gcc-10}
+SHADOW_CCS=${SHADOW_CCS//gcc-10/gcc-7}
+SHADOW_CCCS=${SHADOW_CCS//gcc-10/gcc-7}
 
 ENABLE_SMB_PRINTING='#'
 

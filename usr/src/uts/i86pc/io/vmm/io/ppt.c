@@ -322,21 +322,21 @@ ppt_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 }
 
 static int
-ppt_find_pba_bar(struct pptdev *ppt)
+ppt_find_msix_table_bar(struct pptdev *ppt)
 {
 	uint16_t base;
-	uint32_t pba_off;
+	uint32_t off;
 
 	if (PCI_CAP_LOCATE(ppt->pptd_cfg, PCI_CAP_ID_MSI_X, &base) !=
 	    DDI_SUCCESS)
 		return (-1);
 
-	pba_off = pci_config_get32(ppt->pptd_cfg, base + PCI_MSIX_PBA_OFFSET);
+	off = pci_config_get32(ppt->pptd_cfg, base + PCI_MSIX_TBL_OFFSET);
 
-	if (pba_off == PCI_EINVAL32)
+	if (off == PCI_EINVAL32)
 		return (-1);
 
-	return (pba_off & PCI_MSIX_PBA_BIR_MASK);
+	return (off & PCI_MSIX_TBL_BIR_MASK);
 }
 
 static int
@@ -361,7 +361,7 @@ ppt_devmap(dev_t dev, devmap_cookie_t dhp, offset_t off, size_t len,
 	if (off < 0 || off != P2ALIGN(off, PAGESIZE))
 		return (EINVAL);
 
-	if ((bar = ppt_find_pba_bar(ppt)) == -1)
+	if ((bar = ppt_find_msix_table_bar(ppt)) == -1)
 		return (EINVAL);
 
 	ddireg = ppt->pptd_bars[bar].ddireg;
@@ -377,7 +377,6 @@ ppt_devmap(dev_t dev, devmap_cookie_t dhp, offset_t off, size_t len,
 
 	return (err);
 }
-
 
 static void
 ppt_bar_wipe(struct pptdev *ppt)
@@ -754,7 +753,7 @@ ppt_max_completion_tmo_us(dev_info_t *dip)
 	    PCIE_PCIECAP_VER_MASK) < PCIE_PCIECAP_VER_2_0)
 		goto out;
 
-	if ((PCI_CAP_GET16(hdl, 0, cap_ptr, PCIE_DEVCAP2) &
+	if ((PCI_CAP_GET32(hdl, 0, cap_ptr, PCIE_DEVCAP2) &
 	    PCIE_DEVCTL2_COM_TO_RANGE_MASK) == 0)
 		goto out;
 
@@ -782,7 +781,7 @@ ppt_flr(dev_info_t *dip, boolean_t force)
 	if (PCI_CAP_LOCATE(hdl, PCI_CAP_ID_PCI_E, &cap_ptr) != DDI_SUCCESS)
 		goto fail;
 
-	if ((PCI_CAP_GET16(hdl, 0, cap_ptr, PCIE_DEVCAP) & PCIE_DEVCAP_FLR)
+	if ((PCI_CAP_GET32(hdl, 0, cap_ptr, PCIE_DEVCAP) & PCIE_DEVCAP_FLR)
 	    == 0)
 		goto fail;
 

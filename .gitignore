@@ -319,6 +319,8 @@ usr/src/cmd/bhyve/test/tests/mevent/lists_delete
 usr/src/cmd/bhyve/test/tests/mevent/read_disable
 usr/src/cmd/bhyve/test/tests/mevent/read_pause
 usr/src/cmd/bhyve/test/tests/mevent/read_requeue
+usr/src/cmd/bhyve/test/tests/mevent/vnode_file
+usr/src/cmd/bhyve/test/tests/mevent/vnode_zvol
 usr/src/cmd/bhyvectl/bhyvectl
 usr/src/cmd/biosdev/biosdev
 usr/src/cmd/bnu/bnuconvert
@@ -1320,9 +1322,6 @@ usr/src/cmd/mdb/i86pc/modules/apix/amd64/kmod/
 usr/src/cmd/mdb/i86pc/modules/pcplusmp/amd64/kmod/
 usr/src/cmd/mdb/i86pc/modules/unix/amd64/kmod/
 usr/src/cmd/mdb/i86pc/modules/uppc/amd64/kmod/
-usr/src/cmd/mdb/i86xpv/modules/unix/amd64/kmod/
-usr/src/cmd/mdb/i86xpv/modules/xpv_psm/amd64/kmod/
-usr/src/cmd/mdb/i86xpv/modules/xpv_uppc/amd64/kmod/
 usr/src/cmd/mdb/intel/amd64/arp/kmod/
 usr/src/cmd/mdb/intel/amd64/cpc/kmod/
 usr/src/cmd/mdb/intel/amd64/crypto/kmod/
@@ -4162,7 +4161,8 @@ usr/src/pkg/install-nd-i386.out
 usr/src/pkg/license-list
 usr/src/pkg/packages.i386/
 usr/src/pkg/proto_list_i386
-usr/src/test/bhyve-tests/tests/memmap
+usr/src/test/bhyve-tests/tests/vmm/mem_partial
+usr/src/test/bhyve-tests/tests/vmm/mem_seg_map
 usr/src/test/crypto-tests/tests/digest/md5_32_kcf
 usr/src/test/crypto-tests/tests/digest/md5_32_pkcs
 usr/src/test/crypto-tests/tests/digest/md5_64_kcf
@@ -4756,8 +4756,6 @@ usr/src/uts/i86pc/io/acpi/drmach_acpi/drmach_err.c
 usr/src/uts/i86pc/io/acpi/drmach_acpi/sbdgenerr
 usr/src/uts/i86pc/io/dr/dr_err.c
 usr/src/uts/i86pc/io/dr/sbdgenerr
-usr/src/uts/i86xpv/cpu/scripts/ao_gendisp
-usr/src/uts/i86xpv/cpu/scripts/ao_gendisp.pl
 usr/src/uts/intel/arcfour/arcfour-x86_64.s
 usr/src/uts/intel/core_pcbe/core_pcbe_bdw.c
 usr/src/uts/intel/core_pcbe/core_pcbe_bdw_de.c
