@@ -131,8 +131,8 @@ if [[ -d $ZONEROOT/etc && ! -h $ZONEROOT/etc && -d $ZONEROOT/etc/systemd &&
     rm -f $sysdir/dbus-org.freedesktop.NetworkManager.service
     # our network setup needs to run
     fnm=$sysdir/multi-user.target.wants/network.service
-    if [[ ! -f $fnm ]]; then
-        ln -s /etc/rc.d/init.d/network \
+    if [ -d $sysdir/multi-user.target.wants -a ! -e $fnm ]; then
+        ln -sf /etc/rc.d/init.d/network \
             $sysdir/multi-user.target.wants/network.service
     fi
 fi
@@ -264,35 +264,37 @@ RMSVCS="control-alt-delete
 
 for f in $RMSVCS
 do
-	disable_svc $f
+	disable_svc $f 2>/dev/null
 done
 
-if [[ ! -f $ZONEROOT/etc/init/tty.override ]]; then
-	cat > $ZONEROOT/etc/init/tty.override <<- EOF
-	# tty - getty
-	#
-	# This service maintains a getty on the console.
+if [ -d $ZONEROOT/etc/init ]; then
+	if [ ! -f $ZONEROOT/etc/init/tty.override ]; then
+		cat > $ZONEROOT/etc/init/tty.override <<- EOF
+		# tty - getty
+		#
+		# This service maintains a getty on the console.
 
-	stop on runlevel [S016]
+		stop on runlevel [S016]
 
-	respawn
-	instance console
-	exec /sbin/mingetty console
-	EOF
-fi
+		respawn
+		instance console
+		exec /sbin/mingetty console
+		EOF
+	fi
 
-if [[ ! -f $ZONEROOT/etc/init/start-ttys.override ]]; then
-	cat > $ZONEROOT/etc/init/start-ttys.override <<- EOF
-	# This service starts the configured number of gettys.
-	#
+	if [ ! -f $ZONEROOT/etc/init/start-ttys.override ]; then
+		cat > $ZONEROOT/etc/init/start-ttys.override <<- EOF
+		# This service starts the configured number of gettys.
+		#
 
-	start on stopped rc RUNLEVEL=[2345]
+		start on stopped rc RUNLEVEL=[2345]
 
-	task
-	script
-		initctl start tty
-	end script
-	EOF
+		task
+		script
+			initctl start tty
+		end script
+		EOF
+	fi
 fi
 
 #
@@ -303,7 +305,7 @@ fi
 # Don't bother to modify the file if it looks like we already did.
 #
 fnm=$ZONEROOT/etc/rc.d/init.d/halt
-if ! egrep -s "Disabled by lx brand" $fnm; then
+if [ -f "$fnm" ] && ! egrep -s "Disabled by lx brand" $fnm; then
 	awk 'BEGIN {skip = ""}
 	    /^# Save mixer/ {skip = "# Disabled by lx brand: "}
 	    /halt.local/ {skip = ""}
@@ -335,18 +337,20 @@ fi
 fnm=$ZONEROOT/etc/rc.d/rc.sysinit
 tmpfile=/tmp/lx_rc.sysinit.$$
 
-sed 's@^/sbin/hwclock@# lx: &@
-    s@^/bin/dmesg -n@# lx: &@
-    s@^dmesg -s@# lx: &@
-    s@^initlog -c \"fsck@# lx: &@
-    s@^mount -n -o remount /dev/shm @mount -t tmpfs tmpfs /dev/shm @
-    s@^mount .* /dev/pts@# lx: &@
-    /^#remount \/dev\/shm/d' \
-    $fnm > $tmpfile
+if [ -f "$fnm" ]; then
+	sed 's@^/sbin/hwclock@# lx: &@
+	    s@^/bin/dmesg -n@# lx: &@
+	    s@^dmesg -s@# lx: &@
+	    s@^initlog -c \"fsck@# lx: &@
+	    s@^mount -n -o remount /dev/shm @mount -t tmpfs tmpfs /dev/shm @
+	    s@^mount .* /dev/pts@# lx: &@
+	    /^#remount \/dev\/shm/d' \
+	    $fnm > $tmpfile
 
-if [[ ! -h $fnm ]]; then
-	mv -f $tmpfile $fnm
-	chmod 755 $fnm
+	if [[ ! -h $fnm ]]; then
+		mv -f $tmpfile $fnm
+		chmod 755 $fnm
+	fi
 fi
 
 #
