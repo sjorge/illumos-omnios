@@ -16,6 +16,12 @@ are included in the footer.
 14329 sys/atomic.h: 5066 got the order of ifdef/endif wrong
 	system/header
 
+5060 Assertion failure in iprb during watchdog reset
+14419 iprb transmit watchdog somewhat overzealous
+	driver/network/iprb
+
+	https://hf.omnios.org/r38/iprb.p5p
+
 =======================================================================
 
 =============================
