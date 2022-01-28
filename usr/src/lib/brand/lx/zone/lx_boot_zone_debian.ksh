@@ -87,7 +87,7 @@ fi
 # Don't bother changing the file if it looks like we already did.
 #
 fnm=$ZONEROOT/etc/inittab
-if ! egrep -s "Modified by lx brand" $fnm; then
+if [ -f $fnm ] && ! egrep -s "Modified by lx brand" $fnm; then
 	sed 's/^[1-6]:/# Disabled by lx brand: &/' \
 	    $fnm > $tmpfile
 	echo "1:2345:respawn:/sbin/getty 38400 console" >> $tmpfile
@@ -153,7 +153,7 @@ RMSVCS="
 "
 for f in $RMSVCS
 do
-	disable_svc $f
+	disable_svc $f 2>/dev/null
 done
 
 #
