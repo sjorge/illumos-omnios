@@ -298,6 +298,9 @@
 
 #include <sys/nvme.h>
 
+#include <sys/sysevent/eventdefs.h>
+#include <sys/sysevent/dev.h>
+
 #ifdef __x86
 #include <sys/x86_archext.h>
 #endif
@@ -444,6 +447,8 @@ static int nvme_ufm_getcaps(ddi_ufm_handle_t *, void *, ddi_ufm_cap_t *);
 static int nvme_open(dev_t *, int, int, cred_t *);
 static int nvme_close(dev_t, int, int, cred_t *);
 static int nvme_ioctl(dev_t, int, intptr_t, int, cred_t *, int *);
+
+static void nvme_changed_ns(nvme_t *, int);
 
 static ddi_ufm_ops_t nvme_ufm_ops = {
 	NULL,
@@ -1955,11 +1960,7 @@ nvme_async_event_task(void *arg)
 
 				if (nsid == 0)	/* end of list */
 					break;
-
-				dev_err(nvme->n_dip, CE_CONT,
-				    "namespace %u (%s) has changed.\n",
-				    nsid, nvme->n_ns[nsid - 1].ns_name);
-				/* TODO: handle namespace resize. */
+				nvme_changed_ns(nvme, nsid);
 			}
 
 			break;
@@ -2691,6 +2692,89 @@ nvme_prepare_devid(nvme_t *nvme, uint32_t nsid)
 
 	nvme->n_ns[nsid - 1].ns_devid = kmem_asprintf("%4X-%s-%s-%X",
 	    nvme->n_idctl->id_vid, model, serial, nsid);
+}
+
+static void
+nvme_changed_ns(nvme_t *nvme, int nsid)
+{
+	nvme_namespace_t *ns = &nvme->n_ns[nsid - 1];
+	nvme_identify_nsid_t *idns;
+	dev_info_t *cdip;
+	size_t blksz;
+	nvlist_t *attr = NULL;
+	char *path = NULL;
+
+	dev_err(nvme->n_dip, CE_NOTE, "!namespace %u (%s) has changed.\n",
+	    nsid, ns->ns_name);
+
+	if (ns->ns_ignore)
+		return;
+
+	if (nvme_identify(nvme, B_FALSE, nsid, (void **)&idns) != 0) {
+		dev_err(nvme->n_dip, CE_WARN,
+		    "!failed to identify namespace %d", nsid);
+		return;
+	}
+
+	kmem_free(ns->ns_idns, sizeof (nvme_identify_nsid_t));
+	ns->ns_idns = idns;
+
+	/*
+	 * There are a number of ways in which the namespace can have changed.
+	 * If the block count has increased without the block size changing,
+	 * sent a DLE (dynamic LUN expansion) sysevent.
+	 */
+
+	blksz = 1 << idns->id_lbaf[idns->id_flbas.lba_format].lbaf_lbads;
+
+	if (blksz != ns->ns_block_size)
+		return;
+
+	if (idns->id_nsize <= ns->ns_block_count)
+		return;
+
+	dev_err(nvme->n_dip, CE_CONT,
+	    "!namespace %u (%s) has changed size %lu -> %lu %lu-byte blocks\n",
+	    nsid, ns->ns_name, ns->ns_block_count, idns->id_nsize, blksz);
+
+	ns->ns_block_count = idns->id_nsize;
+
+	if ((cdip = ddi_get_child(nvme->n_dip)) == NULL)
+		return;
+
+	if (nvlist_alloc(&attr, NV_UNIQUE_NAME_TYPE, KM_NOSLEEP) != 0)
+		return;
+
+	path = kmem_zalloc(MAXPATHLEN, KM_NOSLEEP);
+	if (path == NULL)
+		goto out;
+
+	(void) snprintf(path, MAXPATHLEN, "/devices");
+	(void) ddi_pathname(cdip, path + strlen(path));
+	(void) snprintf(path + strlen(path), MAXPATHLEN - strlen(path), ":x");
+
+	/*
+	 * On receipt of this event, the ZFS sysevent module will scan active
+	 * zpools for child vdevs matching this physical path. In order to
+	 * catch both whole disk pools and those with an EFI boot partition,
+	 * generate separate sysevents for minor node 'a' and 'b'.
+	 * (By comparison, io/scsi/targets/sd.c sends just 'a')
+	 */
+	for (char c = 'a'; c < 'c'; c++) {
+		path[strlen(path) - 1] = c;
+
+		if (nvlist_add_string(attr, DEV_PHYS_PATH, path) != 0)
+			goto out;
+
+		(void) ddi_log_sysevent(nvme->n_dip, DDI_VENDOR_SUNW,
+		    EC_DEV_STATUS, ESC_DEV_DLE, attr, NULL, DDI_NOSLEEP);
+	}
+
+out:
+	if (attr != NULL)
+		nvlist_free(attr);
+	if (path != NULL)
+		kmem_free(path, MAXPATHLEN);
 }
 
 static int
