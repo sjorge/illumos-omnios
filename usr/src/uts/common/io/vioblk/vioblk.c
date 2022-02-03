@@ -25,6 +25,7 @@
  * Copyright 2020 Joyent Inc.
  * Copyright 2019 Western Digital Corporation.
  * Copyright 2020 Oxide Computer Company
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -89,12 +90,14 @@
 #include <sys/ctype.h>
 #include <sys/sysmacros.h>
 #include <sys/dkioc_free_util.h>
+#include <sys/sysevent/eventdefs.h>
+#include <sys/sysevent/dev.h>
 
 #include "virtio.h"
 #include "vioblk.h"
 
 static void vioblk_get_id(vioblk_t *);
-uint_t vioblk_int_handler(caddr_t, caddr_t);
+static uint_t vioblk_int_handler(caddr_t, caddr_t);
 static uint_t vioblk_poll(vioblk_t *);
 static int vioblk_quiesce(dev_info_t *);
 static int vioblk_attach(dev_info_t *, ddi_attach_cmd_t);
@@ -737,8 +740,8 @@ vioblk_poll(vioblk_t *vib)
 	return (count);
 }
 
-uint_t
-vioblk_int_handler(caddr_t arg0, caddr_t arg1)
+static uint_t
+vioblk_int_handler(caddr_t arg0, caddr_t arg1 __unused)
 {
 	vioblk_t *vib = (vioblk_t *)arg0;
 	uint_t count;
@@ -752,6 +755,88 @@ vioblk_int_handler(caddr_t arg0, caddr_t arg1)
 	vib->vib_stats->vbs_intr_total.value.ui64++;
 	mutex_exit(&vib->vib_mutex);
 
+	return (DDI_INTR_CLAIMED);
+}
+
+static uint_t
+vioblk_cfgchange(caddr_t arg0, caddr_t arg1 __unused)
+{
+	vioblk_t *vib = (vioblk_t *)arg0;
+	uint64_t oblks, nblks;
+	uint32_t blksz;
+	dev_info_t *cdip;
+	nvlist_t *attr = NULL;
+	char *path = NULL;
+
+	dev_err(vib->vib_dip, CE_NOTE, "Configuration changed");
+
+	mutex_enter(&vib->vib_mutex);
+
+	/* Only send a DLE event if the size has increased */
+
+	nblks = virtio_dev_get64(vib->vib_virtio, VIRTIO_BLK_CONFIG_CAPACITY);
+	if (nblks == UINT64_MAX || nblks <= vib->vib_nblks)
+		goto out_locked;
+
+	if (virtio_feature_present(vib->vib_virtio, VIRTIO_BLK_F_BLK_SIZE)) {
+		blksz = virtio_dev_get32(vib->vib_virtio,
+		    VIRTIO_BLK_CONFIG_BLK_SIZE);
+
+		if (blksz != vib->vib_blk_size)
+			goto out_locked;
+	}
+
+	oblks = vib->vib_nblks;
+	blksz = vib->vib_blk_size;
+	vib->vib_nblks = nblks;
+
+	mutex_exit(&vib->vib_mutex);
+
+	dev_err(vib->vib_dip, CE_CONT,
+	    "!changed size %lu -> %lu %u-byte blocks\n",
+	    oblks, nblks, blksz);
+
+	if ((cdip = ddi_get_child(vib->vib_dip)) == NULL)
+		goto out;
+
+	if (nvlist_alloc(&attr, NV_UNIQUE_NAME_TYPE, KM_NOSLEEP) != 0)
+		goto out;
+
+	path = kmem_zalloc(MAXPATHLEN, KM_NOSLEEP);
+	if (path == NULL)
+		goto out;
+
+	(void) snprintf(path, MAXPATHLEN, "/devices");
+	(void) ddi_pathname(cdip, path + strlen(path));
+	(void) snprintf(path + strlen(path), MAXPATHLEN - strlen(path), ":x");
+
+	/*
+	 * On receipt of this event, the ZFS sysevent module will scan active
+	 * zpools for child vdevs matching this physical path. In order to
+	 * catch both whole disk pools and those with an EFI boot partition,
+	 * generate separate sysevents for minor node 'a' and 'b'.
+	 * (By comparison, io/scsi/targets/sd.c sends just 'a')
+	 */
+	for (char c = 'a'; c < 'c'; c++) {
+		path[strlen(path) - 1] = c;
+
+		if (nvlist_add_string(attr, DEV_PHYS_PATH, path) != 0)
+			goto out;
+
+		(void) ddi_log_sysevent(vib->vib_dip, DDI_VENDOR_SUNW,
+		    EC_DEV_STATUS, ESC_DEV_DLE, attr, NULL, DDI_NOSLEEP);
+	}
+
+out:
+	if (attr != NULL)
+		nvlist_free(attr);
+	if (path != NULL)
+		kmem_free(path, MAXPATHLEN);
+
+	return (DDI_INTR_CLAIMED);
+
+out_locked:
+	mutex_exit(&vib->vib_mutex);
 	return (DDI_INTR_CLAIMED);
 }
 
@@ -905,6 +990,8 @@ vioblk_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	    vioblk_int_handler, vib, B_FALSE, vib->vib_seg_max + 2)) == NULL) {
 		goto fail;
 	}
+
+	virtio_register_cfgchange_handler(vio, vioblk_cfgchange, vib);
 
 	if (virtio_init_complete(vio, 0) != DDI_SUCCESS) {
 		dev_err(dip, CE_WARN, "failed to complete Virtio init");

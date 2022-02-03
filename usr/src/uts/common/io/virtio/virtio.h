@@ -11,6 +11,7 @@
 
 /*
  * Copyright 2019 Joyent, Inc.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #ifndef _VIRTIO_H
@@ -280,6 +281,9 @@ virtio_t *virtio_init(dev_info_t *, uint64_t, boolean_t);
 int virtio_init_complete(virtio_t *, int);
 int virtio_quiesce(virtio_t *);
 void virtio_shutdown(virtio_t *);
+
+void virtio_register_cfgchange_handler(virtio_t *, ddi_intr_handler_t *,
+    void *);
 
 void *virtio_intr_pri(virtio_t *);
 
