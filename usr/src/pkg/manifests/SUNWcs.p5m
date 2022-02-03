@@ -1262,6 +1262,7 @@ file path=usr/lib/sysevent/modules/datalink_mod.so
 file path=usr/lib/sysevent/modules/devfsadmd_mod.so
 file path=usr/lib/sysevent/modules/sysevent_conf_mod.so
 file path=usr/lib/sysevent/modules/sysevent_reg_mod.so
+file path=usr/lib/sysevent/sysevent mode=0555
 file path=usr/lib/sysevent/syseventconfd mode=0555
 file path=usr/lib/sysevent/syseventd mode=0555
 file path=usr/lib/utmp_update mode=4555
