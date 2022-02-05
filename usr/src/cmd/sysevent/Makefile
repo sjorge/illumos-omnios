@@ -38,4 +38,6 @@ install: all $(ROOTCMD)
 clean:
 	$(RM) $(OBJS)
 
+SMOFF += all_func_returns
+
 include	../Makefile.targ
