@@ -58,7 +58,9 @@ static void pmcs_flush_observations(pmcs_hw_t *);
 static boolean_t pmcs_report_observations(pmcs_hw_t *);
 static boolean_t pmcs_report_iport_observations(pmcs_hw_t *, pmcs_iport_t *,
     pmcs_phy_t *);
+#ifdef DEBUG
 static pmcs_phy_t *pmcs_find_phy_needing_work(pmcs_hw_t *, pmcs_phy_t *);
+#endif
 static int pmcs_kill_devices(pmcs_hw_t *, pmcs_phy_t *);
 static void pmcs_lock_phy_impl(pmcs_phy_t *, int);
 static void pmcs_unlock_phy_impl(pmcs_phy_t *, int);
@@ -2666,7 +2668,7 @@ pmcs_find_phy_needing_work(pmcs_hw_t *pwp, pmcs_phy_t *pptr)
 
 	return (NULL);
 }
-#endif /* DEBUG */
+#endif
 
 /*
  * We may (or may not) report observations to SCSA.  This is prefaced by
