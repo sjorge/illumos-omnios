@@ -2259,6 +2259,7 @@ usr/src/cmd/svr4pkg/pkgtrans/pkgtrans
 usr/src/cmd/swap/amd64/swap
 usr/src/cmd/sync/sync
 usr/src/cmd/sysdef/amd64/sysdef
+usr/src/cmd/sysevent/sysevent
 usr/src/cmd/syseventadm/syseventadm
 usr/src/cmd/syseventd/daemons/syseventconfd/syseventconfd
 usr/src/cmd/syseventd/daemons/syseventd/syseventd
@@ -4416,6 +4417,8 @@ usr/src/test/os-tests/tests/spoof-ras/spoof-ras
 usr/src/test/os-tests/tests/stackalign/stackalign.32
 usr/src/test/os-tests/tests/stackalign/stackalign.64
 usr/src/test/os-tests/tests/stress/dladm-kstat
+usr/src/test/os-tests/tests/syscall/fchmodat.32
+usr/src/test/os-tests/tests/syscall/fchmodat.64
 usr/src/test/os-tests/tests/syscall/open.32
 usr/src/test/os-tests/tests/syscall/open.64
 usr/src/test/os-tests/tests/timer/timer_limit
