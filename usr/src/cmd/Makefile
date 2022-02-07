@@ -124,6 +124,7 @@ COMMON_SUBDIRS=		\
 	demangle	\
 	deroff		\
 	devfsadm	\
+	sysevent	\
 	syseventd	\
 	devctl		\
 	devinfo		\

@@ -17,6 +17,7 @@
  * Copyright 2019 Western Digital Corporation.
  * Copyright 2020 Racktop Systems.
  * Copyright 2022 Oxide Computer Company.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -216,7 +217,7 @@
  *
  * While the callback registration relies on the NDI event framework, the
  * removal event itself is kicked off in the PCIe hotplug framework, when the
- * PCIe bridge driver ("pcieb") gets a hotplug interrupt indicatating that a
+ * PCIe bridge driver ("pcieb") gets a hotplug interrupt indicating that a
  * device was removed from the slot.
  *
  * The NVMe driver instance itself will remain until the final close of the
@@ -297,6 +298,9 @@
 
 #include <sys/nvme.h>
 
+#include <sys/sysevent/eventdefs.h>
+#include <sys/sysevent/dev.h>
+
 #ifdef __x86
 #include <sys/x86_archext.h>
 #endif
@@ -343,7 +347,7 @@ int nvme_commit_save_cmd_timeout = 15;
 
 /*
  * tunable for the size of arbitrary vendor specific admin commands,
- * default is 16MiB
+ * default is 16MiB.
  */
 uint32_t nvme_vendor_specific_admin_cmd_size = 1 << 24;
 
@@ -444,6 +448,8 @@ static int nvme_open(dev_t *, int, int, cred_t *);
 static int nvme_close(dev_t, int, int, cred_t *);
 static int nvme_ioctl(dev_t, int, intptr_t, int, cred_t *, int *);
 
+static void nvme_changed_ns(nvme_t *, int);
+
 static ddi_ufm_ops_t nvme_ufm_ops = {
 	NULL,
 	nvme_ufm_fill_image,
@@ -456,7 +462,35 @@ static ddi_ufm_ops_t nvme_ufm_ops = {
 #define	NVME_MINOR_INST(minor)	((minor) >> NVME_MINOR_INST_SHIFT)
 #define	NVME_MINOR_NSID(minor)	((minor) & ((1 << NVME_MINOR_INST_SHIFT) - 1))
 #define	NVME_MINOR_MAX		(NVME_MINOR(1, 0) - 2)
-#define	NVME_IS_VENDOR_UNIQUE_CMD(x)	(((x) >= 0xC0) && ((x) <= 0xFF))
+#define	NVME_IS_VENDOR_SPECIFIC_CMD(x)	(((x) >= 0xC0) && ((x) <= 0xFF))
+#define	NVME_VENDOR_SPECIFIC_LOGPAGE_MIN	0xC0
+#define	NVME_VENDOR_SPECIFIC_LOGPAGE_MAX	0xFF
+#define	NVME_IS_VENDOR_SPECIFIC_LOGPAGE(x)	\
+		(((x) >= NVME_VENDOR_SPECIFIC_LOGPAGE_MIN) && \
+		((x) <= NVME_VENDOR_SPECIFIC_LOGPAGE_MAX))
+
+/*
+ * NVMe versions 1.3 and later actually support log pages up to UINT32_MAX
+ * DWords in size. However, revision 1.3 also modified the layout of the Get Log
+ * Page command significantly relative to version 1.2, including changing
+ * reserved bits, adding new bitfields, and requiring the use of command DWord
+ * 11 to fully specify the size of the log page (the lower and upper 16 bits of
+ * the number of DWords in the page are split between DWord 10 and DWord 11,
+ * respectively).
+ *
+ * All of these impose significantly different layout requirements on the
+ * `nvme_getlogpage_t` type. This could be solved with two different types, or a
+ * complicated/nested union with the two versions as the overlying members. Both
+ * of these are reasonable, if a bit convoluted. However, these is no current
+ * need for such large pages, or a way to test them, as most log pages actually
+ * fit within the current size limit. So for simplicity, we retain the size cap
+ * from version 1.2.
+ *
+ * Note that the number of DWords is zero-based, so we add 1. It is subtracted
+ * to form a zero-based value in `nvme_get_logpage`.
+ */
+#define	NVME_VENDOR_SPECIFIC_LOGPAGE_MAX_SIZE	\
+		(((1 << 12) + 1) * sizeof (uint32_t))
 
 static void *nvme_state;
 static kmem_cache_t *nvme_cmd_cache;
@@ -1762,6 +1796,7 @@ nvme_async_event_task(void *arg)
 	nvme_t *nvme = cmd->nc_nvme;
 	nvme_error_log_entry_t *error_log = NULL;
 	nvme_health_log_t *health_log = NULL;
+	nvme_nschange_list_t *nslist = NULL;
 	size_t logsize = 0;
 	nvme_async_event_t event;
 
@@ -1803,7 +1838,6 @@ nvme_async_event_task(void *arg)
 		nvme_free_cmd(cmd);
 		return;
 	}
-
 
 	event.r = cmd->nc_cqe.cqe_dw0;
 
@@ -1898,6 +1932,91 @@ nvme_async_event_task(void *arg)
 		}
 		break;
 
+	case NVME_ASYNC_TYPE_NOTICE:
+		switch (event.b.ae_info) {
+		case NVME_ASYNC_NOTICE_NS_CHANGE:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "namespace attribute change event, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+
+			if (event.b.ae_logpage != NVME_LOGPAGE_NSCHANGE)
+				break;
+
+			if (nvme_get_logpage(nvme, B_FALSE, (void **)&nslist,
+			    &logsize, event.b.ae_logpage, -1) != 0) {
+				break;
+			}
+
+			if (nslist->nscl_ns[0] == UINT32_MAX) {
+				dev_err(nvme->n_dip, CE_CONT,
+				    "more than %u namespaces have changed.\n",
+				    NVME_NSCHANGE_LIST_SIZE);
+				break;
+			}
+
+			for (uint_t i = 0; i < NVME_NSCHANGE_LIST_SIZE; i++) {
+				uint32_t nsid = nslist->nscl_ns[i];
+
+				if (nsid == 0)	/* end of list */
+					break;
+				nvme_changed_ns(nvme, nsid);
+			}
+
+			break;
+
+		case NVME_ASYNC_NOTICE_FW_ACTIVATE:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "firmware activation starting, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+			break;
+
+		case NVME_ASYNC_NOTICE_TELEMETRY:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "telemetry log changed, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+			break;
+
+		case NVME_ASYNC_NOTICE_NS_ASYMM:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "asymmetric namespace access change, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+			break;
+
+		case NVME_ASYNC_NOTICE_LATENCYLOG:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "predictable latency event aggregate log change, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+			break;
+
+		case NVME_ASYNC_NOTICE_LBASTATUS:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "LBA status information alert, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+			break;
+
+		case NVME_ASYNC_NOTICE_ENDURANCELOG:
+			dev_err(nvme->n_dip, CE_NOTE,
+			    "endurance group event aggregate log page change, "
+			    "logpage = %x", event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_notice_event);
+			break;
+
+		default:
+			dev_err(nvme->n_dip, CE_WARN,
+			    "!unknown notice async event received, "
+			    "info = %x, logpage = %x", event.b.ae_info,
+			    event.b.ae_logpage);
+			atomic_inc_32(&nvme->n_unknown_event);
+			break;
+		}
+		break;
+
 	case NVME_ASYNC_TYPE_VENDOR:
 		dev_err(nvme->n_dip, CE_WARN, "!vendor specific async event "
 		    "received, info = %x, logpage = %x", event.b.ae_info,
@@ -1913,11 +2032,14 @@ nvme_async_event_task(void *arg)
 		break;
 	}
 
-	if (error_log)
+	if (error_log != NULL)
 		kmem_free(error_log, logsize);
 
-	if (health_log)
+	if (health_log != NULL)
 		kmem_free(health_log, logsize);
+
+	if (nslist != NULL)
+		kmem_free(nslist, logsize);
 }
 
 static void
@@ -1988,6 +2110,12 @@ nvme_format_nvm(nvme_t *nvme, boolean_t user, uint32_t nsid, uint8_t lbaf,
 	return (ret);
 }
 
+/*
+ * The `bufsize` parameter is usually an output parameter, set by this routine
+ * when filling in the supported types of logpages from the device. However, for
+ * vendor-specific pages, it is an input parameter, and must be set
+ * appropriately by callers.
+ */
 static int
 nvme_get_logpage(nvme_t *nvme, boolean_t user, void **buf, size_t *bufsize,
     uint8_t logpage, ...)
@@ -2011,11 +2139,7 @@ nvme_get_logpage(nvme_t *nvme, boolean_t user, void **buf, size_t *bufsize,
 	switch (logpage) {
 	case NVME_LOGPAGE_ERROR:
 		cmd->nc_sqe.sqe_nsid = (uint32_t)-1;
-		/*
-		 * The GET LOG PAGE command can use at most 2 pages to return
-		 * data, PRP lists are not supported.
-		 */
-		*bufsize = MIN(2 * nvme->n_pagesize,
+		*bufsize = MIN(NVME_VENDOR_SPECIFIC_LOGPAGE_MAX_SIZE,
 		    nvme->n_error_log_len * sizeof (nvme_error_log_entry_t));
 		break;
 
@@ -2029,12 +2153,26 @@ nvme_get_logpage(nvme_t *nvme, boolean_t user, void **buf, size_t *bufsize,
 		*bufsize = sizeof (nvme_fwslot_log_t);
 		break;
 
+	case NVME_LOGPAGE_NSCHANGE:
+		cmd->nc_sqe.sqe_nsid = (uint32_t)-1;
+		*bufsize = sizeof (nvme_nschange_list_t);
+		break;
+
 	default:
-		dev_err(nvme->n_dip, CE_WARN, "!unknown log page requested: %d",
-		    logpage);
-		atomic_inc_32(&nvme->n_unknown_logpage);
-		ret = EINVAL;
-		goto fail;
+		/*
+		 * This intentionally only checks against the minimum valid
+		 * log page ID. `logpage` is a uint8_t, and `0xFF` is a valid
+		 * page ID, so this one-sided check avoids a compiler error
+		 * about a check that's always true.
+		 */
+		if (logpage < NVME_VENDOR_SPECIFIC_LOGPAGE_MIN) {
+			dev_err(nvme->n_dip, CE_WARN,
+			    "!unknown log page requested: %d", logpage);
+			atomic_inc_32(&nvme->n_unknown_logpage);
+			ret = EINVAL;
+			goto fail;
+		}
+		cmd->nc_sqe.sqe_nsid = va_arg(ap, uint32_t);
 	}
 
 	va_end(ap);
@@ -2051,22 +2189,8 @@ nvme_get_logpage(nvme_t *nvme, boolean_t user, void **buf, size_t *bufsize,
 		goto fail;
 	}
 
-	if (cmd->nc_dma->nd_ncookie > 2) {
-		dev_err(nvme->n_dip, CE_WARN,
-		    "!too many DMA cookies for GET LOG PAGE");
-		atomic_inc_32(&nvme->n_too_many_cookies);
-		ret = ENOMEM;
+	if ((ret = nvme_fill_prp(cmd, cmd->nc_dma->nd_dmah)) != 0)
 		goto fail;
-	}
-
-	cmd->nc_sqe.sqe_dptr.d_prp[0] = cmd->nc_dma->nd_cookie.dmac_laddress;
-	if (cmd->nc_dma->nd_ncookie > 1) {
-		ddi_dma_nextcookie(cmd->nc_dma->nd_dmah,
-		    &cmd->nc_dma->nd_cookie);
-		cmd->nc_sqe.sqe_dptr.d_prp[1] =
-		    cmd->nc_dma->nd_cookie.dmac_laddress;
-	}
-
 	nvme_admin_cmd(cmd, nvme_admin_cmd_timeout);
 
 	if ((ret = nvme_check_cmd_status(cmd)) != 0) {
@@ -2367,7 +2491,7 @@ nvme_set_nqueues(nvme_t *nvme)
 		nvme->n_completion_queues = nvme->n_intr_cnt;
 
 	/*
-	 * There is no point in having more compeletion queues than
+	 * There is no point in having more completion queues than
 	 * interrupt vectors.
 	 */
 	nvme->n_completion_queues = MIN(nvme->n_completion_queues,
@@ -2568,6 +2692,89 @@ nvme_prepare_devid(nvme_t *nvme, uint32_t nsid)
 
 	nvme->n_ns[nsid - 1].ns_devid = kmem_asprintf("%4X-%s-%s-%X",
 	    nvme->n_idctl->id_vid, model, serial, nsid);
+}
+
+static void
+nvme_changed_ns(nvme_t *nvme, int nsid)
+{
+	nvme_namespace_t *ns = &nvme->n_ns[nsid - 1];
+	nvme_identify_nsid_t *idns;
+	dev_info_t *cdip;
+	size_t blksz;
+	nvlist_t *attr = NULL;
+	char *path = NULL;
+
+	dev_err(nvme->n_dip, CE_NOTE, "!namespace %u (%s) has changed.\n",
+	    nsid, ns->ns_name);
+
+	if (ns->ns_ignore)
+		return;
+
+	if (nvme_identify(nvme, B_FALSE, nsid, (void **)&idns) != 0) {
+		dev_err(nvme->n_dip, CE_WARN,
+		    "!failed to identify namespace %d", nsid);
+		return;
+	}
+
+	kmem_free(ns->ns_idns, sizeof (nvme_identify_nsid_t));
+	ns->ns_idns = idns;
+
+	/*
+	 * There are a number of ways in which the namespace can have changed.
+	 * If the block count has increased without the block size changing,
+	 * sent a DLE (dynamic LUN expansion) sysevent.
+	 */
+
+	blksz = 1 << idns->id_lbaf[idns->id_flbas.lba_format].lbaf_lbads;
+
+	if (blksz != ns->ns_block_size)
+		return;
+
+	if (idns->id_nsize <= ns->ns_block_count)
+		return;
+
+	dev_err(nvme->n_dip, CE_CONT,
+	    "!namespace %u (%s) has changed size %lu -> %lu %lu-byte blocks\n",
+	    nsid, ns->ns_name, ns->ns_block_count, idns->id_nsize, blksz);
+
+	ns->ns_block_count = idns->id_nsize;
+
+	if ((cdip = ddi_get_child(nvme->n_dip)) == NULL)
+		return;
+
+	if (nvlist_alloc(&attr, NV_UNIQUE_NAME_TYPE, KM_NOSLEEP) != 0)
+		return;
+
+	path = kmem_zalloc(MAXPATHLEN, KM_NOSLEEP);
+	if (path == NULL)
+		goto out;
+
+	(void) snprintf(path, MAXPATHLEN, "/devices");
+	(void) ddi_pathname(cdip, path + strlen(path));
+	(void) snprintf(path + strlen(path), MAXPATHLEN - strlen(path), ":x");
+
+	/*
+	 * On receipt of this event, the ZFS sysevent module will scan active
+	 * zpools for child vdevs matching this physical path. In order to
+	 * catch both whole disk pools and those with an EFI boot partition,
+	 * generate separate sysevents for minor node 'a' and 'b'.
+	 * (By comparison, io/scsi/targets/sd.c sends just 'a')
+	 */
+	for (char c = 'a'; c < 'c'; c++) {
+		path[strlen(path) - 1] = c;
+
+		if (nvlist_add_string(attr, DEV_PHYS_PATH, path) != 0)
+			goto out;
+
+		(void) ddi_log_sysevent(nvme->n_dip, DDI_VENDOR_SUNW,
+		    EC_DEV_STATUS, ESC_DEV_DLE, attr, NULL, DDI_NOSLEEP);
+	}
+
+out:
+	if (attr != NULL)
+		nvlist_free(attr);
+	if (path != NULL)
+		kmem_free(path, MAXPATHLEN);
 }
 
 static int
@@ -2842,7 +3049,7 @@ nvme_init(nvme_t *nvme)
 	sema_init(&nvme->n_abort_sema, 1, NULL, SEMA_DRIVER, NULL);
 
 	/*
-	 * Setup initial interrupt for admin queue.
+	 * Set up initial interrupt for admin queue.
 	 */
 	if ((nvme_setup_interrupts(nvme, DDI_INTR_TYPE_MSIX, 1)
 	    != DDI_SUCCESS) &&
@@ -3474,7 +3681,7 @@ nvme_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	nvme->n_sgl_dma_attr = nvme_sgl_dma_attr;
 
 	/*
-	 * Setup FMA support.
+	 * Set up FMA support.
 	 */
 	nvme->n_fm_cap = ddi_getprop(DDI_DEV_T_ANY, dip,
 	    DDI_PROP_CANSLEEP | DDI_PROP_DONTPASS, "fm-capable",
@@ -4285,7 +4492,7 @@ nvme_ioc_cmd(nvme_t *nvme, nvme_sqe_t *sqe, boolean_t is_admin, void *data_addr,
 	}
 
 	/*
-	 * This function is used to faciliate requests from
+	 * This function is used to facilitate requests from
 	 * userspace, so don't panic if the command fails. This
 	 * is especially true for admin passthru commands, where
 	 * the actual command data structure is entirely defined
@@ -4426,7 +4633,19 @@ nvme_ioctl_get_logpage(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc,
 			return (EINVAL);
 		break;
 	default:
-		return (EINVAL);
+		if (!NVME_IS_VENDOR_SPECIFIC_LOGPAGE(nioc->n_arg))
+			return (EINVAL);
+		if (nioc->n_len > NVME_VENDOR_SPECIFIC_LOGPAGE_MAX_SIZE) {
+			dev_err(nvme->n_dip, CE_NOTE, "!Vendor-specific log "
+			    "page size exceeds device maximum supported size: "
+			    "%lu", NVME_VENDOR_SPECIFIC_LOGPAGE_MAX_SIZE);
+			return (EINVAL);
+		}
+		if (nioc->n_len == 0)
+			return (EINVAL);
+		bufsize = nioc->n_len;
+		if (nsid == 0)
+			nsid = (uint32_t)-1;
 	}
 
 	if (nvme_get_logpage(nvme, B_TRUE, &log, &bufsize, nioc->n_arg, nsid)
@@ -4977,7 +5196,7 @@ nvme_ioctl_passthru(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc, int mode,
 	if (nvme_passthru_copy_cmd_in((const void*)nioc->n_buf, &cmd, mode))
 		return (EFAULT);
 
-	if (!NVME_IS_VENDOR_UNIQUE_CMD(cmd.npc_opcode)) {
+	if (!NVME_IS_VENDOR_SPECIFIC_CMD(cmd.npc_opcode)) {
 		cmd.npc_err = NVME_PASSTHRU_ERR_INVALID_OPCODE;
 		rv = EINVAL;
 		goto out;

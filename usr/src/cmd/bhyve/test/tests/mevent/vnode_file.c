@@ -97,7 +97,7 @@ test_fd(int fd, char *tag)
 	}
 
 	err = mevent_disable(evp);
-        ASSERT_INT_EQ(("%s: mevent_disable: %s", tag, strerror(err)), err, 0);
+	ASSERT_INT_EQ(("%s: mevent_disable: %s", tag, strerror(err)), err, 0);
 
 	(void) printf("PASS %s - %s\n", testlib_prog, tag);
 }
