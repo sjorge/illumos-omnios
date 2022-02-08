@@ -13,7 +13,7 @@
 # Copyright 2014 Pluribus Networks Inc.
 # Copyright 2020 Joyent, Inc.
 # Copyright 2020 Oxide Computer Company
-# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+# Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
 #
 
 PROG =		bhyve
@@ -142,19 +142,24 @@ pci_xhci.o := CERRWARN += -_gcc11=-Wno-address-of-packed-member
 
 SMOFF += all_func_returns,leaks,no_if_block
 
+rfb.o := SMOFF=
+
 # Force c99 for everything
 CSTD=		$(CSTD_GNU99)
 
 $(PROG) := LDLIBS += \
 	-l9p \
-	-lsocket \
-	-lnsl \
-	-ldlpi \
+	-lcmdutils \
+	-lcrypto \
 	-ldladm \
+	-ldlpi \
+	-lidspace \
 	-lmd \
+	-lnsl \
 	-lnvpair \
 	-lproc \
-	-lcrypto \
+	-lsocket \
+	-lumem \
 	-luuid \
 	-lvmmapi \
 	-lz

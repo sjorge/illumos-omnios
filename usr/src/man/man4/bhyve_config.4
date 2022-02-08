@@ -23,9 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" Portions Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+.\" Portions Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
 .\"
-.Dd September 25, 2021
+.Dd February 13, 2022
 .Dt BHYVE_CONFIG 4
 .Os
 .Sh NAME
@@ -157,6 +157,12 @@ No VM will be started.
 Enable debug messages relating to privilege management.
 These messages are sent to
 .Dv stdout .
+.It Va rfb.debug Ta bool Ta false Ta
+Enable debug messages relating to the RFB
+.Pq VNC
+server.
+These messages are sent to
+.Dv stderr .
 .It Va debug.persist Ta bool Ta false Ta
 A debugging option that causes the VM to persist after it terminates.
 This can be used, for example, to keep a zone up after VM termination so that
