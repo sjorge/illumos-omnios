@@ -182,6 +182,7 @@ enum {
 	VIE_OP_TYPE_TEST,
 	VIE_OP_TYPE_BEXTR,
 	VIE_OP_TYPE_CLTS,
+	VIE_OP_TYPE_MUL,
 	VIE_OP_TYPE_LAST
 };
 
@@ -219,6 +220,10 @@ static const struct vie_op two_byte_opcodes[256] = {
 	[0xAE] = {
 		.op_byte = 0xAE,
 		.op_type = VIE_OP_TYPE_TWOB_GRP15,
+	},
+	[0xAF] = {
+		.op_byte = 0xAF,
+		.op_type = VIE_OP_TYPE_MUL,
 	},
 	[0xB6] = {
 		.op_byte = 0xB6,
@@ -670,6 +675,40 @@ getaddflags(int opsize, uint64_t x, uint64_t y)
 		return (getaddflags32(x, y));
 	else
 		return (getaddflags64(x, y));
+}
+
+/*
+ * Macro creation of functions getimulflags{16,32,64}
+ */
+/* BEGIN CSTYLED */
+#define	GETIMULFLAGS(sz)						\
+static ulong_t								\
+getimulflags##sz(uint##sz##_t x, uint##sz##_t y)			\
+{									\
+	ulong_t rflags;							\
+									\
+	__asm __volatile("imul %2,%1; pushfq; popq %0" :		\
+	    "=r" (rflags), "+r" (x) : "m" (y));				\
+	return (rflags);						\
+} struct __hack
+/* END CSTYLED */
+
+GETIMULFLAGS(16);
+GETIMULFLAGS(32);
+GETIMULFLAGS(64);
+
+static ulong_t
+getimulflags(int opsize, uint64_t x, uint64_t y)
+{
+	KASSERT(opsize == 2 || opsize == 4 || opsize == 8,
+	    ("getimulflags: invalid operand size %d", opsize));
+
+	if (opsize == 2)
+		return (getimulflags16(x, y));
+	else if (opsize == 4)
+		return (getimulflags32(x, y));
+	else
+		return (getimulflags64(x, y));
 }
 
 /*
@@ -1817,6 +1856,69 @@ vie_emulate_sub(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 }
 
 static int
+vie_emulate_mul(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
+{
+	int error, size;
+	uint64_t rflags, rflags2, val1, val2;
+	__int128_t nval;
+	enum vm_reg_name reg;
+	ulong_t (*getflags)(int, uint64_t, uint64_t) = NULL;
+
+	size = vie->opsize;
+	error = EINVAL;
+
+	switch (vie->op.op_byte) {
+	case 0xAF:
+		/*
+		 * Multiply the contents of a destination register by
+		 * the contents of a register or memory operand and
+		 * put the signed result in the destination register.
+		 *
+		 * AF/r		IMUL r16, r/m16
+		 * AF/r		IMUL r32, r/m32
+		 * REX.W + AF/r	IMUL r64, r/m64
+		 */
+
+		getflags = getimulflags;
+
+		/* get the first operand */
+		reg = gpr_map[vie->reg];
+		error = vm_get_register(vm, vcpuid, reg, &val1);
+		if (error != 0)
+			break;
+
+		/* get the second operand */
+		error = vie_mmio_read(vie, vm, vcpuid, gpa, &val2, size);
+		if (error != 0)
+			break;
+
+		/* perform the operation and write the result */
+		nval = (int64_t)val1 * (int64_t)val2;
+
+		error = vie_update_register(vm, vcpuid, reg, nval, size);
+
+		break;
+	default:
+		break;
+	}
+
+	if (error == 0) {
+		rflags2 = getflags(size, val1, val2);
+		error = vm_get_register(vm, vcpuid, VM_REG_GUEST_RFLAGS,
+		    &rflags);
+		if (error)
+			return (error);
+
+		rflags &= ~RFLAGS_STATUS_BITS;
+		rflags |= rflags2 & RFLAGS_STATUS_BITS;
+		error = vie_update_register(vm, vcpuid, VM_REG_GUEST_RFLAGS,
+		    rflags, 8);
+	}
+
+	return (error);
+}
+
+static int
 vie_emulate_stack_op(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 {
 	struct vm_copyinfo copyinfo[2];
@@ -2217,6 +2319,9 @@ vie_emulate_mmio(struct vie *vie, struct vm *vm, int vcpuid)
 		break;
 	case VIE_OP_TYPE_BEXTR:
 		error = vie_emulate_bextr(vie, vm, vcpuid, gpa);
+		break;
+	case VIE_OP_TYPE_MUL:
+		error = vie_emulate_mul(vie, vm, vcpuid, gpa);
 		break;
 	default:
 		error = EINVAL;
