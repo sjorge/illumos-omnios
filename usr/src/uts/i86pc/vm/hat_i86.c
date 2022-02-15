@@ -3865,7 +3865,7 @@ hat_page_inval(struct page *pp, uint_t pg_szcd, struct hat *curhat)
 	htable_t	*ht;
 	uint_t		entry;
 	level_t		level;
-	ulong_t		cnt;
+	ulong_t		cnt = 0;
 
 	XPV_DISALLOW_MIGRATE();
 
@@ -4242,8 +4242,8 @@ try_again:
 		/*
 		 * can stop short if we found a ref'd or mod'd page
 		 */
-		if ((flags & HAT_SYNC_STOPON_MOD) && PP_ISMOD(save_pp) ||
-		    (flags & HAT_SYNC_STOPON_REF) && PP_ISREF(save_pp)) {
+		if (((flags & HAT_SYNC_STOPON_MOD) && PP_ISMOD(save_pp)) ||
+		    ((flags & HAT_SYNC_STOPON_REF) && PP_ISREF(save_pp))) {
 			x86_hm_exit(pp);
 			goto done;
 		}

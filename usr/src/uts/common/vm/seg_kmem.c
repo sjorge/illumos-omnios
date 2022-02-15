@@ -145,15 +145,18 @@ struct seg kvmmseg;		/* Segment for vmm memory */
  */
 
 size_t	segkmem_lpsize;
-static  uint_t	segkmem_lpshift = PAGESHIFT;
 int	segkmem_lpszc = 0;
 
 size_t  segkmem_kmemlp_quantum = 0x400000;	/* 4MB */
 size_t  segkmem_heaplp_quantum;
 vmem_t *heap_lp_arena;
 static  vmem_t *kmem_lp_arena;
-static  vmem_t *segkmem_ppa_arena;
 static	segkmem_lpcb_t segkmem_lpcb;
+
+#ifdef __sparc
+static  uint_t	segkmem_lpshift = PAGESHIFT;
+static  vmem_t *segkmem_ppa_arena;
+#endif
 
 /*
  * We use "segkmem_kmemlp_max" to limit the total amount of physical memory
@@ -163,14 +166,14 @@ static	segkmem_lpcb_t segkmem_lpcb;
  * we allow for large page heap.
  */
 size_t  segkmem_kmemlp_max;
-static  uint_t  segkmem_kmemlp_pcnt;
+uint_t  segkmem_kmemlp_pcnt;
 
 /*
  * Getting large pages for kernel heap could be problematic due to
  * physical memory fragmentation. That's why we allow to preallocate
  * "segkmem_kmemlp_min" bytes at boot time.
  */
-static  size_t	segkmem_kmemlp_min;
+size_t	segkmem_kmemlp_min;
 
 /*
  * Throttling is used to avoid expensive tries to allocate large pages
