@@ -39,18 +39,6 @@ find $tmp/Intel-Linux-Processor-Microcode-Data*/intel-ucode*/ -type f \
 	rm -f $tmp/intel-fw
 done
 
-#
-# These are distributable microcode, but the source files are *not*
-# available in the public git repo above, so we have to restore them by
-# hand here.
-#
-cp intel/00050655-01 $tmp/out/00050655-01
-ln $tmp/out/00050655-01 $tmp/out/00050655-02
-ln $tmp/out/00050655-01 $tmp/out/00050655-04
-ln $tmp/out/00050655-01 $tmp/out/00050655-10
-ln $tmp/out/00050655-01 $tmp/out/00050655-20
-ln $tmp/out/00050655-01 $tmp/out/00050655-80
-
 pkgfmt -u $mf
 mv $mf $mf.tmp
 egrep -v "(file|hardlink) path=$fw" $mf.tmp > $mf
