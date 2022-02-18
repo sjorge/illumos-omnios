@@ -68,7 +68,7 @@ bhyvegc_init(int width, int height, void *fbaddr)
 	gc->gc_image = gc_image;
 
 #ifndef __FreeBSD__
-	(void) pthread_mutex_init(&gc_image->mtx, NULL);
+	pthread_mutex_init(&gc_image->mtx, NULL);
 #endif
 
 	return (gc);
@@ -78,14 +78,14 @@ void
 bhyvegc_set_fbaddr(struct bhyvegc *gc, void *fbaddr)
 {
 #ifndef __FreeBSD__
-	(void) pthread_mutex_lock(&gc->gc_image->mtx);
+	pthread_mutex_lock(&gc->gc_image->mtx);
 #endif
 	gc->raw = 1;
 	if (gc->gc_image->data && gc->gc_image->data != fbaddr)
 		free(gc->gc_image->data);
 	gc->gc_image->data = fbaddr;
 #ifndef __FreeBSD__
-	(void) pthread_mutex_unlock(&gc->gc_image->mtx);
+	pthread_mutex_unlock(&gc->gc_image->mtx);
 #endif
 }
 
@@ -95,7 +95,7 @@ bhyvegc_resize(struct bhyvegc *gc, int width, int height)
 	struct bhyvegc_image *gc_image;
 
 #ifndef __FreeBSD__
-	(void) pthread_mutex_lock(&gc->gc_image->mtx);
+	pthread_mutex_lock(&gc->gc_image->mtx);
 #endif
 	gc_image = gc->gc_image;
 
@@ -109,7 +109,7 @@ bhyvegc_resize(struct bhyvegc *gc, int width, int height)
 			    sizeof (uint32_t));
 	}
 #ifndef __FreeBSD__
-	(void) pthread_mutex_unlock(&gc->gc_image->mtx);
+	pthread_mutex_unlock(&gc->gc_image->mtx);
 #endif
 }
 
