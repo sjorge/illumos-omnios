@@ -352,6 +352,9 @@ proc_is_exiting(proc_t *p)
 static boolean_t
 zone_init_exit(zone_t *z, int why, int what)
 {
+	proc_t *p = curproc;
+	char reason_buf[64];
+
 	/*
 	 * Typically we don't let the zone's init exit unless zone_start_init()
 	 * failed its exec, or we are shutting down the zone or the machine,
@@ -369,6 +372,14 @@ zone_init_exit(zone_t *z, int why, int what)
 		 */
 		z->zone_proc_initpid = -1;
 		return (B_FALSE);
+	}
+
+	zcmn_err(p->p_zone->zone_id, CE_WARN, "init(1M) %s",
+	    exit_reason(reason_buf, sizeof (reason_buf), what, why));
+
+	if (!INGLOBALZONE(p)) {
+		cmn_err(CE_WARN, "init(1M) for zone %s (pid %d) %s",
+		    p->p_zone->zone_name, p->p_pid, reason_buf);
 	}
 
 	/*

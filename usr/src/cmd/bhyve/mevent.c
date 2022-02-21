@@ -114,11 +114,10 @@ struct mevent {
 	port_notify_t	me_notify;
 	struct sigevent	me_sigev;
 	boolean_t	me_auto_requeue;
-	struct file_obj	me_fobj;
-	char		*me_fname;
 	struct {
 		int	mp_fd;
 		off_t	mp_size;
+		char	*mp_fname;
 		void	(*mp_func)(int, enum ev_type, void *);
 		void    *mp_param;
 	} me_poll;
@@ -399,17 +398,16 @@ mevent_poll_file_attrib(int fd, enum ev_type type, void *param)
 
 	if (fstat(mevp->me_poll.mp_fd, &st) != 0) {
 		(void) fprintf(stderr, "%s: fstat(%d) \"%s\" failed: %s\n",
-		    __func__, fd, mevp->me_fname, strerror(errno));
+		    __func__, fd, mevp->me_poll.mp_fname, strerror(errno));
 		return;
 	}
 
-	if (mevp->me_poll.mp_size != st.st_size ||
-	    mevp->me_fobj.fo_ctime.tv_sec != st.st_ctim.tv_sec ||
-	    mevp->me_fobj.fo_ctime.tv_nsec != st.st_ctim.tv_nsec) {
+	/*
+	 * The only current consumer of file attribute monitoring is
+	 * blockif, which wants to know about size changes.
+	 */
+	if (mevp->me_poll.mp_size != st.st_size) {
 		mevp->me_poll.mp_size = st.st_size;
-		mevp->me_fobj.fo_atime = st.st_atim;
-		mevp->me_fobj.fo_mtime = st.st_mtim;
-		mevp->me_fobj.fo_ctime = st.st_ctim;
 
 		(*mevp->me_poll.mp_func)(mevp->me_poll.mp_fd, EVF_VNODE,
 		    mevp->me_poll.mp_param);
@@ -508,13 +506,10 @@ mevent_update_one_timer(struct mevent *mevp)
 static void
 mevent_update_one_vnode(struct mevent *mevp)
 {
-	int portfd = mevp->me_notify.portnfy_port;
-
-	mevp->me_auto_requeue = B_FALSE;
-
 	switch (mevp->me_state) {
 	case EV_ENABLE:
 	{
+		struct stat st;
 		int events = 0;
 
 		if ((mevp->me_fflags & EVFF_ATTRIB) != 0)
@@ -522,76 +517,51 @@ mevent_update_one_vnode(struct mevent *mevp)
 
 		assert(events != 0);
 
-		if (mevp->me_fname == NULL) {
-			mevp->me_fname = mevent_fdpath(mevp->me_fd);
-			if (mevp->me_fname == NULL)
+		if (mevp->me_poll.mp_fname == NULL) {
+			mevp->me_poll.mp_fname = mevent_fdpath(mevp->me_fd);
+			if (mevp->me_poll.mp_fname == NULL)
 				return;
 		}
 
-		bzero(&mevp->me_fobj, sizeof (mevp->me_fobj));
-		mevp->me_fobj.fo_name = mevp->me_fname;
+		/*
+		 * It is tempting to use the PORT_SOURCE_FILE type for this in
+		 * conjunction with the FILE_ATTRIB event type. Unfortunately
+		 * this event type triggers on any change to the file's
+		 * ctime, and therefore for every write as well as attribute
+		 * changes. It also does not work for ZVOLs.
+		 *
+		 * Convert this to a timer event and poll for the file
+		 * attribute changes that we care about.
+		 */
 
-		if (port_associate(portfd, PORT_SOURCE_FILE,
-		    (uintptr_t)&mevp->me_fobj, events, mevp) != 0) {
-			/*
-			 * If this file does not support event ports
-			 * (e.g. ZVOLs do not yet have support)
-			 * then convert this to a timer event and poll for
-			 * file attribute changes.
-			 */
-			struct stat st;
-
-			if (errno != ENOTSUP) {
-				(void) fprintf(stderr,
-				    "port_associate fd %d (%s) %p failed: %s"
-				    ", polling instead\n",
-				    mevp->me_fd, mevp->me_fname, mevp,
-				    strerror(errno));
-			}
-
-			if (fstat(mevp->me_fd, &st) != 0) {
-				(void) fprintf(stderr,
-				    "fstat(%d) \"%s\" failed: %s\n",
-				    mevp->me_fd, mevp->me_fname,
-				    strerror(errno));
-				return;
-			}
-
-			mevp->me_fobj.fo_atime = st.st_atim;
-			mevp->me_fobj.fo_mtime = st.st_mtim;
-			mevp->me_fobj.fo_ctime = st.st_ctim;
-
-			mevp->me_poll.mp_fd = mevp->me_fd;
-			mevp->me_poll.mp_size = st.st_size;
-
-			mevp->me_poll.mp_func = mevp->me_func;
-			mevp->me_poll.mp_param = mevp->me_param;
-			mevp->me_func = mevent_poll_file_attrib;
-			mevp->me_param = mevp;
-
-			mevp->me_type = EVF_TIMER;
-			mevp->me_timid = -1;
-			mevp->me_msecs = mevent_file_poll_interval_ms;
-			mevent_update_one_timer(mevp);
+		if (fstat(mevp->me_fd, &st) != 0) {
+			(void) fprintf(stderr, "fstat(%d) \"%s\" failed: %s\n",
+			    mevp->me_fd, mevp->me_poll.mp_fname,
+			    strerror(errno));
+			return;
 		}
+
+		mevp->me_poll.mp_fd = mevp->me_fd;
+		mevp->me_poll.mp_size = st.st_size;
+
+		mevp->me_poll.mp_func = mevp->me_func;
+		mevp->me_poll.mp_param = mevp->me_param;
+		mevp->me_func = mevent_poll_file_attrib;
+		mevp->me_param = mevp;
+
+		mevp->me_type = EVF_TIMER;
+		mevp->me_timid = -1;
+		mevp->me_msecs = mevent_file_poll_interval_ms;
+		mevent_update_one_timer(mevp);
+
 		return;
 	}
 	case EV_DISABLE:
 	case EV_DELETE:
 		/*
-		 * A disable that comes in while an event is being
-		 * handled will result in an ENOENT.
+		 * These events do not really exist as they are converted to
+		 * timers; fall through to abort.
 		 */
-		if (port_dissociate(portfd, PORT_SOURCE_FILE,
-		    (uintptr_t)&mevp->me_fobj) != 0 &&
-		    errno != ENOENT) {
-			(void) fprintf(stderr, "port_dissociate "
-			    "portfd %d fd %d mevp %p failed: %s\n",
-			    portfd, mevp->me_fd, mevp, strerror(errno));
-		}
-		free(mevp->me_fname);
-		mevp->me_fname = NULL;
-		return;
 	default:
 		(void) fprintf(stderr, "%s: unhandled state %d\n", __func__,
 		    mevp->me_state);
@@ -654,7 +624,7 @@ mevent_update_pending()
 		LIST_REMOVE(mevp, me_list);
 
 		if (mevp->me_state & EV_DELETE) {
-			free(mevp->me_fname);
+			free(mevp->me_poll.mp_fname);
 			free(mevp);
 		} else {
 			LIST_INSERT_HEAD(&global_head, mevp, me_list);
@@ -668,8 +638,6 @@ static void
 mevent_handle_pe(port_event_t *pe)
 {
 	struct mevent *mevp = pe->portev_user;
-
-	mevent_qunlock();
 
 	(*mevp->me_func)(mevp->me_fd, mevp->me_type, mevp->me_param);
 

@@ -41,6 +41,7 @@
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2018 Joyent, Inc.
  * Copyright 2021 Oxide Computer Company
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #include <sys/cdefs.h>
@@ -182,6 +183,7 @@ enum {
 	VIE_OP_TYPE_TEST,
 	VIE_OP_TYPE_BEXTR,
 	VIE_OP_TYPE_CLTS,
+	VIE_OP_TYPE_MUL,
 	VIE_OP_TYPE_LAST
 };
 
@@ -219,6 +221,10 @@ static const struct vie_op two_byte_opcodes[256] = {
 	[0xAE] = {
 		.op_byte = 0xAE,
 		.op_type = VIE_OP_TYPE_TWOB_GRP15,
+	},
+	[0xAF] = {
+		.op_byte = 0xAF,
+		.op_type = VIE_OP_TYPE_MUL,
 	},
 	[0xB6] = {
 		.op_byte = 0xB6,
@@ -280,8 +286,18 @@ static const struct vie_op one_byte_opcodes[256] = {
 		.op_byte = 0x8B,
 		.op_type = VIE_OP_TYPE_MOV,
 	},
+	[0xA0] = {
+		.op_byte = 0xA0,
+		.op_type = VIE_OP_TYPE_MOV,
+		.op_flags = VIE_OP_F_MOFFSET | VIE_OP_F_NO_MODRM,
+	},
 	[0xA1] = {
 		.op_byte = 0xA1,
+		.op_type = VIE_OP_TYPE_MOV,
+		.op_flags = VIE_OP_F_MOFFSET | VIE_OP_F_NO_MODRM,
+	},
+	[0xA2] = {
+		.op_byte = 0xA2,
 		.op_type = VIE_OP_TYPE_MOV,
 		.op_flags = VIE_OP_F_MOFFSET | VIE_OP_F_NO_MODRM,
 	},
@@ -347,6 +363,12 @@ static const struct vie_op one_byte_opcodes[256] = {
 		/* XXX Group 1A extended opcode - not just POP */
 		.op_byte = 0x8F,
 		.op_type = VIE_OP_TYPE_POP,
+	},
+	[0xF6] = {
+		/* XXX Group 3 extended opcode - not just TEST */
+		.op_byte = 0xF6,
+		.op_type = VIE_OP_TYPE_TEST,
+		.op_flags = VIE_OP_F_IMM8,
 	},
 	[0xF7] = {
 		/* XXX Group 3 extended opcode - not just TEST */
@@ -673,6 +695,40 @@ getaddflags(int opsize, uint64_t x, uint64_t y)
 }
 
 /*
+ * Macro creation of functions getimulflags{16,32,64}
+ */
+/* BEGIN CSTYLED */
+#define	GETIMULFLAGS(sz)						\
+static ulong_t								\
+getimulflags##sz(uint##sz##_t x, uint##sz##_t y)			\
+{									\
+	ulong_t rflags;							\
+									\
+	__asm __volatile("imul %2,%1; pushfq; popq %0" :		\
+	    "=r" (rflags), "+r" (x) : "m" (y));				\
+	return (rflags);						\
+} struct __hack
+/* END CSTYLED */
+
+GETIMULFLAGS(16);
+GETIMULFLAGS(32);
+GETIMULFLAGS(64);
+
+static ulong_t
+getimulflags(int opsize, uint64_t x, uint64_t y)
+{
+	KASSERT(opsize == 2 || opsize == 4 || opsize == 8,
+	    ("getimulflags: invalid operand size %d", opsize));
+
+	if (opsize == 2)
+		return (getimulflags16(x, y));
+	else if (opsize == 4)
+		return (getimulflags32(x, y));
+	else
+		return (getimulflags64(x, y));
+}
+
+/*
  * Return the status flags that would result from doing (x & y).
  */
 /* BEGIN CSTYLED */
@@ -878,6 +934,18 @@ vie_emulate_mov(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 			error = vie_update_register(vm, vcpuid, reg, val, size);
 		}
 		break;
+	case 0xA0:
+		/*
+		 * MOV from seg:moffset to AL
+		 * A0:		mov AL, moffs
+		 */
+		size = 1;	/* override for byte operation */
+		error = vie_mmio_read(vie, vm, vcpuid, gpa, &val, size);
+		if (error == 0) {
+			reg = VM_REG_GUEST_RAX;
+			error = vie_update_register(vm, vcpuid, reg, val, size);
+		}
+		break;
 	case 0xA1:
 		/*
 		 * MOV from seg:moffset to AX/EAX/RAX
@@ -889,6 +957,18 @@ vie_emulate_mov(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 		if (error == 0) {
 			reg = VM_REG_GUEST_RAX;
 			error = vie_update_register(vm, vcpuid, reg, val, size);
+		}
+		break;
+	case 0xA2:
+		/*
+		 * MOV from AL to seg:moffset
+		 * A2:		mov moffs, AL
+		 */
+		size = 1;	/* override for byte operation */
+		error = vm_get_register(vm, vcpuid, VM_REG_GUEST_RAX, &val);
+		if (error == 0) {
+			val &= size2mask[size];
+			error = vie_mmio_write(vie, vm, vcpuid, gpa, val, size);
 		}
 		break;
 	case 0xA3:
@@ -1591,6 +1671,26 @@ vie_emulate_test(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 	error = EINVAL;
 
 	switch (vie->op.op_byte) {
+	case 0xF6:
+		/*
+		 * F6 /0		test r/m8, imm8
+		 *
+		 * Test mem (ModRM:r/m) with immediate and set status
+		 * flags according to the results.  The comparison is
+		 * performed by anding the immediate from the first
+		 * operand and then setting the status flags.
+		 */
+		if ((vie->reg & 7) != 0)
+			return (EINVAL);
+
+		size = 1;	/* override for byte operation */
+
+		error = vie_mmio_read(vie, vm, vcpuid, gpa, &op1, size);
+		if (error)
+			return (error);
+
+		rflags2 = getandflags(size, op1, vie->immediate);
+		break;
 	case 0xF7:
 		/*
 		 * F7 /0		test r/m16, imm16
@@ -1802,6 +1902,69 @@ vie_emulate_sub(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 
 	if (!error) {
 		rflags2 = getcc(size, val1, val2);
+		error = vm_get_register(vm, vcpuid, VM_REG_GUEST_RFLAGS,
+		    &rflags);
+		if (error)
+			return (error);
+
+		rflags &= ~RFLAGS_STATUS_BITS;
+		rflags |= rflags2 & RFLAGS_STATUS_BITS;
+		error = vie_update_register(vm, vcpuid, VM_REG_GUEST_RFLAGS,
+		    rflags, 8);
+	}
+
+	return (error);
+}
+
+static int
+vie_emulate_mul(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
+{
+	int error, size;
+	uint64_t rflags, rflags2, val1, val2;
+	__int128_t nval;
+	enum vm_reg_name reg;
+	ulong_t (*getflags)(int, uint64_t, uint64_t) = NULL;
+
+	size = vie->opsize;
+	error = EINVAL;
+
+	switch (vie->op.op_byte) {
+	case 0xAF:
+		/*
+		 * Multiply the contents of a destination register by
+		 * the contents of a register or memory operand and
+		 * put the signed result in the destination register.
+		 *
+		 * AF/r		IMUL r16, r/m16
+		 * AF/r		IMUL r32, r/m32
+		 * REX.W + AF/r	IMUL r64, r/m64
+		 */
+
+		getflags = getimulflags;
+
+		/* get the first operand */
+		reg = gpr_map[vie->reg];
+		error = vm_get_register(vm, vcpuid, reg, &val1);
+		if (error != 0)
+			break;
+
+		/* get the second operand */
+		error = vie_mmio_read(vie, vm, vcpuid, gpa, &val2, size);
+		if (error != 0)
+			break;
+
+		/* perform the operation and write the result */
+		nval = (int64_t)val1 * (int64_t)val2;
+
+		error = vie_update_register(vm, vcpuid, reg, nval, size);
+
+		break;
+	default:
+		break;
+	}
+
+	if (error == 0) {
+		rflags2 = getflags(size, val1, val2);
 		error = vm_get_register(vm, vcpuid, VM_REG_GUEST_RFLAGS,
 		    &rflags);
 		if (error)
@@ -2217,6 +2380,9 @@ vie_emulate_mmio(struct vie *vie, struct vm *vm, int vcpuid)
 		break;
 	case VIE_OP_TYPE_BEXTR:
 		error = vie_emulate_bextr(vie, vm, vcpuid, gpa);
+		break;
+	case VIE_OP_TYPE_MUL:
+		error = vie_emulate_mul(vie, vm, vcpuid, gpa);
 		break;
 	default:
 		error = EINVAL;

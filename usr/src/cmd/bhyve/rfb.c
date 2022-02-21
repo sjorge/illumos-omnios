@@ -424,7 +424,7 @@ rfb_handshake_init_message(rfb_client_t *c)
 		rfb_printf(c, RFB_LOGDEBUG,
 		    "client requested exclusive access");
 
-		(void) pthread_mutex_lock(&c->rc_s->rs_clientlock);
+		pthread_mutex_lock(&c->rc_s->rs_clientlock);
 		c->rc_s->rs_exclusive = true;
 		/* Disconnect all other clients. */
 		for (oc = list_head(&c->rc_s->rs_clients); oc != NULL;
@@ -432,18 +432,18 @@ rfb_handshake_init_message(rfb_client_t *c)
 			if (oc != c)
 				oc->rc_closing = true;
 		}
-		(void) pthread_mutex_unlock(&c->rc_s->rs_clientlock);
+		pthread_mutex_unlock(&c->rc_s->rs_clientlock);
 	} else {
 		rfb_printf(c, RFB_LOGDEBUG, "client requested shared access");
 
-		(void) pthread_mutex_lock(&c->rc_s->rs_clientlock);
+		pthread_mutex_lock(&c->rc_s->rs_clientlock);
 		if (c->rc_s->rs_exclusive) {
 			rfb_printf(c, RFB_LOGWARN,
 			    "deny due to existing exclusive session");
-			(void) pthread_mutex_unlock(&c->rc_s->rs_clientlock);
+			pthread_mutex_unlock(&c->rc_s->rs_clientlock);
 			return (false);
 		}
-		(void) pthread_mutex_unlock(&c->rc_s->rs_clientlock);
+		pthread_mutex_unlock(&c->rc_s->rs_clientlock);
 	}
 
 	gci = console_get_image();
@@ -995,7 +995,7 @@ rfb_send_screen(rfb_client_t *c)
 	 * It's helpful if the image size or data address does not change
 	 * underneath us.
 	 */
-	(void) pthread_mutex_lock(&gci->mtx);
+	pthread_mutex_lock(&gci->mtx);
 
 	/* Check for screen resolution changes. */
 	if (c->rc_width != gci->width ||
@@ -1154,7 +1154,7 @@ rfb_send_screen(rfb_client_t *c)
 	}
 
 done:
-	(void) pthread_mutex_unlock(&gci->mtx);
+	pthread_mutex_unlock(&gci->mtx);
 
 	return (retval);
 }
@@ -1283,13 +1283,13 @@ rfb_client_tx_thread(void *arg)
 out:
 
 	(void) pthread_join(c->rc_rx_tid, &status);
-	(void) pthread_mutex_lock(&s->rs_clientlock);
+	pthread_mutex_lock(&s->rs_clientlock);
 	s->rs_clientcount--;
 	list_remove(&s->rs_clients, c);
 	if (s->rs_exclusive && s->rs_clientcount == 0)
 		s->rs_exclusive = false;
 	id_free(rfb_idspace, c->rc_instance);
-	(void) pthread_mutex_unlock(&s->rs_clientlock);
+	pthread_mutex_unlock(&s->rs_clientlock);
 
 	rfb_free_client(c);
 	return (NULL);
@@ -1333,9 +1333,9 @@ rfb_accept(int sfd, enum ev_type event, void *arg)
 		}
 	}
 
-	(void) pthread_mutex_lock(&s->rs_clientlock);
+	pthread_mutex_lock(&s->rs_clientlock);
 	cc = s->rs_clientcount;
-	(void) pthread_mutex_unlock(&s->rs_clientlock);
+	pthread_mutex_unlock(&s->rs_clientlock);
 	if (cc >= RFB_MAX_CLIENTS) {
 		rfb_printf(NULL, RFB_LOGERR,
 		    "too many clients, closing connection.");
@@ -1353,19 +1353,19 @@ rfb_accept(int sfd, enum ev_type event, void *arg)
 	if (c->rc_zbuf == NULL)
 		goto fail;
 
-	(void) pthread_mutex_lock(&s->rs_clientlock);
+	pthread_mutex_lock(&s->rs_clientlock);
 
 	err = pthread_create(&c->rc_tx_tid, NULL, rfb_client_tx_thread, c);
 	if (err != 0) {
 		perror("pthread_create client tx thread");
-		(void) pthread_mutex_unlock(&s->rs_clientlock);
+		pthread_mutex_unlock(&s->rs_clientlock);
 		goto fail;
 	}
 
 	s->rs_clientcount++;
 	list_insert_tail(&s->rs_clients, c);
 	c->rc_instance = id_allocff(rfb_idspace);
-	(void) pthread_mutex_unlock(&s->rs_clientlock);
+	pthread_mutex_unlock(&s->rs_clientlock);
 
 	(void) pthread_detach(c->rc_tx_tid);
 
