@@ -322,19 +322,6 @@ virtio_init(dev_info_t *dip, uint64_t driver_features, boolean_t allow_indirect)
 	return (vio);
 }
 
-void
-virtio_register_cfgchange_handler(virtio_t *vio, ddi_intr_handler_t *func,
-    void *funcarg)
-{
-	VERIFY(!(vio->vio_initlevel & VIRTIO_INITLEVEL_INT_ADDED));
-	VERIFY(!vio->vio_cfgchange_handler_added);
-
-	mutex_enter(&vio->vio_mutex);
-	vio->vio_cfgchange_handler = func;
-	vio->vio_cfgchange_handlerarg = funcarg;
-	mutex_exit(&vio->vio_mutex);
-}
-
 /*
  * Some virtio devices can change their device configuration state at any
  * time. This function may be called by the driver during the initialisation
