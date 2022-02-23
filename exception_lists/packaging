@@ -421,18 +421,6 @@ usr/lib/amd64/libbunyan.so		i386
 usr/lib/sparcv9/libbunyan.so		sparc
 usr/include/bunyan.h
 #
-# Overlay
-#
-usr/include/libdloverlay.h
-usr/include/libvarpd.h
-usr/include/libvarpd_client.h
-usr/include/libvarpd_provider.h
-usr/include/sys/overlay.h
-usr/include/sys/overlay_common.h
-usr/include/sys/overlay_target.h
-usr/lib/libvarpd.so
-usr/lib/amd64/libvarpd.so
-#
 # Private interfaces in libsec
 #
 usr/include/aclutils.h
