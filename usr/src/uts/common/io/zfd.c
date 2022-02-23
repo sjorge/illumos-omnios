@@ -12,6 +12,7 @@
 /*
  * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
  * Copyright 2016 Joyent, Inc.  All rights reserved.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -31,22 +32,23 @@
  * using the devctl framework; thus the driver does not need to maintain any
  * sort of "admin" node.
  *
- * The driver shuttles I/O from master side to slave side and back.  In a break
- * from the pts/ptm semantics, if one side is not open, I/O directed towards
- * it will simply be discarded. This is so that if zoneadmd is not holding the
- * master side fd open (i.e. it has died somehow), processes in the zone do not
- * experience any errors and I/O to the fd does not cause the process to hang.
+ * The driver shuttles I/O from manager side to subsidiary side and back. In a
+ * break from the pts/ptm semantics, if one side is not open, I/O directed
+ * towards it will simply be discarded. This is so that if zoneadmd is not
+ * holding the manager side fd open (i.e. it has died somehow), processes in
+ * the zone do not experience any errors and I/O to the fd does not cause the
+ * process to hang.
  *
  * The driver can also act as a multiplexer so that data written to the
- * slave side within the zone is also redirected back to another zfd device
- * inside the zone for consumption (i.e. it can be read). The intention is
- * that a logging process within the zone can consume data that is being
- * written by an application onto the primary stream. This is essentially
- * a tee off of the primary stream into a log stream. This tee can also be
- * configured to be flow controlled via an ioctl. Flow control happens on the
- * primary stream and is used to ensure that the log stream receives all of
- * the messages off the primary stream when consumption of the data off of
- * the log stream gets behind. Configuring for flow control implies that the
+ * subsidiary side within the zone is also redirected back to another zfd
+ * device inside the zone for consumption (i.e. it can be read). The intention
+ * is that a logging process within the zone can consume data that is being
+ * written by an application onto the primary stream. This is essentially a tee
+ * off of the primary stream into a log stream. This tee can also be configured
+ * to be flow controlled via an ioctl. Flow control happens on the primary
+ * stream and is used to ensure that the log stream receives all of the
+ * messages off the primary stream when consumption of the data off of the log
+ * stream gets behind. Configuring for flow control implies that the
  * application writing to the primary stream will be blocked when the log
  * consumer gets behind. Note that closing the log stream (e.g. when the zone
  * halts) will cause the loss of all messages queued in the stream.
@@ -67,8 +69,8 @@
  *
  * With the 't' flag set, stdin/out/err is multiplexed onto a single full-duplex
  * stream which is configured as a tty. That is, ptem, ldterm and ttycompat are
- * autopushed onto the stream when the slave side is opened. There is only a
- * single zfd dev (0) needed for the primary stream.
+ * autopushed onto the stream when the subsidiary side is opened. There is only
+ * a single zfd dev (0) needed for the primary stream.
  *
  * When the 'n' flag is set, it is assumed that output logging will be done
  * within the zone itself. In this configuration 1 or 2 additional zfd devices,
@@ -132,22 +134,22 @@ static int zfd_wsrv(queue_t *);
 
 /*
  * The instance number is encoded in the dev_t in the minor number; the lowest
- * bit of the minor number is used to track the master vs. slave side of the
- * fd. The rest of the bits in the minor number are the instance.
+ * bit of the minor number is used to track the manager vs. subsidiary side of
+ * the fd. The rest of the bits in the minor number are the instance.
  */
-#define	ZFD_MASTER_MINOR		0
-#define	ZFD_SLAVE_MINOR		1
+#define	ZFD_MANAGER_MINOR		0
+#define	ZFD_SUBSID_MINOR		1
 
 #define	ZFD_INSTANCE(x)		(getminor((x)) >> 1)
 #define	ZFD_NODE(x)		(getminor((x)) & 0x01)
 
 /*
- * This macro converts a zfd_state_t pointer to the associated slave minor
+ * This macro converts a zfd_state_t pointer to the associated subsidiary minor
  * node's dev_t.
  */
-#define	ZFD_STATE_TO_SLAVEDEV(x)	\
+#define	ZFD_STATE_TO_SUBSIDDEV(x)	\
 	(makedevice(ddi_driver_major((x)->zfd_devinfo), \
-	(minor_t)(ddi_get_instance((x)->zfd_devinfo) << 1 | ZFD_SLAVE_MINOR)))
+	(minor_t)(ddi_get_instance((x)->zfd_devinfo) << 1 | ZFD_SUBSID_MINOR)))
 
 int zfd_debug = 0;
 #define	DBG(a)		if (zfd_debug) cmn_err(CE_NOTE, a)
@@ -199,15 +201,15 @@ static struct streamtab zfd_tab_info = {
  * this will define (struct cb_ops cb_zfd_ops) and (struct dev_ops zfd_ops)
  */
 DDI_DEFINE_STREAM_OPS(zfd_ops, nulldev, nulldev, zfd_attach, zfd_detach, \
-	nodev, zfd_getinfo, ZFD_CONF_FLAG, &zfd_tab_info, \
-	ddi_quiesce_not_needed);
+    nodev, zfd_getinfo, ZFD_CONF_FLAG, &zfd_tab_info, \
+    ddi_quiesce_not_needed);
 
 /*
  * Module linkage information for the kernel.
  */
 
 static struct modldrv modldrv = {
-	&mod_driverops, 	/* Type of module (this is a pseudo driver) */
+	&mod_driverops,		/* Type of module (this is a pseudo driver) */
 	"Zone FD driver",	/* description of module */
 	&zfd_ops		/* driver ops */
 };
@@ -226,8 +228,8 @@ typedef enum {
 
 typedef struct zfd_state {
 	dev_info_t *zfd_devinfo;	/* instance info */
-	queue_t *zfd_master_rdq;	/* GZ read queue */
-	queue_t *zfd_slave_rdq;		/* in-zone read queue */
+	queue_t *zfd_manager_rdq;	/* GZ read queue */
+	queue_t *zfd_subsid_rdq;	/* in-zone read queue */
 	int zfd_state;			/* ZFD_STATE_MOPEN, ZFD_STATE_SOPEN */
 	int zfd_tty;			/* ZFD_MAKETTY - strm mods will push */
 	boolean_t zfd_is_flowcon;	/* primary stream flow stopped */
@@ -243,9 +245,9 @@ typedef struct zfd_state {
 static void *zfd_soft_state;
 
 /*
- * List of STREAMS modules that are autopushed onto a slave instance when its
- * opened, but only if the ZFD_MAKETTY ioctl has first been received by the
- * master.
+ * List of STREAMS modules that are autopushed onto a subsidiary instance when
+ * its opened, but only if the ZFD_MAKETTY ioctl has first been received by the
+ * manager.
  */
 static char *zfd_mods[] = {
 	"ptem",
@@ -297,7 +299,7 @@ zfd_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 {
 	zfd_state_t *zfds;
 	int instance;
-	char masternm[ZFD_NAME_LEN], slavenm[ZFD_NAME_LEN];
+	char managernm[ZFD_NAME_LEN], subsidnm[ZFD_NAME_LEN];
 
 	if (cmd != DDI_ATTACH)
 		return (DDI_FAILURE);
@@ -306,18 +308,18 @@ zfd_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	if (ddi_soft_state_zalloc(zfd_soft_state, instance) != DDI_SUCCESS)
 		return (DDI_FAILURE);
 
-	(void) snprintf(masternm, sizeof (masternm), "%s%d", ZFD_MASTER_NAME,
-	    instance);
-	(void) snprintf(slavenm, sizeof (slavenm), "%s%d", ZFD_SLAVE_NAME,
-	    instance);
+	(void) snprintf(managernm, sizeof (managernm), "%s%d",
+	    ZFD_MANAGER_NAME, instance);
+	(void) snprintf(subsidnm, sizeof (subsidnm), "%s%d",
+	    ZFD_SUBSIDIARY_NAME, instance);
 
 	/*
-	 * Create the master and slave minor nodes.
+	 * Create the manager and subsidiary minor nodes.
 	 */
-	if ((ddi_create_minor_node(dip, slavenm, S_IFCHR,
-	    instance << 1 | ZFD_SLAVE_MINOR, DDI_PSEUDO, 0) == DDI_FAILURE) ||
-	    (ddi_create_minor_node(dip, masternm, S_IFCHR,
-	    instance << 1 | ZFD_MASTER_MINOR, DDI_PSEUDO, 0) == DDI_FAILURE)) {
+	if ((ddi_create_minor_node(dip, subsidnm, S_IFCHR,
+	    instance << 1 | ZFD_SUBSID_MINOR, DDI_PSEUDO, 0) == DDI_FAILURE) ||
+	    (ddi_create_minor_node(dip, managernm, S_IFCHR,
+	    instance << 1 | ZFD_MANAGER_MINOR, DDI_PSEUDO, 0) == DDI_FAILURE)) {
 		ddi_remove_minor_node(dip, NULL);
 		ddi_soft_state_free(zfd_soft_state, instance);
 		return (DDI_FAILURE);
@@ -383,7 +385,7 @@ zfd_getinfo(dev_info_t *dip, ddi_info_cmd_t infocmd, void *arg, void **result)
 
 /*
  * Return the equivalent queue from the other side of the relationship.
- * e.g.: given the slave's write queue, return the master's write queue.
+ * e.g.: given the subsidiary's write queue, return the manager's write queue.
  */
 static queue_t *
 zfd_switch(queue_t *qp)
@@ -391,16 +393,16 @@ zfd_switch(queue_t *qp)
 	zfd_state_t *zfds = qp->q_ptr;
 	ASSERT(zfds != NULL);
 
-	if (qp == zfds->zfd_master_rdq)
-		return (zfds->zfd_slave_rdq);
-	else if (OTHERQ(qp) == zfds->zfd_master_rdq && zfds->zfd_slave_rdq
+	if (qp == zfds->zfd_manager_rdq)
+		return (zfds->zfd_subsid_rdq);
+	else if (OTHERQ(qp) == zfds->zfd_manager_rdq && zfds->zfd_subsid_rdq
 	    != NULL)
-		return (OTHERQ(zfds->zfd_slave_rdq));
-	else if (qp == zfds->zfd_slave_rdq)
-		return (zfds->zfd_master_rdq);
-	else if (OTHERQ(qp) == zfds->zfd_slave_rdq && zfds->zfd_master_rdq
+		return (OTHERQ(zfds->zfd_subsid_rdq));
+	else if (qp == zfds->zfd_subsid_rdq)
+		return (zfds->zfd_manager_rdq);
+	else if (OTHERQ(qp) == zfds->zfd_subsid_rdq && zfds->zfd_manager_rdq
 	    != NULL)
-		return (OTHERQ(zfds->zfd_master_rdq));
+		return (OTHERQ(zfds->zfd_manager_rdq));
 	else
 		return (NULL);
 }
@@ -415,17 +417,18 @@ zfd_side(queue_t *qp)
 	zfd_state_t *zfds = qp->q_ptr;
 	ASSERT(zfds != NULL);
 
-	if (qp == zfds->zfd_master_rdq ||
-	    OTHERQ(qp) == zfds->zfd_master_rdq) {
-		return ("master");
+	if (qp == zfds->zfd_manager_rdq ||
+	    OTHERQ(qp) == zfds->zfd_manager_rdq) {
+		return (ZFD_MANAGER_NAME);
 	}
-	ASSERT(qp == zfds->zfd_slave_rdq || OTHERQ(qp) == zfds->zfd_slave_rdq);
-	return ("slave");
+	ASSERT(qp == zfds->zfd_subsid_rdq ||
+	    OTHERQ(qp) == zfds->zfd_subsid_rdq);
+	return (ZFD_SUBSIDIARY_NAME);
 }
 
 /*ARGSUSED*/
 static int
-zfd_master_open(zfd_state_t *zfds,
+zfd_manager_open(zfd_state_t *zfds,
     queue_t	*rqp,	/* pointer to the read side queue */
     dev_t	*devp,	/* pointer to stream tail's dev */
     int		oflag,	/* the user open(2) supplied flags */
@@ -436,14 +439,14 @@ zfd_master_open(zfd_state_t *zfds,
 	struct stroptions *sop;
 
 	/*
-	 * Enforce exclusivity on the master side; the only consumer should
+	 * Enforce exclusivity on the manager side; the only consumer should
 	 * be the zoneadmd for the zone.
 	 */
 	if ((zfds->zfd_state & ZFD_STATE_MOPEN) != 0)
 		return (EBUSY);
 
 	if ((mop = allocb(sizeof (struct stroptions), BPRI_MED)) == NULL) {
-		DBG("zfd_master_open(): mop allocation failed\n");
+		DBG("zfd_manager_open(): mop allocation failed\n");
 		return (ENOMEM);
 	}
 
@@ -457,13 +460,13 @@ zfd_master_open(zfd_state_t *zfds,
 	qprocson(rqp);
 
 	/*
-	 * Following qprocson(), the master side is fully plumbed into the
-	 * STREAM and may send/receive messages.  Setting zfds->zfd_master_rdq
-	 * will allow the slave to send messages to us (the master).
-	 * This cannot occur before qprocson() because the master is not
+	 * Following qprocson(), the manager side is fully plumbed into the
+	 * STREAM and may send/receive messages.  Setting zfds->zfd_manager_rdq
+	 * will allow the subsidiary to send messages to us (the manager).
+	 * This cannot occur before qprocson() because the manager is not
 	 * ready to process them until that point.
 	 */
-	zfds->zfd_master_rdq = rqp;
+	zfds->zfd_manager_rdq = rqp;
 
 	/*
 	 * set up hi/lo water marks on stream head read queue and add
@@ -485,7 +488,7 @@ zfd_master_open(zfd_state_t *zfds,
 
 /*ARGSUSED*/
 static int
-zfd_slave_open(zfd_state_t *zfds,
+zfd_subsid_open(zfd_state_t *zfds,
     queue_t	*rqp,	/* pointer to the read side queue */
     dev_t	*devp,	/* pointer to stream tail's dev */
     int		oflag,	/* the user open(2) supplied flags */
@@ -495,7 +498,7 @@ zfd_slave_open(zfd_state_t *zfds,
 	mblk_t *mop;
 	struct stroptions *sop;
 	/*
-	 * The slave side can be opened as many times as needed.
+	 * The subsidiary side can be opened as many times as needed.
 	 */
 	if ((zfds->zfd_state & ZFD_STATE_SOPEN) != 0) {
 		ASSERT((rqp != NULL) && (WR(rqp)->q_ptr == zfds));
@@ -520,19 +523,19 @@ zfd_slave_open(zfd_state_t *zfds,
 		 * fd to have terminal semantics.
 		 */
 		minor =
-		    ddi_get_instance(zfds->zfd_devinfo) << 1 | ZFD_SLAVE_MINOR;
+		    ddi_get_instance(zfds->zfd_devinfo) << 1 | ZFD_SUBSID_MINOR;
 		major = ddi_driver_major(zfds->zfd_devinfo);
 		lastminor = 0;
 		anchorindex = 1;
 		if (kstr_autopush(SET_AUTOPUSH, &major, &minor, &lastminor,
 		    &anchorindex, zfd_mods) != 0) {
-			DBG("zfd_slave_open(): kstr_autopush() failed\n");
+			DBG("zfd_subsidiary_open(): kstr_autopush() failed\n");
 			return (EIO);
 		}
 	}
 
 	if ((mop = allocb(sizeof (struct stroptions), BPRI_MED)) == NULL) {
-		DBG("zfd_slave_open(): mop allocation failed\n");
+		DBG("zfd_subsidiary_open(): mop allocation failed\n");
 		return (ENOMEM);
 	}
 
@@ -549,7 +552,7 @@ zfd_slave_open(zfd_state_t *zfds,
 	/*
 	 * Must follow qprocson(), since we aren't ready to process until then.
 	 */
-	zfds->zfd_slave_rdq = rqp;
+	zfds->zfd_subsid_rdq = rqp;
 
 	/*
 	 * set up hi/lo water marks on stream head read queue and add
@@ -571,10 +574,10 @@ zfd_slave_open(zfd_state_t *zfds,
  */
 static int
 zfd_open(queue_t *rqp,		/* pointer to the read side queue */
-	dev_t   *devp,		/* pointer to stream tail's dev */
-	int	oflag,		/* the user open(2) supplied flags */
-	int	sflag,		/* open state flag */
-	cred_t  *credp)		/* credentials */
+    dev_t   *devp,		/* pointer to stream tail's dev */
+    int	oflag,		/* the user open(2) supplied flags */
+    int	sflag,		/* open state flag */
+    cred_t  *credp)		/* credentials */
 {
 	int instance = ZFD_INSTANCE(*devp);
 	int ret;
@@ -587,11 +590,11 @@ zfd_open(queue_t *rqp,		/* pointer to the read side queue */
 		return (ENXIO);
 
 	switch (ZFD_NODE(*devp)) {
-	case ZFD_MASTER_MINOR:
-		ret = zfd_master_open(zfds, rqp, devp, oflag, sflag, credp);
+	case ZFD_MANAGER_MINOR:
+		ret = zfd_manager_open(zfds, rqp, devp, oflag, sflag, credp);
 		break;
-	case ZFD_SLAVE_MINOR:
-		ret = zfd_slave_open(zfds, rqp, devp, oflag, sflag, credp);
+	case ZFD_SUBSID_MINOR:
+		ret = zfd_subsid_open(zfds, rqp, devp, oflag, sflag, credp);
 		/*
 		 * If we just opened the log stream and flow control has
 		 * been enabled, we want to make sure the primary stream can
@@ -600,8 +603,10 @@ zfd_open(queue_t *rqp,		/* pointer to the read side queue */
 		if (ret == 0 && zfds->zfd_muxt == ZFD_LOG_STREAM &&
 		    zfds->zfd_inst_pri->zfd_allow_flowcon) {
 			zfds->zfd_inst_pri->zfd_is_flowcon = B_FALSE;
-			if (zfds->zfd_inst_pri->zfd_master_rdq != NULL)
-				qenable(RD(zfds->zfd_inst_pri->zfd_master_rdq));
+			if (zfds->zfd_inst_pri->zfd_manager_rdq != NULL) {
+				qenable(
+				    RD(zfds->zfd_inst_pri->zfd_manager_rdq));
+			}
 		}
 		break;
 	default:
@@ -627,33 +632,33 @@ zfd_close(queue_t *rqp, int flag, cred_t *credp)
 
 	zfds = (zfd_state_t *)rqp->q_ptr;
 
-	if (rqp == zfds->zfd_master_rdq) {
-		DBG("Closing master side");
+	if (rqp == zfds->zfd_manager_rdq) {
+		DBG("Closing manager side");
 
-		zfds->zfd_master_rdq = NULL;
+		zfds->zfd_manager_rdq = NULL;
 		zfds->zfd_state &= ~ZFD_STATE_MOPEN;
 
 		/*
-		 * qenable slave side write queue so that it can flush
-		 * its messages as master's read queue is going away
+		 * qenable subsidiary side write queue so that it can flush
+		 * its messages as manager's read queue is going away
 		 */
-		if (zfds->zfd_slave_rdq != NULL) {
-			qenable(WR(zfds->zfd_slave_rdq));
+		if (zfds->zfd_subsid_rdq != NULL) {
+			qenable(WR(zfds->zfd_subsid_rdq));
 		}
 
 		qprocsoff(rqp);
 		WR(rqp)->q_ptr = rqp->q_ptr = NULL;
 
-	} else if (rqp == zfds->zfd_slave_rdq) {
+	} else if (rqp == zfds->zfd_subsid_rdq) {
 
-		DBG("Closing slave side");
+		DBG("Closing subsidiary side");
 		zfds->zfd_state &= ~ZFD_STATE_SOPEN;
-		zfds->zfd_slave_rdq = NULL;
+		zfds->zfd_subsid_rdq = NULL;
 
 		wqp = WR(rqp);
 		while ((bp = getq(wqp)) != NULL) {
-			if (zfds->zfd_master_rdq != NULL)
-				putnext(zfds->zfd_master_rdq, bp);
+			if (zfds->zfd_manager_rdq != NULL)
+				putnext(zfds->zfd_manager_rdq, bp);
 			else if (bp->b_datap->db_type == M_IOCTL)
 				miocnak(wqp, bp, 0, 0);
 			else
@@ -661,11 +666,11 @@ zfd_close(queue_t *rqp, int flag, cred_t *credp)
 		}
 
 		/*
-		 * Qenable master side write queue so that it can flush its
-		 * messages as slaves's read queue is going away.
+		 * Qenable manager side write queue so that it can flush its
+		 * messages as subsidiary's read queue is going away.
 		 */
-		if (zfds->zfd_master_rdq != NULL)
-			qenable(WR(zfds->zfd_master_rdq));
+		if (zfds->zfd_manager_rdq != NULL)
+			qenable(WR(zfds->zfd_manager_rdq));
 
 		/*
 		 * Qenable primary stream if necessary.
@@ -673,8 +678,10 @@ zfd_close(queue_t *rqp, int flag, cred_t *credp)
 		if (zfds->zfd_muxt == ZFD_LOG_STREAM &&
 		    zfds->zfd_inst_pri->zfd_allow_flowcon) {
 			zfds->zfd_inst_pri->zfd_is_flowcon = B_FALSE;
-			if (zfds->zfd_inst_pri->zfd_master_rdq != NULL)
-				qenable(RD(zfds->zfd_inst_pri->zfd_master_rdq));
+			if (zfds->zfd_inst_pri->zfd_manager_rdq != NULL) {
+				qenable(
+				    RD(zfds->zfd_inst_pri->zfd_manager_rdq));
+			}
 		}
 
 		qprocsoff(rqp);
@@ -687,7 +694,7 @@ zfd_close(queue_t *rqp, int flag, cred_t *credp)
 			 */
 			major = ddi_driver_major(zfds->zfd_devinfo);
 			minor = ddi_get_instance(zfds->zfd_devinfo) << 1 |
-			    ZFD_SLAVE_MINOR;
+			    ZFD_SUBSID_MINOR;
 			(void) kstr_autopush(CLR_AUTOPUSH, &major, &minor,
 			    NULL, NULL, NULL);
 		}
@@ -771,8 +778,8 @@ zfd_tee_handler(zfd_state_t *zfds, unsigned char type, mblk_t *mp)
 		return;
 	}
 
-	/* The zfd_slave_rdq is null until the log dev is opened in the zone */
-	log_qp = RD(log_zfds->zfd_slave_rdq);
+	/* The zfd_subsid_rdq is null until the log dev is opened in the zone */
+	log_qp = RD(log_zfds->zfd_subsid_rdq);
 	DTRACE_PROBE2(zfd__tee__check, void *, log_qp, void *, zfds);
 
 	if (!zfds->zfd_allow_flowcon) {
@@ -815,9 +822,9 @@ zfd_tee_handler(zfd_state_t *zfds, unsigned char type, mblk_t *mp)
 }
 
 /*
- * wput(9E) is symmetric for master and slave sides, so this handles both
+ * wput(9E) is symmetric for manager and subsidiary sides, so this handles both
  * without splitting the codepath.  (The only exception to this is the
- * processing of zfd ioctls, which is restricted to the master side.)
+ * processing of zfd ioctls, which is restricted to the manager side.)
  *
  * zfd_wput() looks at the other side; if there is no process holding that
  * side open, it frees the message.  This prevents processes from hanging
@@ -844,7 +851,7 @@ zfd_wput(queue_t *qp, mblk_t *mp)
 	DBG1("entering zfd_wput, %s side", zfd_side(qp));
 
 	/*
-	 * Process zfd ioctl messages if qp is the master side's write queue.
+	 * Process zfd ioctl messages if qp is the manager side's write queue.
 	 */
 	zfds = (zfd_state_t *)qp->q_ptr;
 
@@ -857,12 +864,12 @@ zfd_wput(queue_t *qp, mblk_t *mp)
 			miocack(qp, mp, 0, 0);
 			return (0);
 		case ZFD_EOF:
-			if (zfds->zfd_slave_rdq != NULL)
-				(void) putnextctl(zfds->zfd_slave_rdq,
+			if (zfds->zfd_subsid_rdq != NULL)
+				(void) putnextctl(zfds->zfd_subsid_rdq,
 				    M_HANGUP);
 			miocack(qp, mp, 0, 0);
 			return (0);
-		case ZFD_HAS_SLAVE:
+		case ZFD_HAS_SUBSID:
 			if ((zfds->zfd_state & ZFD_STATE_SOPEN) != 0) {
 				miocack(qp, mp, 0, 0);
 			} else {
@@ -876,7 +883,7 @@ zfd_wput(queue_t *qp, mblk_t *mp)
 			 *
 			 * We expect to be called on the stream that will
 			 * become the log stream and be passed one data block
-			 * with the minor number of the slave side of the
+			 * with the minor number of the subsidiary side of the
 			 * primary stream.
 			 */
 			int to;
@@ -889,7 +896,7 @@ zfd_wput(queue_t *qp, mblk_t *mp)
 				return (0);
 			}
 
-			/* Get the primary slave minor device number */
+			/* Get the primary subsidiary minor device number */
 			ASSERT(IS_P2ALIGNED(mp->b_cont->b_rptr, 4));
 			/* LINTED - b_rptr will always be aligned. */
 			to = *(int *)mp->b_cont->b_rptr;
@@ -966,7 +973,7 @@ zfd_wput(queue_t *qp, mblk_t *mp)
 	}
 
 	/* if on the write side, may need to tee */
-	if (zfds->zfd_slave_rdq != NULL && qp == WR(zfds->zfd_slave_rdq)) {
+	if (zfds->zfd_subsid_rdq != NULL && qp == WR(zfds->zfd_subsid_rdq)) {
 		/* tee output to any attached log stream */
 		zfd_tee_handler(zfds, type, mp);
 
@@ -1039,7 +1046,7 @@ zfd_wput(queue_t *qp, mblk_t *mp)
  * Read server
  *
  * For primary stream:
- * Under normal execution rsrv(9E) is symmetric for master and slave, so
+ * Under normal execution rsrv(9E) is symmetric for manager and subsidiary, so
  * zfd_rsrv() can handle both without splitting up the codepath. We do this by
  * enabling the write side of the partner.  This triggers the partner to send
  * messages queued on its write side to this queue's read side.
@@ -1057,11 +1064,11 @@ zfd_rsrv(queue_t *qp)
 	/*
 	 * log stream server
 	 */
-	if (zfds->zfd_muxt == ZFD_LOG_STREAM && zfds->zfd_slave_rdq != NULL) {
+	if (zfds->zfd_muxt == ZFD_LOG_STREAM && zfds->zfd_subsid_rdq != NULL) {
 		queue_t *log_qp;
 		mblk_t *mp;
 
-		log_qp = RD(zfds->zfd_slave_rdq);
+		log_qp = RD(zfds->zfd_subsid_rdq);
 
 		if ((zfds->zfd_state & ZFD_STATE_SOPEN) != 0) {
 			zfd_state_t *pzfds = zfds->zfd_inst_pri;
@@ -1078,8 +1085,8 @@ zfd_rsrv(queue_t *qp)
 			if (log_qp->q_count < log_qp->q_lowat) {
 				DTRACE_PROBE(zfd__flow__on);
 				pzfds->zfd_is_flowcon = B_FALSE;
-				if (pzfds->zfd_master_rdq != NULL)
-					qenable(RD(pzfds->zfd_master_rdq));
+				if (pzfds->zfd_manager_rdq != NULL)
+					qenable(RD(pzfds->zfd_manager_rdq));
 			}
 		} else {
 			/* No longer open, drain the queue */
@@ -1092,10 +1099,10 @@ zfd_rsrv(queue_t *qp)
 	}
 
 	/*
-	 * Care must be taken here, as either of the master or slave side
+	 * Care must be taken here, as either of the manager or subsidiary side
 	 * qptr could be NULL.
 	 */
-	ASSERT(qp == zfds->zfd_master_rdq || qp == zfds->zfd_slave_rdq);
+	ASSERT(qp == zfds->zfd_manager_rdq || qp == zfds->zfd_subsid_rdq);
 	if (zfd_switch(qp) == NULL) {
 		DBG("zfd_rsrv: other side isn't listening\n");
 		return (0);
@@ -1107,8 +1114,8 @@ zfd_rsrv(queue_t *qp)
 /*
  * Write server
  *
- * This routine is symmetric for master and slave, so it handles both without
- * splitting up the codepath.
+ * This routine is symmetric for manager and subsidiary, so it handles both
+ * without splitting up the codepath.
  *
  * If there are messages on this queue that can be sent to the other, send
  * them via putnext(). Else, if queued messages cannot be sent, leave them

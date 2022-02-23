@@ -10,6 +10,7 @@
 .\"
 .\"
 .\" Copyright 2015, Joyent, Inc. All rights reserved.
+.\" Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
 .\"
 .Dd "Oct 16, 2015"
 .Dt ZFD 7D
@@ -31,7 +32,7 @@ The
 driver behaves in a similar manner as the
 .Nm zcons(7D)
 device.
-Inside a zone, the slave side devices appear as
+Inside a zone, the subsidiary side devices appear as
 .Nm /dev/zfd/[0-4] .
 .sp
 The zone's zfd device configuration is driven by
@@ -61,7 +62,7 @@ That is,
 .Nm ldterm
 and
 .Nm ttycompat
-are autopushed onto the stream when the slave side is opened.
+are autopushed onto the stream when the subsidiary side is opened.
 There is only a single zfd device (0) needed for the primary stream.
 .sp
 When the
@@ -69,8 +70,8 @@ When the
 flag is set, it is assumed that output logging will be done within the zone
 itself.
 In this configuration 1 or 2 additional zfd devices, depending on tty mode
-.Nm ( t
-flag), are created within the zone.
+.Pq Sy t No flag ,
+are created within the zone.
 An application can then configure the zfd streams driver into a multiplexer.
 Output from the stdout/stderr zfd(s) will be teed into the correspond logging
 zfd(s) within the zone.

@@ -23,6 +23,7 @@
  * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  * Copyright 2016 Joyent, Inc.  All rights reserved.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -196,17 +197,17 @@ make_tty(zlog_t *zlogp, int id)
 	char stdpath[MAXPATHLEN];
 
 	/*
-	 * Open the master side of the dev and issue the ZFD_MAKETTY ioctl,
+	 * Open the manager side of the dev and issue the ZFD_MAKETTY ioctl,
 	 * which will cause the the various tty-related streams modules to be
-	 * pushed when the slave opens the device.
+	 * pushed when the subsidiary opens the device.
 	 *
 	 * In very rare cases the open returns ENOENT if devfs doesn't have
 	 * everything setup yet due to heavy zone startup load. Wait for
 	 * 1 sec. and retry a few times. Even if we can't setup tty mode
 	 * we still move on.
 	 */
-	(void) snprintf(stdpath, sizeof (stdpath), "/dev/zfd/%s/master/%d",
-	    zone_name, id);
+	(void) snprintf(stdpath, sizeof (stdpath), "/dev/zfd/%s/%s/%d",
+	    zone_name, ZFD_MANAGER_NAME, id);
 
 	for (i = 0; !shutting_down && i < ZTTY_RETRY; i++) {
 		fd = open(stdpath, O_RDWR | O_NOCTTY);
@@ -245,8 +246,8 @@ make_tty(zlog_t *zlogp, int id)
  * are careful to reuse a dev if one exists.
  *
  * Once the devices are in the device tree, we kick devfsadm via
- * di_devlink_init() to ensure that the appropriate symlinks (to the master and
- * slave fd devices) are placed in /dev in the global zone.
+ * di_devlink_init() to ensure that the appropriate symlinks (to the manager
+ * and subsidiary fd devices) are placed in /dev in the global zone.
  */
 static int
 init_zfd_dev(zlog_t *zlogp, devctl_hdl_t bus_hdl, int id)
@@ -905,7 +906,7 @@ do_zfd_io(int gzctlfd, int gzservfd, int gzerrfd, int stdinfd, int stdoutfd,
 					break;
 				}
 			} else {
-				if (ioctl(stdinfd, ZFD_HAS_SLAVE) == 0) {
+				if (ioctl(stdinfd, ZFD_HAS_SUBSID) == 0) {
 					stdin_ready = B_TRUE;
 				} else {
 					/*
@@ -1086,8 +1087,8 @@ open_fd(zlog_t *zlogp, int id, int rw)
 	int retried = 0;
 	char stdpath[MAXPATHLEN];
 
-	(void) snprintf(stdpath, sizeof (stdpath), "/dev/zfd/%s/master/%d",
-	    zone_name, id);
+	(void) snprintf(stdpath, sizeof (stdpath), "/dev/zfd/%s/%s/%d",
+	    zone_name, ZFD_MANAGER_NAME, id);
 	flag |= rw;
 
 	while (!shutting_down) {

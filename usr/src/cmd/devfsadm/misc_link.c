@@ -23,6 +23,7 @@
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2015, Joyent, Inc. All rights reserved.
  * Copyright (c) 2017 by Delphix. All rights reserved.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #include <regex.h>
@@ -243,7 +244,8 @@ static devfsadm_remove_t misc_remove_cbt[] = {
 		ZCONS_SUBSIDIARY_NAME ")$",
 	    RM_PRE | RM_HOT | RM_ALWAYS, ILEVEL_0, devfsadm_rm_all
 	},
-	{ "pseudo", "^zfd/" ZONENAME_REGEXP "/(master|slave)/[0-9]+$",
+	{ "pseudo", "^zfd/" ZONENAME_REGEXP "/(" ZFD_MANAGER_NAME "|"
+		ZFD_SUBSIDIARY_NAME ")/[0-9]+$",
 	    RM_PRE | RM_HOT | RM_ALWAYS, ILEVEL_0, devfsadm_rm_all
 	},
 	{ "pseudo", "^" CPUID_SELF_NAME "$", RM_ALWAYS | RM_PRE | RM_HOT,
@@ -710,12 +712,13 @@ zfd_create(di_minor_t minor, di_node_t node)
 	if (di_prop_lookup_ints(DDI_DEV_T_ANY, node, "zfd_id", &id) == -1)
 		return (DEVFSADM_CONTINUE);
 
-	if (strncmp(minor_str, "slave", 5) == 0) {
-		(void) snprintf(path, sizeof (path), "zfd/%s/slave/%d",
-		    zonename, id[0]);
+	if (strncmp(minor_str, ZFD_SUBSIDIARY_NAME,
+	    sizeof (ZFD_SUBSIDIARY_NAME) - 1) == 0) {
+		(void) snprintf(path, sizeof (path), "zfd/%s/%s/%d",
+		    zonename, ZFD_SUBSIDIARY_NAME, id[0]);
 	} else {
-		(void) snprintf(path, sizeof (path), "zfd/%s/master/%d",
-		    zonename, id[0]);
+		(void) snprintf(path, sizeof (path), "zfd/%s/%s/%d",
+		    zonename, ZFD_MANAGER_NAME, id[0]);
 	}
 	(void) devfsadm_mklink(path, node, minor, 0);
 
