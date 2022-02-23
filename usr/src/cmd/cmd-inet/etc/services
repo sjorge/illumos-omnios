@@ -34,7 +34,7 @@ systat		11/tcp		users
 daytime		13/tcp
 daytime		13/udp
 netstat		15/tcp
-qotd		17/tcp 				# Quote of the Day
+qotd		17/tcp				# Quote of the Day
 chargen		19/tcp		ttytst source
 chargen		19/udp		ttytst source
 ftp-data	20/tcp
@@ -81,7 +81,7 @@ imap3		220/tcp
 imap3		220/udp
 clearcase	371/tcp
 clearcase	371/udp
-ldap		389/tcp				# Lightweight Directory Access Protocol	
+ldap		389/tcp				# Lightweight Directory Access Protocol
 ldap		389/udp				# Lightweight Directory Access Protocol
 https		443/tcp
 https		443/udp

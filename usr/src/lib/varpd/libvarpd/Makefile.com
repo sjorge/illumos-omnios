@@ -28,9 +28,11 @@ OBJECTS =	libvarpd.o \
 
 include ../../../Makefile.lib
 
+# install this library in the root filesystem
+include ../../../Makefile.rootfs
+
 LIBS =		$(DYNLIB)
-LDLIBS +=	-lc -lavl -lumem -lidspace -lnvpair -lmd5 -lrename \
-		-lbunyan
+LDLIBS +=	-lc -lavl -lumem -lidspace -lnvpair -lmd5 -lrename
 CPPFLAGS +=	-I../common
 
 CERRWARN +=	-erroff=E_STRUCT_DERIVED_FROM_FLEX_MBR

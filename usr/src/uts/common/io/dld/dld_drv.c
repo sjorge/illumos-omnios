@@ -632,7 +632,7 @@ drv_ioc_prop_common(dld_ioc_macprop_t *prop, intptr_t arg, boolean_t set,
     cred_t *cred, int mode)
 {
 	int			err = EINVAL;
-	dls_dl_handle_t 	dlh = NULL;
+	dls_dl_handle_t		dlh = NULL;
 	dls_link_t		*dlp = NULL;
 	mac_perim_handle_t	mph = NULL;
 	dld_ioc_macprop_t	*kprop;
@@ -1328,7 +1328,7 @@ drv_ioc_gettran(void *karg, intptr_t arg, int mode, cred_t *cred,
 {
 	int			ret = 0;
 	mac_perim_handle_t	mph = NULL;
-	dls_dl_handle_t 	dlh = NULL;
+	dls_dl_handle_t		dlh = NULL;
 	dls_link_t		*dlp = NULL;
 	dld_ioc_gettran_t	*dgt = karg;
 
@@ -1372,7 +1372,7 @@ drv_ioc_readtran(void *karg, intptr_t arg, int mode, cred_t *cred,
 {
 	int			ret = 0;
 	mac_perim_handle_t	mph = NULL;
-	dls_dl_handle_t 	dlh = NULL;
+	dls_dl_handle_t		dlh = NULL;
 	dls_link_t		*dlp = NULL;
 	dld_ioc_tranio_t	*dti = karg;
 	uint8_t			buf[256];
@@ -1425,7 +1425,7 @@ drv_ioc_getled(void *karg, intptr_t arg, int mode, cred_t *cred,
 {
 	int			ret = 0;
 	mac_perim_handle_t	mph = NULL;
-	dls_dl_handle_t 	dlh = NULL;
+	dls_dl_handle_t		dlh = NULL;
 	dls_link_t		*dlp = NULL;
 	dld_ioc_led_t		*dil = karg;
 
@@ -1471,7 +1471,7 @@ drv_ioc_setled(void *karg, intptr_t arg, int mode, cred_t *cred,
 {
 	int			ret = 0;
 	mac_perim_handle_t	mph = NULL;
-	dls_dl_handle_t 	dlh = NULL;
+	dls_dl_handle_t		dlh = NULL;
 	dls_link_t		*dlp = NULL;
 	dld_ioc_led_t		*dil = karg;
 

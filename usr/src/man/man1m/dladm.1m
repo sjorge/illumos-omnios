@@ -4508,10 +4508,10 @@ A comma-separated list of properties to set to the specified values.
 .ad
 .sp .6
 .RS 4n
-Sets the virtual networking identfier to \fIvnetid\fR. A virtual network
+Sets the virtual networking identifier to \fIvnetid\fR. A virtual network
 identifier determines is similar to a VLAN identifier, in that it identifies a
 unique virtual network. All overlay devices on the system share the same space
-for the virtual network idenfifiter. However, the valid range of identifiers is
+for the virtual network identifier. However, the valid range of identifiers is
 determined by the encapsulation plugin specified by \fB-e\fR.
 .RE
 
@@ -4580,11 +4580,10 @@ Flushes all values in the target table for \fIoverlay\fR.
 .RS 4n
 Sets the value of \fIoverlay\fR's target table entry for \fImac\fR to the
 specified value. The specified value varies upon the encapsulation plugin. The
-value may be a combination of a MAC address, IP address, and port.
-Generally, this looks like [\fImac\fR,][\fIIP\fR:][\fIport\fR].
-If a component is the last one, then there is no need for a separator. eg. if
-just the MAC address or IP is needed, it would look like \fImac\fR and \fIIP\fR
-respectively.
+value may be a combination of a MAC address, IP address, and port. Generally,
+this looks like [\fImac\fR,][\fIIP\fR:][\fIport\fR]. If a component is the last
+one, then there is no need for a separator. eg. if just the MAC address or IP
+is needed, it would look like \fImac\fR and \fIIP\fR respectively.
 .RE
 
 .RE

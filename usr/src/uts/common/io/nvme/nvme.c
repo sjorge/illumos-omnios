@@ -10,14 +10,12 @@
  */
 
 /*
- * Copyright 2018 Nexenta Systems, Inc.
- * Copyright 2016 Tegile Systems, Inc. All rights reserved.
  * Copyright (c) 2016 The MathWorks, Inc.  All rights reserved.
  * Copyright 2020 Joyent, Inc.
- * Copyright 2019 Western Digital Corporation.
  * Copyright 2020 Racktop Systems.
  * Copyright 2022 Oxide Computer Company.
  * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2022 Tintri by DDN, Inc. All rights reserved.
  */
 
 /*
@@ -2698,17 +2696,18 @@ static void
 nvme_changed_ns(nvme_t *nvme, int nsid)
 {
 	nvme_namespace_t *ns = &nvme->n_ns[nsid - 1];
-	nvme_identify_nsid_t *idns;
-	dev_info_t *cdip;
-	size_t blksz;
-	nvlist_t *attr = NULL;
-	char *path = NULL;
+	nvme_identify_nsid_t *idns, *oidns;
 
-	dev_err(nvme->n_dip, CE_NOTE, "!namespace %u (%s) has changed.\n",
+	dev_err(nvme->n_dip, CE_NOTE, "!namespace %u (%s) has changed.",
 	    nsid, ns->ns_name);
 
 	if (ns->ns_ignore)
 		return;
+
+	/*
+	 * The namespace has changed in some way. At present, we only update
+	 * the device capacity and trigger blkdev to check the device state.
+	 */
 
 	if (nvme_identify(nvme, B_FALSE, nsid, (void **)&idns) != 0) {
 		dev_err(nvme->n_dip, CE_WARN,
@@ -2716,65 +2715,16 @@ nvme_changed_ns(nvme_t *nvme, int nsid)
 		return;
 	}
 
-	kmem_free(ns->ns_idns, sizeof (nvme_identify_nsid_t));
+	oidns = ns->ns_idns;
 	ns->ns_idns = idns;
-
-	/*
-	 * There are a number of ways in which the namespace can have changed.
-	 * If the block count has increased without the block size changing,
-	 * sent a DLE (dynamic LUN expansion) sysevent.
-	 */
-
-	blksz = 1 << idns->id_lbaf[idns->id_flbas.lba_format].lbaf_lbads;
-
-	if (blksz != ns->ns_block_size)
-		return;
-
-	if (idns->id_nsize <= ns->ns_block_count)
-		return;
-
-	dev_err(nvme->n_dip, CE_CONT,
-	    "!namespace %u (%s) has changed size %lu -> %lu %lu-byte blocks\n",
-	    nsid, ns->ns_name, ns->ns_block_count, idns->id_nsize, blksz);
+	kmem_free(oidns, sizeof (nvme_identify_nsid_t));
 
 	ns->ns_block_count = idns->id_nsize;
+	ns->ns_block_size =
+	    1 << idns->id_lbaf[idns->id_flbas.lba_format].lbaf_lbads;
+	ns->ns_best_block_size = ns->ns_block_size;
 
-	if ((cdip = ddi_get_child(nvme->n_dip)) == NULL)
-		return;
-
-	if (nvlist_alloc(&attr, NV_UNIQUE_NAME_TYPE, KM_NOSLEEP) != 0)
-		return;
-
-	path = kmem_zalloc(MAXPATHLEN, KM_NOSLEEP);
-	if (path == NULL)
-		goto out;
-
-	(void) snprintf(path, MAXPATHLEN, "/devices");
-	(void) ddi_pathname(cdip, path + strlen(path));
-	(void) snprintf(path + strlen(path), MAXPATHLEN - strlen(path), ":x");
-
-	/*
-	 * On receipt of this event, the ZFS sysevent module will scan active
-	 * zpools for child vdevs matching this physical path. In order to
-	 * catch both whole disk pools and those with an EFI boot partition,
-	 * generate separate sysevents for minor node 'a' and 'b'.
-	 * (By comparison, io/scsi/targets/sd.c sends just 'a')
-	 */
-	for (char c = 'a'; c < 'c'; c++) {
-		path[strlen(path) - 1] = c;
-
-		if (nvlist_add_string(attr, DEV_PHYS_PATH, path) != 0)
-			goto out;
-
-		(void) ddi_log_sysevent(nvme->n_dip, DDI_VENDOR_SUNW,
-		    EC_DEV_STATUS, ESC_DEV_DLE, attr, NULL, DDI_NOSLEEP);
-	}
-
-out:
-	if (attr != NULL)
-		nvlist_free(attr);
-	if (path != NULL)
-		kmem_free(path, MAXPATHLEN);
+	bd_state_change(ns->ns_bd_hdl);
 }
 
 static int
@@ -4953,6 +4903,7 @@ nvme_ioctl_firmware_download(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc,
 	size_t len, copylen;
 	offset_t offset;
 	uintptr_t buf;
+	nvme_cqe_t cqe = { 0 };
 	nvme_sqe_t sqe = {
 	    .sqe_opc	= NVME_OPC_FW_IMAGE_LOAD
 	};
@@ -4978,6 +4929,9 @@ nvme_ioctl_firmware_download(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc,
 	len = nioc->n_len;
 	offset = nioc->n_arg;
 	buf = (uintptr_t)nioc->n_buf;
+
+	nioc->n_arg = 0;
+
 	while (len > 0 && rv == 0) {
 		/*
 		 * nvme_ioc_cmd() does not use SGLs or PRP lists.
@@ -4990,7 +4944,22 @@ nvme_ioctl_firmware_download(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc,
 		sqe.sqe_cdw11 = (uint32_t)(offset >> NVME_DWORD_SHIFT);
 
 		rv = nvme_ioc_cmd(nvme, &sqe, B_TRUE, (void *)buf, copylen,
-		    FWRITE, NULL, nvme_admin_cmd_timeout);
+		    FWRITE, &cqe, nvme_admin_cmd_timeout);
+
+		/*
+		 * Regardless of whether the command succeeded or not, whether
+		 * there's an errno in rv to be returned, we'll return any
+		 * command-specific status code in n_arg.
+		 *
+		 * As n_arg isn't cleared in all other possible code paths
+		 * returning an error, we return the status code as a negative
+		 * value so it can be distinguished easily from whatever value
+		 * was passed in n_arg originally. This of course only works as
+		 * long as arguments passed in n_arg are less than INT64_MAX,
+		 * which they currently are.
+		 */
+		if (cqe.cqe_sf.sf_sct == NVME_CQE_SCT_SPECIFIC)
+			nioc->n_arg = (uint64_t)-cqe.cqe_sf.sf_sc;
 
 		buf += copylen;
 		offset += copylen;
@@ -5034,6 +5003,8 @@ nvme_ioctl_firmware_commit(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc,
 	case NVME_FWC_SAVE:
 	case NVME_FWC_SAVE_ACTIVATE:
 		timeout = nvme_commit_save_cmd_timeout;
+		if (slot == 1 && nvme->n_idctl->id_frmw.fw_readonly)
+			return (EROFS);
 		break;
 	case NVME_FWC_ACTIVATE:
 	case NVME_FWC_ACTIVATE_IMMED:
@@ -5047,9 +5018,23 @@ nvme_ioctl_firmware_commit(nvme_t *nvme, int nsid, nvme_ioctl_t *nioc,
 	fc_dw10.b.fc_action = action;
 	sqe.sqe_cdw10 = fc_dw10.r;
 
+	nioc->n_arg = 0;
 	rv = nvme_ioc_cmd(nvme, &sqe, B_TRUE, NULL, 0, 0, &cqe, timeout);
 
-	nioc->n_arg = ((uint64_t)cqe.cqe_sf.sf_sct << 16) | cqe.cqe_sf.sf_sc;
+	/*
+	 * Regardless of whether the command succeeded or not, whether
+	 * there's an errno in rv to be returned, we'll return any
+	 * command-specific status code in n_arg.
+	 *
+	 * As n_arg isn't cleared in all other possible code paths
+	 * returning an error, we return the status code as a negative
+	 * value so it can be distinguished easily from whatever value
+	 * was passed in n_arg originally. This of course only works as
+	 * long as arguments passed in n_arg are less than INT64_MAX,
+	 * which they currently are.
+	 */
+	if (cqe.cqe_sf.sf_sct == NVME_CQE_SCT_SPECIFIC)
+		nioc->n_arg = (uint64_t)-cqe.cqe_sf.sf_sc;
 
 	/*
 	 * Let the DDI UFM subsystem know that the firmware information for
