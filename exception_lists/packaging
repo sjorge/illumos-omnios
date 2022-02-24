@@ -401,13 +401,8 @@ usr/include/libidspace.h
 # VXLAN
 #
 usr/include/sys/vxlan.h
-#
-# Private libbunyan
-#
-usr/lib/libbunyan.so
-usr/lib/amd64/libbunyan.so		i386
-usr/lib/sparcv9/libbunyan.so		sparc
-usr/include/bunyan.h
+lib/libvarpd.so
+lib/amd64/libvarpd.so
 #
 # Overlay
 #
@@ -418,8 +413,13 @@ usr/include/libvarpd_provider.h
 usr/include/sys/overlay.h
 usr/include/sys/overlay_common.h
 usr/include/sys/overlay_target.h
-usr/lib/libvarpd.so
-usr/lib/amd64/libvarpd.so
+#
+# Private libbunyan
+#
+usr/lib/libbunyan.so
+usr/lib/amd64/libbunyan.so		i386
+usr/lib/sparcv9/libbunyan.so		sparc
+usr/include/bunyan.h
 #
 # Private interfaces in libsec
 #

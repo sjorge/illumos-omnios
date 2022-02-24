@@ -25,7 +25,6 @@
 #include <dlfcn.h>
 #include <link.h>
 #include <stdio.h>
-#include <bunyan.h>
 
 static varpd_impl_t *varpd_load_handle;
 static const char *varpd_load_path;
@@ -59,21 +58,18 @@ libvarpd_plugin_alloc(uint_t version, int *errp)
 		errp = &err;
 
 	if (version != VARPD_VERSION_ONE) {
-		(void) bunyan_warn(varpd_load_handle->vdi_bunyan,
-		    "unsupported registration version",
-		    BUNYAN_T_STRING, "module_path", varpd_load_path,
-		    BUNYAN_T_INT32, "module_version", version,
-		    BUNYAN_T_END);
+		(void) fprintf(stderr,
+		    "unsupported registration version %u - %s\n",
+		    version, varpd_load_path);
 		*errp = EINVAL;
 		return (NULL);
 	}
 
 	vprp = umem_alloc(sizeof (varpd_plugin_register_t), UMEM_DEFAULT);
 	if (vprp == NULL) {
-		(void) bunyan_warn(varpd_load_handle->vdi_bunyan,
-		    "failed to allocate registration handle",
-		    BUNYAN_T_STRING, "module_path", varpd_load_path,
-		    BUNYAN_T_END);
+		(void) fprintf(stderr,
+		    "failed to allocate registration handle - %s\n",
+		    varpd_load_path);
 		*errp = ENOMEM;
 		return (NULL);
 	}
@@ -97,20 +93,17 @@ libvarpd_plugin_register(varpd_plugin_register_t *vprp)
 
 	vpp = umem_alloc(sizeof (varpd_plugin_t), UMEM_DEFAULT);
 	if (vpp == NULL) {
-		(void) bunyan_warn(varpd_load_handle->vdi_bunyan,
-		    "failed to allocate memory for the varpd_plugin_t",
-		    BUNYAN_T_STRING, "module_path", varpd_load_path,
-		    BUNYAN_T_END);
+		(void) fprintf(stderr,
+		    "failed to allocate memory for the varpd_plugin_t - %s\n",
+		    varpd_load_path);
 		return (ENOMEM);
 	}
 
 	/* Watch out for an evil plugin */
 	if (vprp->vpr_version != VARPD_VERSION_ONE) {
-		(void) bunyan_warn(varpd_load_handle->vdi_bunyan,
-		    "unsupported registration version",
-		    BUNYAN_T_STRING, "module_path", varpd_load_path,
-		    BUNYAN_T_INT32, "module_version", vprp->vpr_version,
-		    BUNYAN_T_END);
+		(void) fprintf(stderr,
+		    "unsupported registration version %u - %s\n",
+		    vprp->vpr_version, varpd_load_path);
 		return (EINVAL);
 	}
 
@@ -121,11 +114,9 @@ libvarpd_plugin_register(varpd_plugin_register_t *vprp)
 	mutex_enter(&varpd_load_handle->vdi_lock);
 	lookup.vpp_name = vprp->vpr_name;
 	if (avl_find(&varpd_load_handle->vdi_plugins, &lookup, NULL) != NULL) {
-		(void) bunyan_warn(varpd_load_handle->vdi_bunyan,
-		    "module already exists with requested name",
-		    BUNYAN_T_STRING, "module_path", varpd_load_path,
-		    BUNYAN_T_STRING, "name", vprp->vpr_name,
-		    BUNYAN_T_END);
+		(void) fprintf(stderr,
+		    "module already exists with requested name '%s' - %s\n",
+		    vprp->vpr_name, varpd_load_path);
 		mutex_exit(&varpd_load_handle->vdi_lock);
 		mutex_exit(&varpd_load_lock);
 		umem_free(vpp, sizeof (varpd_plugin_t));
@@ -133,10 +124,9 @@ libvarpd_plugin_register(varpd_plugin_register_t *vprp)
 	}
 	vpp->vpp_name = strdup(vprp->vpr_name);
 	if (vpp->vpp_name == NULL) {
-		(void) bunyan_warn(varpd_load_handle->vdi_bunyan,
-		    "failed to allocate memory to duplicate name",
-		    BUNYAN_T_STRING, "module_path", varpd_load_path,
-		    BUNYAN_T_END);
+		(void) fprintf(stderr,
+		    "failed to allocate memory to duplicate name - %s\n",
+		    varpd_load_path);
 		mutex_exit(&varpd_load_handle->vdi_lock);
 		mutex_exit(&varpd_load_lock);
 		umem_free(vpp, sizeof (varpd_plugin_t));
@@ -177,11 +167,8 @@ libvarpd_plugin_load_cb(varpd_impl_t *vip, const char *path, void *unused)
 
 	varpd_load_path = path;
 	dlp = dlopen(path, RTLD_LOCAL | RTLD_NOW);
-	if (dlp == NULL) {
-		(void) bunyan_error(vip->vdi_bunyan, "dlopen failed",
-		    BUNYAN_T_STRING, "module path", path,
-		    BUNYAN_T_END);
-	}
+	if (dlp == NULL)
+		(void) fprintf(stderr, "dlopen failed - %s\n", path);
 	path = NULL;
 
 	return (0);

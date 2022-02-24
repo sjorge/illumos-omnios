@@ -2832,11 +2832,11 @@ zpool_relabel_disk(libzfs_handle_t *hdl, const char *name, const char *msg)
 	 * Writing a new EFI partition table to the disk will have marked
 	 * the geometry as needing re-validation. Before returning, force
 	 * it to be checked by querying the device state, otherwise the
-	 * subsequent vdev_reopen() will fail to read the device size,
-	 * faulting the pool.
+	 * subsequent vdev_reopen() will very likely fail to read the device
+	 * size, faulting the pool.
 	 */
 	st = DKIO_NONE;
-	ioctl(fd, DKIOCSTATE, (caddr_t)&st);
+	(void) ioctl(fd, DKIOCSTATE, (caddr_t)&st);
 
 	(void) close(fd);
 

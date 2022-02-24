@@ -322,6 +322,13 @@ virtio_init(dev_info_t *dip, uint64_t driver_features, boolean_t allow_indirect)
 	return (vio);
 }
 
+/*
+ * Some virtio devices can change their device configuration state at any
+ * time. This function may be called by the driver during the initialisation
+ * phase - before calling virtio_init_complete() - in order to register a
+ * handler function which will be called when the device configuration space
+ * is updated.
+ */
 void
 virtio_register_cfgchange_handler(virtio_t *vio, ddi_intr_handler_t *func,
     void *funcarg)
@@ -1359,38 +1366,41 @@ virtio_shared_isr(caddr_t arg0, caddr_t arg1)
 	 */
 	isr = virtio_get8(vio, VIRTIO_LEGACY_ISR_STATUS);
 
-	if ((isr & VIRTIO_ISR_CHECK_QUEUES) == 0) {
-		goto config;
-	}
+	if ((isr & VIRTIO_ISR_CHECK_QUEUES) != 0) {
+		r = DDI_INTR_CLAIMED;
 
-	for (virtio_queue_t *viq = list_head(&vio->vio_queues); viq != NULL;
-	    viq = list_next(&vio->vio_queues, viq)) {
-		if (viq->viq_func != NULL) {
-			mutex_exit(&vio->vio_mutex);
-			if (viq->viq_func(viq->viq_funcarg, arg0) ==
-			    DDI_INTR_CLAIMED) {
-				r = DDI_INTR_CLAIMED;
-			}
-			mutex_enter(&vio->vio_mutex);
+		for (virtio_queue_t *viq = list_head(&vio->vio_queues);
+		    viq != NULL; viq = list_next(&vio->vio_queues, viq)) {
+			if (viq->viq_func != NULL) {
+				mutex_exit(&vio->vio_mutex);
+				(void) viq->viq_func(viq->viq_funcarg, arg0);
+				mutex_enter(&vio->vio_mutex);
 
-			if (vio->vio_initlevel & VIRTIO_INITLEVEL_SHUTDOWN) {
-				/*
-				 * The device was shut down while in a queue
-				 * handler routine.
-				 */
-				break;
+				if (vio->vio_initlevel &
+				    VIRTIO_INITLEVEL_SHUTDOWN) {
+					/*
+					 * The device was shut down while in a
+					 * queue handler routine.
+					 */
+					break;
+				}
 			}
 		}
 	}
 
-config:
 	mutex_exit(&vio->vio_mutex);
 
-	if ((isr & VIRTIO_ISR_CHECK_CONFIG) != 0 &&
-	    vio->vio_cfgchange_handler != NULL) {
-		if (vio->vio_cfgchange_handler(vio->vio_cfgchange_handlerarg,
-		    NULL) == DDI_INTR_CLAIMED) {
-			r = DDI_INTR_CLAIMED;
+	/*
+	 * vio_cfgchange_{handler,handlerarg} cannot change while interrupts
+	 * are configured so it is safe to access them outside of the lock.
+	 */
+
+	if ((isr & VIRTIO_ISR_CHECK_CONFIG) != 0) {
+		r = DDI_INTR_CLAIMED;
+		if (vio->vio_cfgchange_handler != NULL) {
+			(void) vio->vio_cfgchange_handler(
+			    (caddr_t)vio->vio_cfgchange_handlerarg,
+			    (caddr_t)vio);
 		}
 	}
 
@@ -1531,7 +1541,7 @@ add_handlers:
 		if (ddi_intr_add_handler(vio->vio_interrupts[n],
 		    vio->vio_cfgchange_handler,
 		    (caddr_t)vio->vio_cfgchange_handlerarg,
-		    NULL) != DDI_SUCCESS) {
+		    (caddr_t)vio) != DDI_SUCCESS) {
 			dev_err(dip, CE_WARN,
 			    "adding configuration change interrupt failed");
 			goto fail;

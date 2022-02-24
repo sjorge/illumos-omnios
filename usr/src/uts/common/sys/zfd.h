@@ -10,6 +10,7 @@
  */
 /*
  * Copyright 2015 Joyent, Inc.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #ifndef _SYS_ZFD_H
@@ -22,18 +23,18 @@ extern "C" {
 #endif
 
 /*
- * Minor node name of the global zone side (often called the "master" side)
+ * Minor node name of the global zone side (often called the "manager" side)
  * of the zfd dev.
  */
-#define	ZFD_MASTER_NAME	"master"
+#define	ZFD_MANAGER_NAME	"manager"
 
 /*
- * Minor node name of the non-global zone side (often called the "slave"
+ * Minor node name of the non-global zone side (often called the "subsidiary"
  * side) of the zfd dev.
  */
-#define	ZFD_SLAVE_NAME	"slave"
+#define	ZFD_SUBSIDIARY_NAME	"subsidiary"
 
-#define	ZFD_NAME_LEN	16
+#define	ZFD_NAME_LEN	20
 
 /*
  * ZFD_IOC forms the base for all zfd ioctls.
@@ -41,20 +42,21 @@ extern "C" {
 #define	ZFD_IOC		(('Z' << 24) | ('f' << 16) | ('d' << 8))
 
 /*
- * This ioctl tells the slave side it should push the TTY stream modules
+ * This ioctl tells the subsidiary side it should push the TTY stream modules
  * so that the fd looks like a tty.
  */
 #define	ZFD_MAKETTY		(ZFD_IOC | 0)
 
 /*
- * This ioctl puts a hangup into the stream so that the slave side sees EOF.
+ * This ioctl puts a hangup into the stream so that the subsidiary side sees
+ * EOF.
  */
 #define	ZFD_EOF			(ZFD_IOC | 1)
 
 /*
- * This ioctl succeeds if the slave side is open.
+ * This ioctl succeeds if the subsidiary side is open.
  */
-#define	ZFD_HAS_SLAVE		(ZFD_IOC | 2)
+#define	ZFD_HAS_SUBSID		(ZFD_IOC | 2)
 
 /*
  * This ioctl links two streams into a multiplexer configuration for in-zone
