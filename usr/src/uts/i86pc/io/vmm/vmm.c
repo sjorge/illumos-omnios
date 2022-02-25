@@ -104,6 +104,22 @@ typedef struct vm_thread_ctx {
 	enum vcpu_ustate vtc_ustate;
 } vm_thread_ctx_t;
 
+#define	VMM_MTRR_VAR_MAX 10
+#define	VMM_MTRR_DEF_MASK \
+	(MTRR_DEF_ENABLE | MTRR_DEF_FIXED_ENABLE | MTRR_DEF_TYPE)
+#define	VMM_MTRR_PHYSBASE_MASK (MTRR_PHYSBASE_PHYSBASE | MTRR_PHYSBASE_TYPE)
+#define	VMM_MTRR_PHYSMASK_MASK (MTRR_PHYSMASK_PHYSMASK | MTRR_PHYSMASK_VALID)
+struct vm_mtrr {
+	uint64_t def_type;
+	uint64_t fixed4k[8];
+	uint64_t fixed16k[2];
+	uint64_t fixed64k;
+	struct {
+		uint64_t base;
+		uint64_t mask;
+	} var[VMM_MTRR_VAR_MAX];
+};
+
 /*
  * Initialization:
  * (a) allocated when vcpu is created
@@ -140,6 +156,7 @@ struct vcpu {
 	struct vie	*vie_ctx;	/* (x) instruction emulation context */
 	vm_client_t	*vmclient;	/* (a) VM-system client */
 	uint64_t	tsc_offset;	/* (x) offset from host TSC */
+	struct vm_mtrr	mtrr;		/* (i) vcpu's MTRR */
 
 	enum vcpu_ustate ustate;	/* (i) microstate for the vcpu */
 	hrtime_t	ustate_when;	/* (i) time of last ustate change */
@@ -170,22 +187,6 @@ struct mem_map {
 	int		flags;
 };
 #define	VM_MAX_MEMMAPS	8
-
-#define	VMM_MTRR_VAR_MAX 10
-#define	VMM_MTRR_DEF_MASK \
-	(MTRR_DEF_ENABLE | MTRR_DEF_FIXED_ENABLE | MTRR_DEF_TYPE)
-#define	VMM_MTRR_PHYSBASE_MASK (MTRR_PHYSBASE_PHYSBASE | MTRR_PHYSBASE_TYPE)
-#define	VMM_MTRR_PHYSMASK_MASK (MTRR_PHYSMASK_PHYSMASK | MTRR_PHYSMASK_VALID)
-struct vm_mtrr {
-	uint64_t def_type;
-	uint64_t fixed4k[8];
-	uint64_t fixed16k[2];
-	uint64_t fixed64k;
-	struct {
-		uint64_t base;
-		uint64_t mask;
-	} var[VMM_MTRR_VAR_MAX];
-};
 
 /*
  * Initialization:
@@ -222,7 +223,6 @@ struct vm {
 	struct ioport_config ioports;		/* (o) ioport handling */
 
 	bool		mem_transient;		/* (o) alloc transient memory */
-	struct vm_mtrr	mtrr[VM_MAXCPU];	/* (o) guest's MTRR */
 };
 
 static int vmm_initialized;
@@ -376,6 +376,7 @@ vcpu_init(struct vm *vm, int vcpu_id, bool create)
 		if (vcpu->ustate != VU_INIT) {
 			vcpu_ustate_change(vm, vcpu_id, VU_INIT);
 		}
+		bzero(&vcpu->mtrr, sizeof (vcpu->mtrr));
 	}
 
 	vcpu->run_state = VRS_HALT;
@@ -1952,6 +1953,7 @@ vm_wrmtrr(struct vm_mtrr *mtrr, uint32_t num, uint64_t val)
 static int
 vm_handle_rdmsr(struct vm *vm, int vcpuid, struct vm_exit *vme)
 {
+	struct vcpu *vcpu = &vm->vcpu[vcpuid];
 	const uint32_t code = vme->u.msr.code;
 	uint64_t val = 0;
 
@@ -1967,7 +1969,7 @@ vm_handle_rdmsr(struct vm *vm, int vcpuid, struct vm_exit *vme)
 	case MSR_MTRR16kBase ... MSR_MTRR16kBase + 1:
 	case MSR_MTRR64kBase:
 	case MSR_MTRRVarBase ... MSR_MTRRVarBase + (VMM_MTRR_VAR_MAX * 2) - 1:
-		if (vm_rdmtrr(&vm->mtrr[vcpuid], code, &val) != 0)
+		if (vm_rdmtrr(&vcpu->mtrr, code, &val) != 0)
 			vm_inject_gp(vm, vcpuid);
 		break;
 
@@ -2017,7 +2019,7 @@ vm_handle_wrmsr(struct vm *vm, int vcpuid, struct vm_exit *vme)
 	case MSR_MTRR16kBase ... MSR_MTRR16kBase + 1:
 	case MSR_MTRR64kBase:
 	case MSR_MTRRVarBase ... MSR_MTRRVarBase + (VMM_MTRR_VAR_MAX * 2) - 1:
-		if (vm_wrmtrr(&vm->mtrr[vcpuid], code, val) != 0)
+		if (vm_wrmtrr(&vcpu->mtrr, code, val) != 0)
 			vm_inject_gp(vm, vcpuid);
 		break;
 
@@ -3057,6 +3059,7 @@ vcpu_arch_reset(struct vm *vm, int vcpuid, bool init_only)
 		hma_fpu_init(vcpu->guestfpu);
 
 		/* XXX: clear MSRs and other pieces */
+		bzero(&vcpu->mtrr, sizeof (vcpu->mtrr));
 	}
 
 	return (0);

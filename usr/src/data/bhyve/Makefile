@@ -10,36 +10,21 @@
 #
 
 #
-# Copyright 2017 Nexenta Systems, Inc.
-# Copyright 2019 Joyent, Inc.
 # Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
 #
 
-COMMON_SUBDIRS=	consfonts \
-		hwdata \
-		locale \
-		terminfo \
-		zoneinfo
-
-i386_SUBDIRS=	amdpmc bhyve perfmon ucode
-
-SUBDIRS = $(COMMON_SUBDIRS) $($(MACH)_SUBDIRS)
-
-MSGSUBDIRS=	zoneinfo
+SUBDIRS = kbdlayout
 
 all :=		TARGET=all
 clean :=	TARGET=clean
 clobber :=	TARGET=clobber
 install :=	TARGET=install
-_msg :=		TARGET=_msg
 
 .PARALLEL: $(SUBDIRS)
 
 .KEEP_STATE:
 
 all clean clobber install: $(SUBDIRS)
-
-_msg:		$(MSGSUBDIRS)
 
 $(SUBDIRS):	FRC
 		cd $@; pwd; $(MAKE) $(TARGET)

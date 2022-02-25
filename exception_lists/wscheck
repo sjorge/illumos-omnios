@@ -97,9 +97,9 @@ usr/src/cmd/bhyve/usb_mouse.c
 usr/src/cmd/bhyve/vga.[ch]
 usr/src/cmd/bhyve/virtio.[ch]
 usr/src/cmd/bhyve/xmsr.[ch]
-usr/src/cmd/bhyve/kbdlayout/default
 usr/src/cmd/bhyvectl/bhyvectl.c
 usr/src/contrib/bhyve/*
+usr/src/data/bhyve/kbdlayout/default
 usr/src/lib/libvmmapi/common/vmmapi.[ch]
 usr/src/lib/lib9p/common/*
 

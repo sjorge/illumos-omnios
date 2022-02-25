@@ -545,12 +545,12 @@ usr/src/cmd/bhyve/usb_mouse.c
 usr/src/cmd/bhyve/vga.[ch]
 usr/src/cmd/bhyve/virtio.[ch]
 usr/src/cmd/bhyve/xmsr.[ch]
-usr/src/cmd/bhyve/kbdlayout/*
 usr/src/cmd/bhyvectl/THIRDPARTYLICENSE
 usr/src/cmd/bhyvectl/THIRDPARTYLICENSE.descrip
 usr/src/cmd/bhyvectl/bhyvectl.c
 usr/src/compat/bhyve/*
 usr/src/contrib/bhyve/*
+usr/src/data/bhyve/kbdlayout/*
 usr/src/lib/libvmmapi/THIRDPARTYLICENSE
 usr/src/lib/libvmmapi/THIRDPARTYLICENSE.descrip
 usr/src/lib/libvmmapi/common/vmmapi.[ch]
