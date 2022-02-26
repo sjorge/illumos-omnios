@@ -1,0 +1,81 @@
+'\" te
+.\" Copyright 2015, 2018, 2019, Meisaka Yukara and Prominic.NET Inc., Rights
+.\" Reserved.
+.\" Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+.\" The contents of this file are subject to the terms of the Common
+.\" Development and Distribution License (the "License").  You may not use this
+.\" file except in compliance with the License. .\" You can obtain a copy of the
+.\" license at usr/src/OPENSOLARIS.LICENSE or
+.\" http://www.opensolaris.org/os/licensing.  See the License for the specific
+.\" language governing permissions and limitations under the License. .\" When
+.\" distributing Covered Code, include this CDDL HEADER in each file and include
+.\" the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the
+.\" following below this CDDL HEADER, with the fields enclosed by brackets "[]"
+.\" replaced with your own identifying information: Portions Copyright [yyyy]
+.\" [name of copyright owner]
+.Dd May 25, 2021
+.Dt IN.CDPD 8
+.Os
+.Sh NAME
+.Nm in.cdpd
+.Nd Cisco discovery agent
+.Sh SYNOPSIS
+.Nm
+.Op Fl v
+.Op Fl d
+.Fl R | Fl r
+.Op Ar device
+.Nm
+.Fl l
+.Sh DESCRIPTION
+.Nm
+actively listens for other hosts, and advertises the local machine to connected
+network interfaces using the Cisco Discovery Protocol (CDP).
+Local network interfaces available for use are those which implement
+.Xr dlpi 4P
+and act as Ethernet provider nodes.
+.Nm
+will connect to each provider node, and register with it to read raw datalink
+frames in order to parse CDP.
+.Pp
+When the
+.Nm
+service starts, it requests multicast promiscuous mode on all Ethernet style
+interfaces, and begins processing raw multicast frames, scanning for those that
+match the CDP multicast address and LLC header.
+The DLPI layer does not explicitly specify the ability to bind to, and listen
+for LLC frames, so
+.Nm
+binds to the typically unused SAP address of 0x0000, and enables raw mode
+processing.
+.Pp
+The associated
+.Xr cdpadm 8
+utility can be used to display status data from the running daemon.
+.Sh OPTIONS
+.Bl -tag -width Fl
+.It Fl v
+Adds verbosity.
+Can be specified multiple times for more output.
+Prints additional details in more verbose modes.
+.It Fl l
+Lists All Physical style Ethernet interfaces in the system and then exits.
+Overrides most other options.
+.It Fl d
+Dumps frames while running.
+.It Fl R
+Starts the service in background mode.
+.It Fl r
+Starts the service in forground mode.
+This is mainly used for verbose diagnostics, testing, frame dumps, and
+debugging purposes.
+.El
+.Sh Files
+.Bl -tag -compact -width Fl
+.It Pa /var/run/in.cdpd.pid
+.It Pa /var/run/in.cdpd_socket
+Files used by the service instance.
+.El
+.Sh SEE ALSO
+.Xr dlpi 4P ,
+.Xr cdpadm 8

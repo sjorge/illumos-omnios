@@ -224,5 +224,6 @@ is invalid.
 .Xr pthread_mutexattr_init 3C ,
 .Xr pthread_mutexattr_setrobust 3C ,
 .Xr pthread_mutexattr_settype 3C ,
-.Xr attributes 5 ,
-.Xr mutex 5
+.Xr attributes 7 ,
+.Xr mutex 7 ,
+.Xr standards 7
