@@ -29,11 +29,12 @@
 # Copyright 2019 Peter Tribble.
 # Copyright 2019 Joyent, Inc.
 # Copyright (c) 2011, 2015 by Delphix. All rights reserved.
-# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 # Copyright 2021 Oxide Computer Company
+# Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
 #
 
 <include SUNWcs.man1.inc>
+<include SUNWcs.man4.inc>
 <include SUNWcs.man4d.inc>
 <include SUNWcs.man4fs.inc>
 <include SUNWcs.man5.inc>
