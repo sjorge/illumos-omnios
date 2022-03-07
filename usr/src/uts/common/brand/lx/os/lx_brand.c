@@ -1552,7 +1552,7 @@ lx_brandsys(int cmd, int64_t *rval, uintptr_t arg1, uintptr_t arg2,
 
 		if ((pid_t)arg1 == 1) {
 			s_pid = p->p_zone->zone_proc_initpid;
-			/* handle the dead/missing init(1M) case */
+			/* handle the dead/missing init(8) case */
 			if (s_pid == -1)
 				s_pid = 1;
 			s_tid = 1;

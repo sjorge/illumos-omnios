@@ -1,0 +1,6 @@
+# Automatically apply to git blame with
+# `git config blame.ignorerevsfile .git-birevs`
+
+# 14443 resection manual pages per IPD4
+787511271eb66145837e3ad62c53c627620f16c0
+

@@ -37,7 +37,7 @@ depend() {
 }
 start() {
 EOF
-# Only alter resolv.conf if we're getting info from zonecfg(1M).
+# Only alter resolv.conf if we're getting info from zonecfg(8).
 zonecfg -z $ZONENAME info attr name=resolvers | grep -q resolvers
 if [[ $? == 0 ]]; then
     cat > $tmpfile <<EOF

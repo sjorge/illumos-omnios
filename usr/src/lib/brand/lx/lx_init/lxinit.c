@@ -619,7 +619,7 @@ lxi_net_setup(zone_dochandle_t handle)
 		boolean_t no_zonecfg, ipv6 = ipv6_enable;
 
 		/*
-		 * Regardless of whether we're configured in zonecfg(1M), or
+		 * Regardless of whether we're configured in zonecfg(8), or
 		 * configured by other means, make sure we plumb every
 		 * physical=<foo> for IPv4 and IPv6.
 		 */
@@ -637,10 +637,10 @@ lxi_net_setup(zone_dochandle_t handle)
 			no_zonecfg = B_FALSE;
 		} else if (zone_find_attr(attrs, "ips", &ipaddrs) != 0) {
 			/*
-			 * Do not panic.  This interface has no in-zonecfg(1M)
+			 * Do not panic.  This interface has no in-zonecfg(8)
 			 * configuration.  We keep a warning around for now.
 			 */
-			lxi_warn("Could not find zonecfg(1M) network "
+			lxi_warn("Could not find zonecfg(8) network "
 			    "configuration for the %s interface", iface);
 			no_zonecfg = B_TRUE;
 		} else {
@@ -667,7 +667,7 @@ lxi_net_setup(zone_dochandle_t handle)
 		}
 
 		/*
-		 * Every thing else below only happens if we have zonecfg(1M)
+		 * Every thing else below only happens if we have zonecfg(8)
 		 * network configuration.
 		 */
 		if (no_zonecfg)
