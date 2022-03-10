@@ -857,8 +857,6 @@ vn_rele(vnode_t *vp)
 void
 vn_phantom_rele(vnode_t *vp)
 {
-	VERIFY(vp->v_count > 0);
-
 	mutex_enter(&vp->v_lock);
 	VERIFY3U(vp->v_count, >=, vp->v_phantom_count);
 	vp->v_phantom_count--;
@@ -869,6 +867,7 @@ vn_phantom_rele(vnode_t *vp)
 		VOP_INACTIVE(vp, CRED(), NULL);
 		return;
 	}
+	VERIFY(vp->v_count > 0);
 	VN_RELE_LOCKED(vp);
 	mutex_exit(&vp->v_lock);
 }
