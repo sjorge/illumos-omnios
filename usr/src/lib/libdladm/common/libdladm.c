@@ -20,15 +20,12 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ */
+
+/*
  * Copyright (c) 2015, Joyent, Inc.
- */
-
-/*
- * Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
- */
-
-/*
  * Copyright 2020 Peter Tribble.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #include <unistd.h>
@@ -441,14 +438,14 @@ dladm_status2str(dladm_status_t status, char *buf)
 	case DLADM_STATUS_INVALID_MTU:
 		s = "MTU check failed, MTU outside of device's supported range";
 		break;
-	case DLADM_STATUS_ADDRNOTAVAIL:
-		s = "can't assign requested address";
-		break;
 	case DLADM_STATUS_PERSIST_ON_TEMP:
 		s = "can't create persistent object on top of temporary object";
 		break;
 	case DLADM_STATUS_BAD_ENCAP:
 		s = "invalid encapsulation protocol";
+		break;
+	case DLADM_STATUS_ADDRNOTAVAIL:
+		s = "can't assign requested address";
 		break;
 	default:
 		s = "<unknown error>";
