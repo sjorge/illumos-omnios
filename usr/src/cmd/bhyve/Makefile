@@ -105,13 +105,12 @@ SRCS =	acpi.c			\
 
 OBJS = $(SRCS:.c=.o)
 
-CLOBBERFILES =	$(ROOTUSRSBINPROG)
-
 MEVENT_TEST_PROG = mevent_test
 MEVENT_TEST_SRCS = mevent.c mevent_test.c
 MEVENT_TEST_OBJS = $(MEVENT_TEST_SRCS:.c=.o)
 
-CLEANFILES =	$(PROG) $(MEVENT_TEST_PROG) $(MEVENT_TEST_OBJS)
+CLEANFILES =	$(OBJS) $(MEVENT_TEST_OBJS)
+CLOBBERFILES =	$(PROG) $(MEVENT_TEST_PROG)
 
 CFLAGS +=	$(CCVERBOSE)
 CFLAGS +=	-_gcc=-Wimplicit-function-declaration -_gcc=-Wno-parentheses
@@ -157,14 +156,13 @@ $(PROG) := LDLIBS += \
 	-lmd \
 	-lnsl \
 	-lnvpair \
-	-lproc \
 	-lsocket \
 	-lumem \
 	-luuid \
 	-lvmmapi \
 	-lz
 NATIVE_LIBS += libz.so libcrypto.so
-$(MEVENT_TEST_PROG) := LDLIBS += -lsocket -lproc
+$(MEVENT_TEST_PROG) := LDLIBS += -lsocket
 $(PROG) := LDFLAGS += $(ZASLR)
 
 .KEEP_STATE:
@@ -181,7 +179,7 @@ $(MEVENT_TEST_PROG): $(MEVENT_TEST_OBJS)
 install: all $(ROOTUSRSBINPROG) $(SUBDIRS)
 
 clean: $(SUBDIRS)
-	$(RM) $(OBJS) $(CLEANFILES)
+	$(RM) $(CLEANFILES)
 
 clobber: clean $(SUBDIRS)
 	$(RM) $(CLOBBERFILES)

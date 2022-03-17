@@ -66,7 +66,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/siginfo.h>
 #include <sys/queue.h>
 #include <sys/debug.h>
-#include <libproc.h>
+#include <sys/stat.h>
 #endif
 #include <sys/time.h>
 
@@ -355,41 +355,6 @@ mevent_clarify_state(struct mevent *mevp)
 	return (B_TRUE);
 }
 
-static char *
-mevent_fdpath(int fd)
-{
-	prfdinfo_t *fdinfo;
-	char *path;
-	size_t len;
-
-	fdinfo = proc_get_fdinfo(getpid(), fd);
-	if (fdinfo == NULL) {
-		(void) fprintf(stderr, "%s: proc_get_fdinfo(%d) failed: %s\n",
-		    __func__, fd, strerror(errno));
-		path = NULL;
-	} else {
-		path = (char *)proc_fdinfo_misc(fdinfo, PR_PATHNAME, &len);
-	}
-
-	if (path == NULL) {
-		(void) fprintf(stderr, "%s: Fall back to /proc/self/fd/%d\n",
-		    __func__, fd);
-		(void) asprintf(&path, "/proc/self/fd/%d", fd);
-	} else {
-		path = strdup(path);
-	}
-
-	proc_fdinfo_free(fdinfo);
-
-	if (path == NULL) {
-		(void) fprintf(stderr,
-		    "%s: Error building path for fd %d: %s\n", __func__,
-		    fd, strerror(errno));
-	}
-
-	return (path);
-}
-
 static void
 mevent_poll_file_attrib(int fd, enum ev_type type, void *param)
 {
@@ -397,8 +362,8 @@ mevent_poll_file_attrib(int fd, enum ev_type type, void *param)
 	struct stat st;
 
 	if (fstat(mevp->me_poll.mp_fd, &st) != 0) {
-		(void) fprintf(stderr, "%s: fstat(%d) \"%s\" failed: %s\n",
-		    __func__, fd, mevp->me_poll.mp_fname, strerror(errno));
+		(void) fprintf(stderr, "%s: fstat(%d) failed: %s\n",
+		    __func__, fd, strerror(errno));
 		return;
 	}
 
@@ -517,12 +482,6 @@ mevent_update_one_vnode(struct mevent *mevp)
 
 		assert(events != 0);
 
-		if (mevp->me_poll.mp_fname == NULL) {
-			mevp->me_poll.mp_fname = mevent_fdpath(mevp->me_fd);
-			if (mevp->me_poll.mp_fname == NULL)
-				return;
-		}
-
 		/*
 		 * It is tempting to use the PORT_SOURCE_FILE type for this in
 		 * conjunction with the FILE_ATTRIB event type. Unfortunately
@@ -535,9 +494,8 @@ mevent_update_one_vnode(struct mevent *mevp)
 		 */
 
 		if (fstat(mevp->me_fd, &st) != 0) {
-			(void) fprintf(stderr, "fstat(%d) \"%s\" failed: %s\n",
-			    mevp->me_fd, mevp->me_poll.mp_fname,
-			    strerror(errno));
+			(void) fprintf(stderr, "fstat(%d) failed: %s\n",
+			    mevp->me_fd, strerror(errno));
 			return;
 		}
 
@@ -624,7 +582,6 @@ mevent_update_pending()
 		LIST_REMOVE(mevp, me_list);
 
 		if (mevp->me_state & EV_DELETE) {
-			free(mevp->me_poll.mp_fname);
 			free(mevp);
 		} else {
 			LIST_INSERT_HEAD(&global_head, mevp, me_list);
