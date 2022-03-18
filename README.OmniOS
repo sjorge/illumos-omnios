@@ -13,7 +13,15 @@ are included in the footer.
 
 =======================================================================
 
-No pending updates
+14495 bhyve VNC server should support alternate pixel formats
+14494 bhyve VNC server could support multiple connections
+14505 libumem's umem_update thread could be named
+14506 libidspace does not expose id_allocff()
+	system/library
+	system/bhyve
+
+14572 Update tzdata to 2022a
+	system/data/zoneinfo
 
 =======================================================================
 
