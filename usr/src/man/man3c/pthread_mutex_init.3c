@@ -115,8 +115,7 @@ The effect is equivalent to dynamic initialization by a call to
 with parameter
 .Fa attr
 specified as
-.Dv NULL ,
-except that no error checks are performed.
+.Dv NULL .
 .Pp
 In cases where error checking mutex attributes are appropriate, the macro
 .Dv PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
@@ -128,8 +127,7 @@ with parameter
 initialized with
 .Xr pthread_mutexattr_init 3C
 and its type set to
-.Dv PTHREAD_MUTEX_ERRORCHECK ,
-except that no error checks are performed.
+.Dv PTHREAD_MUTEX_ERRORCHECK .
 .Pp
 In cases where recursive mutex attributes are appropriate, the macro
 .Dv PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
@@ -141,8 +139,7 @@ with parameter
 initialized with
 .Xr pthread_mutexattr_init 3C
 and its type set to
-.Dv PTHREAD_MUTEX_RECURSIVE ,
-except that no error checks are performed.
+.Dv PTHREAD_MUTEX_RECURSIVE .
 .Sh RETURN VALUES
 If successful, the
 .Fn pthread_mutex_init
@@ -225,5 +222,4 @@ is invalid.
 .Xr pthread_mutexattr_setrobust 3C ,
 .Xr pthread_mutexattr_settype 3C ,
 .Xr attributes 7 ,
-.Xr mutex 7 ,
-.Xr standards 7
+.Xr mutex 7

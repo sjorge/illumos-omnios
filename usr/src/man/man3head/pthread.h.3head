@@ -152,5 +152,4 @@ See
 .Xr sched.h 3HEAD ,
 .Xr time.h 3HEAD ,
 .Xr types.h 3HEAD ,
-.Xr attributes 7 ,
-.Xr standards 7
+.Xr attributes 7
