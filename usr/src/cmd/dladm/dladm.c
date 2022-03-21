@@ -9949,8 +9949,8 @@ do_delete_overlay(int argc, char *argv[], const char *use)
 {
 	datalink_id_t	linkid = DATALINK_ALL_LINKID;
 	dladm_status_t	status;
-	int option;
 	uint32_t flags = DLADM_OPT_ACTIVE | DLADM_OPT_PERSIST;
+	int option;
 
 	opterr = 0;
 	while ((option = getopt_long(argc, argv, ":t", lopts,

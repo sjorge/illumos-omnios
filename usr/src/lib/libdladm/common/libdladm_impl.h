@@ -75,19 +75,16 @@ extern void		dladm_free_args(dladm_arg_list_t *);
  */
 
 /*
- * Set for VLANs and overlays
- */
-#define	FVLANID		"vid"		/* uint64_t */
-
-/*
  * Set for overlays only
  */
 #define	FENCAP		"encap"		/* string */
 #define	FSEARCH		"search"	/* string */
+#define	FVNETID		"vnetid"	/* uint64_t */
 
 /*
  * Set for VLANs only
  */
+#define	FVLANID		"vid"		/* uint64_t */
 #define	FLINKOVER	"linkover"	/* uint64_t */
 
 /*
@@ -131,7 +128,8 @@ extern void		dladm_free_args(dladm_arg_list_t *);
 /*
  * List of all the above attributes.
  */
-#define	DLADM_ATTR_NAMES	FVLANID, FLINKOVER, \
+#define	DLADM_ATTR_NAMES	FENCAP, FSEARCH, FVNETID, \
+				FVLANID, FLINKOVER, \
 				FKEY, FNPORTS, FPORTS, FPOLICY, \
 				FFIXMACADDR, FFORCE, FLACPMODE, FLACPTIMER, \
 				FMADDRTYPE, FMADDRLEN, FMADDRSLOT, \

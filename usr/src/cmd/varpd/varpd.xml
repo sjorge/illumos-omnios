@@ -20,15 +20,6 @@ Copyright 2020 OmniOS Community Edition (OmniOSce) Association.
 
 		<create_default_instance enabled="false" />
 
-		<single_instance/>
-
-		<dependency name="varpd-network-loopback"
-			grouping="require_all"
-			restart_on="none"
-			type="service">
-			<service_fmri value="svc:/network/loopback:default" />
-		</dependency>
-
 		<dependency name="varpd-datalink-management"
 			grouping="require_all"
 			restart_on="none"
