@@ -10,7 +10,7 @@
 .\"
 .\" Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 .\"
-.Dd March 7, 2021
+.Dd March 21, 2022
 .Dt BHHWCOMPAT 8
 .Os
 .Sh NAME
@@ -18,7 +18,7 @@
 .Nd Check if the current system is bhyve-compatible
 .Sh SYNOPSIS
 .Nm
-.Op Fl cs
+.Op Fl s
 .Sh DESCRIPTION
 .Nm
 probes the system to determine whether the current system is compatible
@@ -29,8 +29,6 @@ A compatible system has supported hardware and has virtualisation enabled
 .Sh OPTIONS
 The following options are supported:
 .Bl -tag -width Ar
-.It Fl c
-Print the number of virtual CPUs supported by bhyve.
 .It Fl s
 Suppress output, return exit status only.
 .El

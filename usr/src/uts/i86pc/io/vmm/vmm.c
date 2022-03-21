@@ -159,7 +159,7 @@ struct mem_seg {
 	bool	sysmem;
 	vm_object_t *object;
 };
-#define	VM_MAX_MEMSEGS	4
+#define	VM_MAX_MEMSEGS	5
 
 struct mem_map {
 	vm_paddr_t	gpa;
@@ -170,6 +170,22 @@ struct mem_map {
 	int		flags;
 };
 #define	VM_MAX_MEMMAPS	8
+
+#define	VMM_MTRR_VAR_MAX 10
+#define	VMM_MTRR_DEF_MASK \
+	(MTRR_DEF_ENABLE | MTRR_DEF_FIXED_ENABLE | MTRR_DEF_TYPE)
+#define	VMM_MTRR_PHYSBASE_MASK (MTRR_PHYSBASE_PHYSBASE | MTRR_PHYSBASE_TYPE)
+#define	VMM_MTRR_PHYSMASK_MASK (MTRR_PHYSMASK_PHYSMASK | MTRR_PHYSMASK_VALID)
+struct vm_mtrr {
+	uint64_t def_type;
+	uint64_t fixed4k[8];
+	uint64_t fixed16k[2];
+	uint64_t fixed64k;
+	struct {
+		uint64_t base;
+		uint64_t mask;
+	} var[VMM_MTRR_VAR_MAX];
+};
 
 /*
  * Initialization:
@@ -206,6 +222,7 @@ struct vm {
 	struct ioport_config ioports;		/* (o) ioport handling */
 
 	bool		mem_transient;		/* (o) alloc transient memory */
+	struct vm_mtrr	mtrr[VM_MAXCPU];	/* (o) guest's MTRR */
 };
 
 static int vmm_initialized;
@@ -1851,6 +1868,88 @@ vm_handle_run_state(struct vm *vm, int vcpuid)
 }
 
 static int
+vm_rdmtrr(struct vm_mtrr *mtrr, uint32_t num, uint64_t *val)
+{
+	switch (num) {
+	case MSR_MTRRcap:
+		*val = MTRR_CAP_WC | MTRR_CAP_FIXED | VMM_MTRR_VAR_MAX;
+		break;
+	case MSR_MTRRdefType:
+		*val = mtrr->def_type;
+		break;
+	case MSR_MTRR4kBase ... MSR_MTRR4kBase + 7:
+		*val = mtrr->fixed4k[num - MSR_MTRR4kBase];
+		break;
+	case MSR_MTRR16kBase ... MSR_MTRR16kBase + 1:
+		*val = mtrr->fixed16k[num - MSR_MTRR16kBase];
+		break;
+	case MSR_MTRR64kBase:
+		*val = mtrr->fixed64k;
+		break;
+	case MSR_MTRRVarBase ... MSR_MTRRVarBase + (VMM_MTRR_VAR_MAX * 2) - 1: {
+		uint_t offset = num - MSR_MTRRVarBase;
+		if (offset % 2 == 0) {
+			*val = mtrr->var[offset / 2].base;
+		} else {
+			*val = mtrr->var[offset / 2].mask;
+		}
+		break;
+	}
+	default:
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int
+vm_wrmtrr(struct vm_mtrr *mtrr, uint32_t num, uint64_t val)
+{
+	switch (num) {
+	case MSR_MTRRcap:
+		/* MTRRCAP is read only */
+		return (-1);
+	case MSR_MTRRdefType:
+		if (val & ~VMM_MTRR_DEF_MASK) {
+			/* generate #GP on writes to reserved fields */
+			return (-1);
+		}
+		mtrr->def_type = val;
+		break;
+	case MSR_MTRR4kBase ... MSR_MTRR4kBase + 7:
+		mtrr->fixed4k[num - MSR_MTRR4kBase] = val;
+		break;
+	case MSR_MTRR16kBase ... MSR_MTRR16kBase + 1:
+		mtrr->fixed16k[num - MSR_MTRR16kBase] = val;
+		break;
+	case MSR_MTRR64kBase:
+		mtrr->fixed64k = val;
+		break;
+	case MSR_MTRRVarBase ... MSR_MTRRVarBase + (VMM_MTRR_VAR_MAX * 2) - 1: {
+		uint_t offset = num - MSR_MTRRVarBase;
+		if (offset % 2 == 0) {
+			if (val & ~VMM_MTRR_PHYSBASE_MASK) {
+				/* generate #GP on writes to reserved fields */
+				return (-1);
+			}
+			mtrr->var[offset / 2].base = val;
+		} else {
+			if (val & ~VMM_MTRR_PHYSMASK_MASK) {
+				/* generate #GP on writes to reserved fields */
+				return (-1);
+			}
+			mtrr->var[offset / 2].mask = val;
+		}
+		break;
+	}
+	default:
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int
 vm_handle_rdmsr(struct vm *vm, int vcpuid, struct vm_exit *vme)
 {
 	const uint32_t code = vme->u.msr.code;
@@ -1864,10 +1963,12 @@ vm_handle_rdmsr(struct vm *vm, int vcpuid, struct vm_exit *vme)
 
 	case MSR_MTRRcap:
 	case MSR_MTRRdefType:
-	case MSR_MTRR4kBase ... MSR_MTRR4kBase + 8:
+	case MSR_MTRR4kBase ... MSR_MTRR4kBase + 7:
 	case MSR_MTRR16kBase ... MSR_MTRR16kBase + 1:
 	case MSR_MTRR64kBase:
-		val = 0;
+	case MSR_MTRRVarBase ... MSR_MTRRVarBase + (VMM_MTRR_VAR_MAX * 2) - 1:
+		if (vm_rdmtrr(&vm->mtrr[vcpuid], code, &val) != 0)
+			vm_inject_gp(vm, vcpuid);
 		break;
 
 	case MSR_TSC:
@@ -1911,13 +2012,13 @@ vm_handle_wrmsr(struct vm *vm, int vcpuid, struct vm_exit *vme)
 		break;
 
 	case MSR_MTRRcap:
-		vm_inject_gp(vm, vcpuid);
-		break;
 	case MSR_MTRRdefType:
-	case MSR_MTRR4kBase ... MSR_MTRR4kBase + 8:
+	case MSR_MTRR4kBase ... MSR_MTRR4kBase + 7:
 	case MSR_MTRR16kBase ... MSR_MTRR16kBase + 1:
 	case MSR_MTRR64kBase:
-		/* Ignore writes */
+	case MSR_MTRRVarBase ... MSR_MTRRVarBase + (VMM_MTRR_VAR_MAX * 2) - 1:
+		if (vm_wrmtrr(&vm->mtrr[vcpuid], code, val) != 0)
+			vm_inject_gp(vm, vcpuid);
 		break;
 
 	case MSR_TSC:

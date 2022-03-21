@@ -11,7 +11,7 @@
 
 /*
  * Copyright 2019 Joyent, Inc.
- * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -100,7 +100,7 @@ check_onectl(uint64_t msr, boolean_t required, uint32_t bit, char *descr)
 	return (ret);
 }
 
-#define REQUIRE(msr, req, bit, descr) \
+#define	REQUIRE(msr, req, bit, descr) \
 	if (!check_onectl((msr), (req), (bit), (descr)) && (req)) \
 		ret = B_FALSE
 
@@ -243,11 +243,8 @@ main(int argc, char **argv)
 	int errflg = 0;
 	int c;
 
-	while ((c = getopt(argc, argv, "cs")) != EOF) {
+	while ((c = getopt(argc, argv, "s")) != EOF) {
 		switch (c) {
-		case 'c':
-			(void) printf("%d\n", VM_MAXCPU);
-			return (EXIT_SUCCESS);
 		case 's':
 			g_status = B_TRUE;
 			break;
