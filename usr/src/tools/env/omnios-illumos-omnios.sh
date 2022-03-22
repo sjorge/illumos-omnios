@@ -20,10 +20,16 @@ done
 # currently the inverse of illumos-gate. The illumos-gate switch to gcc-10 is
 # https://www.illumos.org/issues/14421
 export GNUC_ROOT=/opt/gcc-10/
-PRIMARY_CC=${PRIMARY_CC//gcc-7/gcc-10}
-PRIMARY_CCC=${PRIMARY_CC//gcc-7/gcc-10}
-SHADOW_CCS=${SHADOW_CCS//gcc-10/gcc-7}
-SHADOW_CCCS=${SHADOW_CCS//gcc-10/gcc-7}
+for name in PRIMARY_CC PRIMARY_CCC; do
+        typeset -n var=$name
+        var="${var//gcc-7/gcc-10}"
+        var="${var//gcc7/gcc10}"
+done
+for name in SHADOW_CCS SHADOW_CCCS; do
+        typeset -n var=$name
+        var="${var//gcc-10/gcc-7}"
+        var="${var//gcc10/gcc7}"
+done
 
 ENABLE_SMB_PRINTING='#'
 
