@@ -31,9 +31,9 @@ extern "C" {
 
 typedef struct dladm_overlay_attr {
 	datalink_id_t		oa_linkid;
-	const char 		*oa_name;
-	const char		*oa_encap;
-	const char		*oa_search;
+	char			oa_name[MAXLINKNAMELEN];
+	char			oa_encap[OVERLAY_PROP_SIZEMAX];
+	char			oa_search[OVERLAY_PROP_SIZEMAX];
 	uint64_t		oa_vid;
 	uint32_t		oa_flags;
 } dladm_overlay_attr_t;

@@ -103,7 +103,7 @@ if smf_is_globalzone; then
 	# Note that there may be VNICs configured over these overlays but
 	# these cannot be brought up until the network interface on which
 	# varpd will listen is enabled, and that doesn't happen until
-	# near the end of this script. Therefore VNICs initialisation is
+	# near the end of this script. Therefore VNIC initialisation is
 	# repeated below if overlays are present.
 	#
 	/sbin/dladm up-overlay
@@ -184,10 +184,10 @@ bringup_ipif()
 			else
 				echo "Ignoring /etc/hostname*.$intf" \
 				    > /dev/msglog
-				(
+				{
 					/sbin/ifconfig $intf unplumb
 					/sbin/ifconfig $intf inet6 unplumb
-				) > /dev/null 2>&1
+				} > /dev/null 2>&1
 			fi
 		fi
 
@@ -463,9 +463,9 @@ fi
 # There is a chicken-and-egg problem with bringing up overlay VNICs at boot
 # time. When the first VNIC is added to an overlay, it creates a kernel socket
 # to listen for incoming encapsulated frames. Therefore, VNICs cannot be added
-# until after IP interfaces have been brought up. Of course, overlay VNICs may
-# themselves have IP interfaces over them and so it is necessary to attempt to
-# bring up any remaining IP interfaces once the overlay VNICs are in place.
+# until after IP interfaces have been brought up. Overlay VNICs may themselves
+# have IP interfaces over them and so it is necessary to attempt to bring up
+# any remaining IP interfaces once the overlay VNICs are in place.
 if smf_is_globalzone && dladm show-link -p -o class | egrep -s 'overlay'; then
 	echo "Bringing up any remaining VNICs on overlays"
 	/sbin/dladm up-vnic
