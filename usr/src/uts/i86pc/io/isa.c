@@ -22,6 +22,7 @@
  * Copyright 2014 Garrett D'Amore <garrett@damore.org>
  * Copyright (c) 2012 Gary Mills
  * Copyright (c) 1992, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2022 Racktop Systems, Inc.
  */
 
 /*
@@ -50,6 +51,7 @@
 #include <sys/note.h>
 #include <sys/boot_console.h>
 #include <sys/apic.h>
+#include <sys/x86_archext.h>
 #if defined(__xpv)
 #include <sys/hypervisor.h>
 #include <sys/evtchn_impl.h>
@@ -57,6 +59,16 @@
 extern int console_hypervisor_dev_type(int *);
 #endif
 
+
+/*
+ * When running as a Hyper-V guest, a Gen1 VM will have the ISA bus as a
+ * child of the PCI bus (via a virtualized PCI-ISA bridge), while a Gen2 VM
+ * will have the ISA bus as a child of the root nexus (there currently isn't
+ * a better way to distinguish between the two).
+ */
+#define	IS_HVGEN2(isa_dip)				\
+	(get_hwenv() == HW_MICROSOFT &&			\
+	ddi_get_parent(isa_dip) == ddi_root_node())
 
 extern int pseudo_isa;
 extern int isa_resource_setup(void);
@@ -408,9 +420,10 @@ isa_create_ranges_prop(dev_info_t *dip)
 		ddi_prop_free(memarray);
 	}
 
-	if (!pseudo_isa)
+	if (!pseudo_isa && !IS_HVGEN2(dip)) {
 		(void) ndi_prop_update_int_array(DDI_DEV_T_NONE, dip, "ranges",
 		    (int *)ranges, nrng * sizeof (pib_ranges_t) / sizeof (int));
+	}
 	kmem_free(ranges, sizeof (pib_ranges_t) * n);
 }
 
@@ -503,7 +516,15 @@ isa_bus_map(dev_info_t *dip, dev_info_t *rdip, ddi_map_req_t *mp,
 	ddi_map_req_t mr = *mp;		/* Get private copy of request */
 	int error;
 
-	if (pseudo_isa)
+	/*
+	 * The remainder of this function is intended for ISA buses that are
+	 * connected via a PCI-ISA bridge (the isa_apply_range() function
+	 * expects the 'ranges' property to derive from a PCI-ISA bridge.
+	 * When using the legacy pseudo_isa, or as a Hyper-V Gen2 guest, the
+	 * ISA bus will be a child of the root nexus (and not a PCI-ISA
+	 * bridge), so i_ddi_bus_map() is used instead.
+	 */
+	if (pseudo_isa || IS_HVGEN2(dip))
 		return (i_ddi_bus_map(dip, rdip, mp, offset, len, vaddrp));
 
 	mp = &mr;
@@ -779,7 +800,7 @@ isa_intr_ops(dev_info_t *pdip, dev_info_t *rdip, ddi_intr_op_t intr_op,
 
 	cons = console_hypervisor_dev_type(&ttyn);
 #endif
-	if (pseudo_isa)
+	if (pseudo_isa || IS_HVGEN2(pdip))
 		return (i_ddi_intr_ops(pdip, rdip, intr_op, hdlp, result));
 
 
@@ -1199,8 +1220,43 @@ isa_enumerate(int reprogram)
 
 	cons = console_hypervisor_dev_type(&ttyn);
 #endif
-	if (reprogram || !isa_dip)
+	if (reprogram)
 		return;
+
+	if (isa_dip == NULL) {
+		if (get_hwenv() != HW_MICROSOFT)
+			return;
+
+		/*
+		 * If we're running under Hyper-V, a Gen1 VM will have a
+		 * virtual PCI-ISA bridge device, which will create an isa
+		 * device node under the pci bus where the virtual PCI-ISA
+		 * exists. A Gen2 VM however does not have a virtual PCI-ISA
+		 * bridge. As such we must explicitly create the device node.
+		 *
+		 * Currently, the only known way to determine (as a guest)
+		 * if the VM is a Gen1 or Gen2 VM is to detect the absence
+		 * of the PCI-ISA bridge. This requires waiting until the PCI
+		 * enumeration is complete. Since the ISA bus is (currently)
+		 * enumerated after the PCI bus (to allow the PCI enumeration
+		 * to discover any PCI-ISA bridges), we must defer the ISA
+		 * node creation until now. At this point, if we are running
+		 * under Hyper-V, and there is no existing isa device node,
+		 * we know we are running as a Gen2 VM and can create the
+		 * device node.
+		 *
+		 * In a Gen2 VM, since there is no parent bus (as in the case
+		 * of the PCI-ISA bridge), the isa node is explicitly added
+		 * under the root node.
+		 */
+		ndi_devi_alloc_sleep(ddi_root_node(), "isa",
+		    (pnode_t)DEVI_SID_NODEID, &isa_dip);
+		(void) ndi_prop_update_string(DDI_DEV_T_NONE, isa_dip,
+		    "device_type", "isa");
+		(void) ndi_prop_update_string(DDI_DEV_T_NONE, isa_dip,
+		    "bus-type", "isa");
+		(void) ndi_devi_bind_driver(isa_dip, 0);
+	}
 
 	bzero(isa_extra_resource, MAX_EXTRA_RESOURCE * sizeof (struct regspec));
 
