@@ -40,6 +40,7 @@
 /*
  * Copyright (c) 2017 by Delphix. All rights reserved.
  * Copyright 2021 RackTop Systems, Inc.
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 /*
@@ -1822,7 +1823,7 @@ storvsc_config_one(dev_info_t *pdip, storvsc_softc_t *sc, int target, int lun,
 	}
 
 	dtype = inq.inq_dtype & DTYPE_MASK;
-	if (dtype != DTYPE_DIRECT) {
+	if (dtype != DTYPE_DIRECT && dtype != DTYPE_RODIRECT) {
 		HS_DEBUG(sc->hs_dip, 2, "invalid dtype: 0x%x for target: %d, "
 		    "lun: %d", dtype, target, lun);
 		rv = NDI_FAILURE;
