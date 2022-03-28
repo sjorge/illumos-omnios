@@ -74,4 +74,9 @@ int		hyperv_guid2str(const struct hyperv_guid *, char *, size_t);
 extern uint_t	hyperv_features;	/* CPUID_HV_MSR_ */
 extern uint_t	hyperv_ver_major;
 
+/*
+ * Vmbus version after negotiation with host.
+ */
+extern uint32_t vmbus_current_version;
+
 #endif /* _SYS_HYPERV_H */
