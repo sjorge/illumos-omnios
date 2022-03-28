@@ -101,7 +101,10 @@ static void			vmbus_xcall(vmbus_xcall_func_t, void *);
 static void			*vmbus_state = NULL;
 static struct vmbus_softc	*vmbus_sc;
 
+uint32_t			vmbus_current_version;
+
 static const uint32_t		vmbus_version[] = {
+	VMBUS_VERSION_WIN10,
 	VMBUS_VERSION_WIN8_1,
 	VMBUS_VERSION_WIN8,
 	VMBUS_VERSION_WIN7,
@@ -337,6 +340,7 @@ vmbus_init(struct vmbus_softc *sc)
 		if (!error) {
 			char version[16];
 
+			vmbus_current_version = vmbus_version[i];
 			sc->vmbus_version = vmbus_version[i];
 			(void) snprintf(version, sizeof (version),
 			    "%u.%u", VMBUS_VERSION_MAJOR(sc->vmbus_version),

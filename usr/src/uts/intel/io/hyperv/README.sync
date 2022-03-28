@@ -3,8 +3,8 @@
 The hyperv drivers and their associated userland consumers have been updated
 to the latest upstream FreeBSD sources as of:
 
-	commit 792d8e91e0bc2592e738ab21a4f15286d49ac056
-	Author: sephe <sephe@FreeBSD.org>
+	commit 1e851378414a6bf953a931df74ca2c7bc52dddd1
+	Author: Sepherosa Ziehau <sephe@FreeBSD.org>
 	Date:   Fri Apr 14 05:29:27 2017 +0000
 
 	    hyperv/kvp: Remove always false condition.
