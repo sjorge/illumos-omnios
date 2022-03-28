@@ -22,7 +22,7 @@ include ../Makefile.cmd
 include ../Makefile.cmd.64
 include ../Makefile.ctf
 
-SUBDIRS = kbdlayout test
+SUBDIRS = test
 
 all	:=	TARGET = all
 install	:=	TARGET = install

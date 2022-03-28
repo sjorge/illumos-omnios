@@ -11,9 +11,9 @@
 
 # Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
 
-include ../../Makefile.cmd
+include ../../Makefile.data
 
-ROOTSHBHYVE=	$(ROOT)/usr/share/bhyve
+ROOTSHBHYVE=	$(ROOTSH)/bhyve
 ROOTSHBHYVEKBD=	$(ROOTSHBHYVE)/kbdlayout
 
 FILES=		default \
