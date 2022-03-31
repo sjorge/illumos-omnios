@@ -13,7 +13,11 @@ are included in the footer.
 
 =======================================================================
 
-No pending updates.
+14593 zpool online -e hangs forever after 14022
+	system/file-system/zfs
+
+14554 TSC calibration is the PITs
+	system/kernel/platform
 
 =======================================================================
 
