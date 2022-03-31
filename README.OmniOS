@@ -19,6 +19,9 @@ are included in the footer.
 14554 TSC calibration is the PITs
 	system/kernel/platform
 
+ lx_vdso.so PT_DYNAMIC section should not be writeable
+	system/zones/brand/lx
+
 =======================================================================
 
 =============================
