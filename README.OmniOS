@@ -26,6 +26,9 @@ are included in the footer.
 14593 zpool online -e hangs forever after 14022
 	system/file-system/zfs
 
+ lx_vdso.so PT_DYNAMIC section should not be writeable
+	system/zones/brand/lx
+
 =======================================================================
 
 =============================
