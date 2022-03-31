@@ -23,6 +23,9 @@ are included in the footer.
 14572 Update tzdata to 2022a
 	system/data/zoneinfo
 
+14593 zpool online -e hangs forever after 14022
+	system/file-system/zfs
+
 =======================================================================
 
 =============================
