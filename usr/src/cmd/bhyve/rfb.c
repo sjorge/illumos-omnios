@@ -379,11 +379,7 @@ rfb_handshake_auth(rfb_client_t *c)
 	memcpy(crypt_expected, challenge, RFBP_SECURITY_VNC_AUTH_LEN);
 
 	/* Encrypt the Challenge with DES. */
-	if (DES_set_key((const_DES_cblock *)keystr, &ks) != 0) {
-		rfb_printf(c, RFB_LOGERR, "DES_set_key() failed");
-		rfb_send_client_status(c, 1, "authentication failed");
-		return (false);
-	}
+	DES_set_key_unchecked((const_DES_cblock *)keystr, &ks);
 	DES_ecb_encrypt((const_DES_cblock *)challenge,
 	    (const_DES_cblock *)crypt_expected, &ks, DES_ENCRYPT);
 	DES_ecb_encrypt(
