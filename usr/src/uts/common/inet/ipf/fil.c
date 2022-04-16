@@ -162,6 +162,7 @@ extern	int	opts;
 
 
 char	ipfilter_version[] = IPL_VERSION;
+int	outboundrst = 0;
 int	fr_features = 0
 #ifdef	IPFILTER_LKM
 		| IPF_FEAT_LKM
@@ -2624,7 +2625,7 @@ ipf_stack_t *ifs;
 		 * in response to outbound packets can result in a panic on
 		 * some operating systems.
 		 */
-		if (!out) {
+		if (!out || outboundrst != 0) {
 			if (pass & FR_RETICMP) {
 				int dst;
 
