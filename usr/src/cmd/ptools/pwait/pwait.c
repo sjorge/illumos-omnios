@@ -23,6 +23,7 @@
  * Use is subject to license terms.
  *
  * Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2022 Spencer Evans-Cole.
  */
 
 #include <stdio.h>
@@ -59,6 +60,7 @@ main(int argc, char **argv)
 	char *arg;
 	unsigned i;
 	int verbose = 0;
+	pid_t mypid = getpid();
 
 	if ((command = strrchr(argv[0], '/')) != NULL)
 		command++;
@@ -110,6 +112,13 @@ main(int argc, char **argv)
 		char psinfofile[100];
 
 		arg = argv[i];
+		if (mypid == atol(arg)) {
+			if (verbose) {
+				(void) printf("%s: has the same"
+				    " pid as this process\n", arg);
+			}
+			continue;
+		}
 		if (strchr(arg, '/') != NULL)
 			(void) strlcpy(psinfofile, arg, sizeof (psinfofile));
 		else {
