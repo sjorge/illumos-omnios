@@ -25,8 +25,8 @@ CSTD = $(CSTD_GNU99)
 
 CLEANFILES += $(OBJS)
 
-CPPFLAGS += -I../../uts/common -I../../uts/i86pc
-CPPFLAGS += -I../../uts/i86pc/io/vmm/intel
+CPPFLAGS += -I../../uts/common -I../../uts/intel
+CPPFLAGS += -I../../uts/intel/io/vmm/intel
 
 .KEEP_STATE:
 
