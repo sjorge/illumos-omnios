@@ -1529,6 +1529,8 @@ rfb_init(char *hostname, int port, int wait, const char *password,
 			FD_SET(s->rs_fd, &rfds);
 
 			e = select(s->rs_fd + 1, &rfds, NULL, NULL, NULL);
+			if (e < 0 && errno == EINTR)
+				continue;
 			if (e < 0 || FD_ISSET(s->rs_fd, &rfds))
 				break;
 		}
