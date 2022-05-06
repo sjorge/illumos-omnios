@@ -3259,7 +3259,6 @@ get_privset(zlog_t *zlogp, priv_set_t *privs, zone_mnt_t mount_cmd)
 			break;
 		default:
 			zerror(zlogp, B_FALSE, "bad ip-type");
-			zonecfg_fini_handle(handle);
 			return (-1);
 		}
 
