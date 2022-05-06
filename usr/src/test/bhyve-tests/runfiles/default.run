@@ -23,6 +23,7 @@ outputdir = /var/tmp/test_results
 user = root
 tests = [
 	'fpu_getset',
+	'interface_version',
 	'mem_devmem',
 	'mem_partial',
 	'mem_seg_map'
@@ -44,7 +45,8 @@ tests = [
 user = root
 tests = [
 	'rdmsr',
-	'wrmsr'
+	'wrmsr',
+	'triple_fault'
 	]
 
 # Tests of userspace mevent system, built from cmd/bhyve

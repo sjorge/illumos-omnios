@@ -32,6 +32,7 @@ file path=opt/bhyve-tests/runfiles/default.run mode=0444
 dir  path=opt/bhyve-tests/tests
 dir  path=opt/bhyve-tests/tests/inst_emul
 file path=opt/bhyve-tests/tests/inst_emul/rdmsr mode=0555
+file path=opt/bhyve-tests/tests/inst_emul/triple_fault mode=0555
 file path=opt/bhyve-tests/tests/inst_emul/wrmsr mode=0555
 dir  path=opt/bhyve-tests/tests/kdev
 file path=opt/bhyve-tests/tests/kdev/vatpit_freq mode=0555
@@ -50,6 +51,7 @@ file path=opt/bhyve-tests/tests/mevent/vnode_file mode=0555
 file path=opt/bhyve-tests/tests/mevent/vnode_zvol mode=0555
 dir  path=opt/bhyve-tests/tests/vmm
 file path=opt/bhyve-tests/tests/vmm/fpu_getset mode=0555
+file path=opt/bhyve-tests/tests/vmm/interface_version mode=0555
 file path=opt/bhyve-tests/tests/vmm/mem_devmem mode=0555
 file path=opt/bhyve-tests/tests/vmm/mem_partial mode=0555
 file path=opt/bhyve-tests/tests/vmm/mem_seg_map mode=0555
