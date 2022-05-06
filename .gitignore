@@ -8615,10 +8615,13 @@ usr/src/pkg/license-list
 usr/src/pkg/packages.i386/
 usr/src/pkg/proto_list_i386
 usr/src/test/bhyve-tests/tests/inst_emul/payload_rdmsr
+usr/src/test/bhyve-tests/tests/inst_emul/payload_triple_fault
 usr/src/test/bhyve-tests/tests/inst_emul/payload_wrmsr
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_rdmsr.s
+usr/src/test/bhyve-tests/tests/inst_emul/pobj_triple_fault.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_wrmsr.s
 usr/src/test/bhyve-tests/tests/inst_emul/rdmsr
+usr/src/test/bhyve-tests/tests/inst_emul/triple_fault
 usr/src/test/bhyve-tests/tests/inst_emul/wrmsr
 usr/src/test/bhyve-tests/tests/kdev/payload_vatpit_freq
 usr/src/test/bhyve-tests/tests/kdev/payload_vhpet_freq
@@ -8642,6 +8645,7 @@ usr/src/test/bhyve-tests/tests/kdev/vlapic_mmio_access
 usr/src/test/bhyve-tests/tests/kdev/vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/vpmtmr_freq
 usr/src/test/bhyve-tests/tests/vmm/fpu_getset
+usr/src/test/bhyve-tests/tests/vmm/interface_version
 usr/src/test/bhyve-tests/tests/vmm/mem_devmem
 usr/src/test/bhyve-tests/tests/vmm/mem_partial
 usr/src/test/bhyve-tests/tests/vmm/mem_seg_map
