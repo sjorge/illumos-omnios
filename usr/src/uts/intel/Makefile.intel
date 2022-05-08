@@ -499,6 +499,7 @@ DRV_KMODS	+= usbser
 DRV_KMODS	+= usbsacm
 DRV_KMODS	+= usbsksp
 DRV_KMODS	+= usbsprl
+DRV_KMODS	+= usbslcp21
 DRV_KMODS	+= usb_ac
 DRV_KMODS	+= usb_as
 DRV_KMODS	+= usbskel
