@@ -11,28 +11,22 @@
 #
 # Copyright 2014, OmniTI Computer Consulting, Inc. All rights reserved.
 # Copyright 2016 RackTop Systems.
-# Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
 #
 
-MODULE = Privilege
+include $(SRC)/Makefile.master
 
-include $(SRC)/cmd/perl/Makefile.perl
+SUBDIRS=
+$(BUILDPERL32)SUBDIRS += $(MACH)
+$(BUILDPERL64)SUBDIRS += $(MACH64)
 
-CERRWARN += -_gcc=-Wno-unused-value
+all :=		TARGET = all
+install :=	TARGET = install
+clean :=	TARGET = clean
+clobber :=	TARGET = clobber
 
-XSUBPPFLAGS = -typemap typemap
+all install clean clobber: $(SUBDIRS)
 
-MAPFILES = mapfile-vers
+$(SUBDIRS): FRC
+	@cd $@; pwd; $(MAKE) $(TARGET)
 
-include $(SRC)/cmd/perl/Makefile.targ
-
-.KEEP_STATE:
-
-$(BUILDPERL32)all: $(PERLEXT) $(PERLMOD)
-$(BUILDPERL64)all: $(PERLEXT64) $(PERLMOD)
-
-$(BUILDPERL32)install: $(ROOTPERLEXT) $(ROOTPERLMOD)
-$(BUILDPERL64)install: $(ROOTPERLEXT64) $(ROOTPERLMOD64)
-
-clean clobber:
-	$(RM) -r $(MACH) $(MACH64)
+FRC:
