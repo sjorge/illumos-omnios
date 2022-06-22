@@ -27,6 +27,19 @@
  *
  * $FreeBSD$
  */
+/*
+ * This file and its contents are supplied under the terms of the
+ * Common Development and Distribution License ("CDDL"), version 1.0.
+ * You may only use this file in accordance with the terms of version
+ * 1.0 of the CDDL.
+ *
+ * A full copy of the text of the CDDL should have accompanied this
+ * source.  A copy of the CDDL is also available via the Internet at
+ * http://www.illumos.org/license/CDDL.
+ *
+ * Copyright 2018 Joyent, Inc.
+ * Copyright 2022 Oxide Computer Company
+ */
 
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
@@ -34,7 +47,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
-#include <sys/malloc.h>
+#include <sys/kmem.h>
 
 #include <dev/pci/pcireg.h>
 
@@ -124,14 +137,10 @@ static int			drhd_num;
 static struct vtdmap		*vtdmaps[DRHD_MAX_UNITS];
 static int			max_domains;
 typedef int			(*drhd_ident_func_t)(void);
-#ifndef __FreeBSD__
-static dev_info_t	*vtddips[DRHD_MAX_UNITS];
-#endif
+static dev_info_t		*vtddips[DRHD_MAX_UNITS];
 
 static uint64_t root_table[PAGE_SIZE / sizeof (uint64_t)] __aligned(4096);
 static uint64_t ctx_tables[256][PAGE_SIZE / sizeof (uint64_t)] __aligned(4096);
-
-static MALLOC_DEFINE(M_VTD, "vtd", "vtd");
 
 static int
 vtd_max_domains(struct vtdmap *vtdmap)
@@ -344,12 +353,71 @@ vtd_unmap(dev_info_t *dip)
 		ddi_regs_map_free(&hdl);
 }
 
-#ifndef __FreeBSD__
-/*
- * This lives in vtd_sol.c for license reasons.
- */
-extern dev_info_t *vtd_get_dip(ACPI_DMAR_HARDWARE_UNIT *, int);
-#endif
+static dev_info_t *
+vtd_get_dip(ACPI_DMAR_HARDWARE_UNIT *drhd, int unit)
+{
+	dev_info_t *dip;
+	struct ddi_parent_private_data *pdptr;
+	struct regspec reg;
+	int circ;
+
+	/*
+	 * Try to find an existing devinfo node for this vtd unit.
+	 */
+	ndi_devi_enter(ddi_root_node(), &circ);
+	dip = ddi_find_devinfo("vtd", unit, 0);
+	ndi_devi_exit(ddi_root_node(), circ);
+
+	if (dip != NULL)
+		return (dip);
+
+	/*
+	 * None found, construct a devinfo node for this vtd unit.
+	 */
+	dip = ddi_add_child(ddi_root_node(), "vtd",
+	    DEVI_SID_NODEID, unit);
+
+	reg.regspec_bustype = 0;
+	reg.regspec_addr = drhd->Address;
+	reg.regspec_size = PAGE_SIZE;
+
+	/*
+	 * update the reg properties
+	 *
+	 *   reg property will be used for register
+	 *   set access
+	 *
+	 * refer to the bus_map of root nexus driver
+	 * I/O or memory mapping:
+	 *
+	 * <bustype=0, addr=x, len=x>: memory
+	 * <bustype=1, addr=x, len=x>: i/o
+	 * <bustype>1, addr=0, len=x>: x86-compatibility i/o
+	 */
+	(void) ndi_prop_update_int_array(DDI_DEV_T_NONE,
+	    dip, "reg", (int *)&reg,
+	    sizeof (struct regspec) / sizeof (int));
+
+	/*
+	 * This is an artificially constructed dev_info, and we
+	 * need to set a few more things to be able to use it
+	 * for ddi_dma_alloc_handle/free_handle.
+	 */
+	ddi_set_driver(dip, ddi_get_driver(ddi_root_node()));
+	DEVI(dip)->devi_bus_dma_allochdl =
+	    DEVI(ddi_get_driver((ddi_root_node())));
+
+	pdptr = kmem_zalloc(sizeof (struct ddi_parent_private_data)
+	    + sizeof (struct regspec), KM_SLEEP);
+	pdptr->par_nreg = 1;
+	pdptr->par_reg = (struct regspec *)(pdptr + 1);
+	pdptr->par_reg->regspec_bustype = 0;
+	pdptr->par_reg->regspec_addr = drhd->Address;
+	pdptr->par_reg->regspec_size = PAGE_SIZE;
+	ddi_set_parent_data(dip, pdptr);
+
+	return (dip);
+}
 
 static int
 vtd_init(void)
@@ -666,7 +734,7 @@ vtd_update_mapping(void *arg, vm_paddr_t gpa, vm_paddr_t hpa, uint64_t len,
 		 * to it from the current page table.
 		 */
 		if (ptp[ptpindex] == 0) {
-			void *nlp = malloc(PAGE_SIZE, M_VTD, M_WAITOK | M_ZERO);
+			void *nlp = vmm_ptp_alloc();
 			ptp[ptpindex] = vtophys(nlp)| VTD_PTE_RD | VTD_PTE_WR;
 		}
 
@@ -779,12 +847,12 @@ vtd_create_domain(vm_paddr_t maxaddr)
 		    tmp, agaw);
 	}
 
-	dom = malloc(sizeof (struct domain), M_VTD, M_ZERO | M_WAITOK);
+	dom = kmem_zalloc(sizeof (struct domain), KM_SLEEP);
 	dom->pt_levels = pt_levels;
 	dom->addrwidth = addrwidth;
 	dom->id = domain_id();
 	dom->maxaddr = maxaddr;
-	dom->ptp = malloc(PAGE_SIZE, M_VTD, M_ZERO | M_WAITOK);
+	dom->ptp = vmm_ptp_alloc();
 	if ((uintptr_t)dom->ptp & PAGE_MASK)
 		panic("vtd_create_domain: ptp (%p) not page aligned", dom->ptp);
 
@@ -846,8 +914,7 @@ vtd_free_ptp(uint64_t *ptp, int level)
 		}
 	}
 
-	bzero(ptp, PAGE_SIZE);
-	free(ptp, M_VTD);
+	vmm_ptp_free(ptp);
 }
 
 static void
@@ -859,10 +926,10 @@ vtd_destroy_domain(void *arg)
 
 	SLIST_REMOVE(&domhead, dom, domain, next);
 	vtd_free_ptp(dom->ptp, dom->pt_levels);
-	free(dom, M_VTD);
+	kmem_free(dom, sizeof (*dom));
 }
 
-const struct iommu_ops iommu_ops_intel = {
+const struct iommu_ops vmm_iommu_ops = {
 	.init = vtd_init,
 	.cleanup = vtd_cleanup,
 	.enable = vtd_enable,
@@ -875,3 +942,33 @@ const struct iommu_ops iommu_ops_intel = {
 	.remove_device = vtd_remove_device,
 	.invalidate_tlb = vtd_invalidate_tlb,
 };
+
+
+static struct modlmisc modlmisc = {
+	&mod_miscops,
+	"bhyve vmm vtd",
+};
+
+static struct modlinkage modlinkage = {
+	MODREV_1,
+	&modlmisc,
+	NULL
+};
+
+int
+_init(void)
+{
+	return (mod_install(&modlinkage));
+}
+
+int
+_fini(void)
+{
+	return (mod_remove(&modlinkage));
+}
+
+int
+_info(struct modinfo *modinfop)
+{
+	return (mod_info(&modlinkage, modinfop));
+}

@@ -1665,7 +1665,7 @@ vmmdev_do_vm_create(const struct vm_create_req *req, cred_t *cr)
 		goto fail;
 	}
 
-	error = vm_create(req->name, req->flags, &sc->vmm_vm);
+	error = vm_create(req->flags, &sc->vmm_vm);
 	if (error == 0) {
 		/* Complete VM intialization and report success. */
 		(void) strlcpy(sc->vmm_name, name, sizeof (sc->vmm_name));
@@ -2491,6 +2491,11 @@ vmm_ctl_ioctl(int cmd, intptr_t arg, int md, cred_t *cr, int *rvalp)
 		return (vmm_is_supported(arg));
 	case VMM_INTERFACE_VERSION:
 		*rvalp = VMM_CURRENT_INTERFACE_VERSION;
+		return (0);
+	case VMM_CHECK_IOMMU:
+		if (!vmm_check_iommu()) {
+			return (ENXIO);
+		}
 		return (0);
 	case VMM_RESV_QUERY:
 	case VMM_RESV_ADD:

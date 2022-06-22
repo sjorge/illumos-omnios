@@ -299,7 +299,7 @@ syscall_insn_string(int syscall_insn)
 		return ("Unknown");
 	}
 }
-#endif
+#endif /* DEBUG */
 
 static int
 ldt_rewrite_syscall(struct regs *rp, proc_t *p, int syscall_insn)
