@@ -12,7 +12,7 @@
 
 #
 # Copyright 2019 Joyent, Inc.
-# Copyright 2021 Oxide Computer Company
+# Copyright 2022 Oxide Computer Company
 #
 
 #
@@ -64,6 +64,10 @@ SYMBOL_VERSION ILLUMOSprivate {
 	vm_iommu_domain;
 	vm_map_mmio;
 	vm_unmap_mmio;
+	vmm_ptp_alloc;
+	vmm_ptp_free;
+	invalidate_cache_all;
+	vtophys;
 
     local:
 	*;

@@ -27,6 +27,7 @@
 /*
  * Copyright 2016 Joyent, Inc.
  * Copyright 2021 Toomas Soome <tsoome@me.com>
+ * Copyright 2021 RackTop Systems, Inc.
  */
 
 /*
@@ -379,7 +380,7 @@ tem_safe_terminal_emulate(
 	ASSERT((MUTEX_HELD(&tems.ts_lock) && MUTEX_HELD(&tem->tvs_lock)) ||
 	    called_from == CALLED_FROM_STANDALONE);
 
-	if (tem->tvs_isactive)
+	if (tem->tvs_isactive && !tem->tvs_cursor_hidden)
 		tem_safe_callback_cursor(tem,
 		    VIS_HIDE_CURSOR, credp, called_from);
 
@@ -391,7 +392,7 @@ tem_safe_terminal_emulate(
 	 */
 	tem_safe_send_data(tem, credp, called_from);
 
-	if (tem->tvs_isactive)
+	if (tem->tvs_isactive && !tem->tvs_cursor_hidden)
 		tem_safe_callback_cursor(tem,
 		    VIS_DISPLAY_CURSOR, credp, called_from);
 }
@@ -845,6 +846,57 @@ tem_safe_selgraph(struct tem_vt_state *tem)
 }
 
 /*
+ * Handle window manipulation.
+ */
+static void
+tem_safe_window(struct tem_vt_state *tem, enum called_from called_from)
+{
+	int curparam;
+	int param;
+	int index = 0;
+	mblk_t *bp;
+	size_t len;
+	char buf[27];
+
+	tem->tvs_state = A_STATE_START;
+	curparam = tem->tvs_curparam;
+	do {
+		param = tem->tvs_params[index];
+
+		switch (param) {
+		case 8:	/* Resize window to Ps2 lines and Ps3 columns. */
+			/* We ignore this */
+			index += 2;
+			curparam -= 2;
+			break;
+
+		case 18: /* Reports terminal size in characters. */
+			if (called_from == CALLED_FROM_STANDALONE)
+				break;
+			if (!canputnext(tem->tvs_queue))
+				break;
+
+			/* Response: CSI 8 ; lines ; columns t */
+			len = snprintf(buf, sizeof (buf), "%c[8;%u;%ut",
+			    0x1b, tems.ts_c_dimension.height,
+			    tems.ts_c_dimension.width);
+
+			bp = allocb(len, BPRI_HI);
+			if (bp != NULL) {
+				bp->b_datap->db_type = M_CTL;
+				bcopy(buf, bp->b_wptr, len);
+				bp->b_wptr += len;
+				(void) putnext(tem->tvs_queue, bp);
+			}
+			break;
+		}
+
+		index++;
+		curparam--;
+	} while (curparam > 0);
+}
+
+/*
  * perform the appropriate action for the escape sequence
  *
  * General rule:  This code does not validate the arguments passed.
@@ -1080,6 +1132,11 @@ tem_safe_chkparam(struct tem_vt_state *tem, tem_char_t ch, cred_t *credp,
 		    credp, called_from);
 		break;
 
+	case 't':
+		tem_safe_send_data(tem, credp, called_from);
+		tem_safe_window(tem, called_from);
+		break;
+
 	case 'X':		/* erase char */
 		tem_safe_setparam(tem, 1, 1);
 		tem_safe_clear_chars(tem,
@@ -1109,6 +1166,49 @@ tem_safe_chkparam(struct tem_vt_state *tem, tem_char_t ch, cred_t *credp,
 	tem->tvs_state = A_STATE_START;
 }
 
+static void
+tem_safe_chkparam_qmark(struct tem_vt_state *tem, tem_char_t ch, cred_t *credp,
+    enum called_from called_from)
+{
+	ASSERT((called_from == CALLED_FROM_STANDALONE) ||
+	    MUTEX_HELD(&tem->tvs_lock));
+
+	switch (ch) {
+	case 'h': /* DEC private mode set */
+		tem_safe_setparam(tem, 1, 1);
+		switch (tem->tvs_params[0]) {
+		case 25: /* show cursor */
+			/*
+			 * Note that cursor is not displayed either way
+			 * at this entry point.  Clearing the flag ensures
+			 * that on exit from tem_safe_terminal_emulate
+			 * we will display the cursor.
+			 */
+			tem_safe_send_data(tem, credp, called_from);
+			tem->tvs_cursor_hidden = B_FALSE;
+			break;
+		}
+		break;
+
+	case 'l':
+		/* DEC private mode reset */
+		tem_safe_setparam(tem, 1, 1);
+		switch (tem->tvs_params[0]) {
+		case 25: /* hide cursor */
+			/*
+			 * Note that the cursor is not displayed already.
+			 * This is true regardless of the flag state.
+			 * Setting this flag ensures we won't display it
+			 * on exit from tem_safe_terminal_emulate.
+			 */
+			tem_safe_send_data(tem, credp, called_from);
+			tem->tvs_cursor_hidden = B_TRUE;
+			break;
+		}
+		break;
+	}
+	tem->tvs_state = A_STATE_START;
+}
 
 /*
  * Gather the parameters of an ANSI escape sequence
@@ -1124,9 +1224,25 @@ tem_safe_getparams(struct tem_vt_state *tem, tem_char_t ch,
 		tem->tvs_paramval = ((tem->tvs_paramval * 10) + (ch - '0'));
 		tem->tvs_gotparam = B_TRUE;  /* Remember got parameter */
 		return; /* Return immediately */
-	} else if (tem->tvs_state == A_STATE_CSI_EQUAL ||
-	    tem->tvs_state == A_STATE_CSI_QMARK) {
+	} else if (tem->tvs_state == A_STATE_CSI_EQUAL) {
 		tem->tvs_state = A_STATE_START;
+	} else if (tem->tvs_state == A_STATE_CSI_QMARK) {
+		if (tem->tvs_curparam < TEM_MAXPARAMS) {
+			if (tem->tvs_gotparam) {
+				/* get the parameter value */
+				tem->tvs_params[tem->tvs_curparam] =
+				    tem->tvs_paramval;
+			}
+			tem->tvs_curparam++;
+		}
+		if (ch == ';') {
+			/* Restart parameter search */
+			tem->tvs_gotparam = B_FALSE;
+			tem->tvs_paramval = 0; /* No parameter value yet */
+		} else {
+			/* Handle escape sequence */
+			tem_safe_chkparam_qmark(tem, ch, credp, called_from);
+		}
 	} else {
 		if (tem->tvs_curparam < TEM_MAXPARAMS) {
 			if (tem->tvs_gotparam) {
@@ -1140,7 +1256,7 @@ tem_safe_getparams(struct tem_vt_state *tem, tem_char_t ch,
 		if (ch == ';') {
 			/* Restart parameter search */
 			tem->tvs_gotparam = B_FALSE;
-			tem->tvs_paramval = 0; /* No parame value yet */
+			tem->tvs_paramval = 0; /* No parameter value yet */
 		} else {
 			/* Handle escape sequence */
 			tem_safe_chkparam(tem, ch, credp, called_from);

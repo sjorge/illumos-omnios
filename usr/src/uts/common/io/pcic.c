@@ -6803,7 +6803,7 @@ pcic_dump_debqueue(char *msg)
 		debp = debp->next;
 	}
 }
-#endif
+#endif /* PCIC_DEBUG */
 
 
 /* PRINTFLIKE3 */

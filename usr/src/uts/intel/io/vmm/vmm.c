@@ -51,7 +51,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
-#include <sys/malloc.h>
+#include <sys/kmem.h>
 #include <sys/pcpu.h>
 #include <sys/mutex.h>
 #include <sys/proc.h>
@@ -74,7 +74,6 @@ __FBSDID("$FreeBSD$");
 #include <sys/vmm_gpt.h>
 
 #include "vmm_ioport.h"
-#include "vmm_ktr.h"
 #include "vmm_host.h"
 #include "vmm_util.h"
 #include "vatpic.h"
@@ -206,7 +205,6 @@ struct vm {
 	struct mem_map	mem_maps[VM_MAX_MEMMAPS]; /* (i) guest address space */
 	struct mem_seg	mem_segs[VM_MAX_MEMSEGS]; /* (o) guest memory regions */
 	struct vmspace	*vmspace;		/* (o) guest's address space */
-	char		name[VM_MAX_NAMELEN];	/* (o) virtual machine name */
 	struct vcpu	vcpu[VM_MAXCPU];	/* (i) guest vcpus */
 	/* The following describe the vm cpu topology */
 	uint16_t	sockets;		/* (o) num of sockets */
@@ -273,8 +271,6 @@ static vmm_pte_ops_t *pte_ops = NULL;
 #define	fpu_stop_emulating()	clts()
 
 SDT_PROVIDER_DEFINE(vmm);
-
-static MALLOC_DEFINE(M_VM, "vm", "vm");
 
 SYSCTL_NODE(_hw, OID_AUTO, vmm, CTLFLAG_RW | CTLFLAG_MPSAFE, NULL,
     NULL);
@@ -462,13 +458,30 @@ vmm_mod_unload()
 
 	VERIFY(vmm_initialized == 1);
 
-	iommu_cleanup();
 	error = VMM_CLEANUP();
 	if (error)
 		return (error);
 	vmm_initialized = 0;
 
 	return (0);
+}
+
+/*
+ * Create a test IOMMU domain to see if the host system has necessary hardware
+ * and drivers to do so.
+ */
+bool
+vmm_check_iommu(void)
+{
+	void *domain;
+	const size_t arb_test_sz = (1UL << 32);
+
+	domain = iommu_create_domain(arb_test_sz);
+	if (domain == NULL) {
+		return (false);
+	}
+	iommu_destroy_domain(domain);
+	return (true);
 }
 
 static void
@@ -522,7 +535,7 @@ uint_t threads_per_core = 1;
 bool gpt_track_dirty = false;
 
 int
-vm_create(const char *name, uint64_t flags, struct vm **retvm)
+vm_create(uint64_t flags, struct vm **retvm)
 {
 	struct vm *vm;
 	struct vmspace *vmspace;
@@ -534,15 +547,11 @@ vm_create(const char *name, uint64_t flags, struct vm **retvm)
 	if (!vmm_initialized)
 		return (ENXIO);
 
-	/* Name validation has already occurred */
-	VERIFY3U(strnlen(name, VM_MAX_NAMELEN), <, VM_MAX_NAMELEN);
-
 	vmspace = vmspace_alloc(VM_MAXUSER_ADDRESS, pte_ops, gpt_track_dirty);
 	if (vmspace == NULL)
 		return (ENOMEM);
 
-	vm = malloc(sizeof (struct vm), M_VM, M_WAITOK | M_ZERO);
-	(void) strlcpy(vm->name, name, sizeof (vm->name));
+	vm = kmem_zalloc(sizeof (struct vm), KM_SLEEP);
 
 	vm->vmspace = vmspace;
 	vm->mem_transient = (flags & VCF_RESERVOIR_MEM) == 0;
@@ -663,7 +672,7 @@ void
 vm_destroy(struct vm *vm)
 {
 	vm_cleanup(vm, true);
-	free(vm, M_VM);
+	kmem_free(vm, sizeof (*vm));
 }
 
 int
@@ -703,12 +712,6 @@ vm_reinit(struct vm *vm, uint64_t flags)
 	vm_cleanup(vm, false);
 	vm_init(vm, false);
 	return (0);
-}
-
-const char *
-vm_name(struct vm *vm)
-{
-	return (vm->name);
 }
 
 int
@@ -989,15 +992,9 @@ vm_iommu_modify(struct vm *vm, bool map)
 	int i, sz;
 	vm_paddr_t gpa, hpa;
 	struct mem_map *mm;
-#ifdef __FreeBSD__
-	void *vp, *cookie, *host_domain;
-#endif
 	vm_client_t *vmc;
 
 	sz = PAGE_SIZE;
-#ifdef __FreeBSD__
-	host_domain = iommu_host_domain();
-#endif
 	vmc = vmspace_client_alloc(vm->vmspace);
 
 	for (i = 0; i < VM_MAX_MEMMAPS; i++) {
@@ -1030,16 +1027,22 @@ vm_iommu_modify(struct vm *vm, bool map)
 			hpa = ((uintptr_t)vmp_get_pfn(vmp) << PAGESHIFT);
 			(void) vmp_release(vmp);
 
+			/*
+			 * When originally ported from FreeBSD, the logic for
+			 * adding memory to the guest domain would
+			 * simultaneously remove it from the host domain.  The
+			 * justification for that is not clear, and FreeBSD has
+			 * subsequently changed the behavior to not remove the
+			 * memory from the host domain.
+			 *
+			 * Leaving the guest memory in the host domain for the
+			 * life of the VM is necessary to make it available for
+			 * DMA, such as through viona in the TX path.
+			 */
 			if (map) {
 				iommu_create_mapping(vm->iommu, gpa, hpa, sz);
-#ifdef __FreeBSD__
-				iommu_remove_mapping(host_domain, hpa, sz);
-#endif
 			} else {
 				iommu_remove_mapping(vm->iommu, gpa, sz);
-#ifdef __FreeBSD__
-				iommu_create_mapping(host_domain, hpa, hpa, sz);
-#endif
 			}
 
 			gpa += PAGE_SIZE;
@@ -1051,14 +1054,7 @@ vm_iommu_modify(struct vm *vm, bool map)
 	 * Invalidate the cached translations associated with the domain
 	 * from which pages were removed.
 	 */
-#ifdef __FreeBSD__
-	if (map)
-		iommu_invalidate_tlb(host_domain);
-	else
-		iommu_invalidate_tlb(vm->iommu);
-#else
 	iommu_invalidate_tlb(vm->iommu);
-#endif
 }
 
 int
@@ -1127,7 +1123,6 @@ vm_set_register(struct vm *vm, int vcpuid, int reg, uint64_t val)
 		return (error);
 
 	/* Set 'nextrip' to match the value of %rip */
-	VCPU_CTR1(vm, vcpuid, "Setting nextrip to %lx", val);
 	vcpu = &vm->vcpu[vcpuid];
 	vcpu->nextrip = val;
 	return (0);
@@ -1340,8 +1335,6 @@ vcpu_set_state_locked(struct vm *vm, int vcpuid, enum vcpu_state newstate,
 		while (vcpu->state != VCPU_IDLE) {
 			vcpu->reqidle = 1;
 			vcpu_notify_event_locked(vcpu, VCPU_NOTIFY_EXIT);
-			VCPU_CTR1(vm, vcpuid, "vcpu state change from %s to "
-			    "idle requested", vcpu_state2str(vcpu->state));
 			cv_wait(&vcpu->state_cv, &vcpu->lock);
 		}
 	} else {
@@ -1379,9 +1372,6 @@ vcpu_set_state_locked(struct vm *vm, int vcpuid, enum vcpu_state newstate,
 
 	if (error)
 		return (EBUSY);
-
-	VCPU_CTR2(vm, vcpuid, "vcpu state changed from %s to %s",
-	    vcpu_state2str(vcpu->state), vcpu_state2str(newstate));
 
 	vcpu->state = newstate;
 	if (newstate == VCPU_RUNNING)
@@ -1511,9 +1501,6 @@ vm_handle_paging(struct vm *vm, int vcpuid)
 
 	rv = vmc_fault(vmc, vme->u.paging.gpa, ftype);
 
-	VCPU_CTR3(vm, vcpuid, "vm_handle_paging rv = %d, gpa = %lx, "
-	    "ftype = %d", rv, vme->u.paging.gpa, ftype);
-
 	if (rv != 0)
 		return (EFAULT);
 	return (0);
@@ -1576,9 +1563,6 @@ vm_handle_mmio_emul(struct vm *vm, int vcpuid)
 	inst_addr = vme->rip + vme->u.mmio_emul.cs_base;
 	cs_d = vme->u.mmio_emul.cs_d;
 
-	VCPU_CTR1(vm, vcpuid, "inst_emul fault accessing gpa %lx",
-	    vme->u.mmio_emul.gpa);
-
 	/* Fetch the faulting instruction */
 	if (vie_needs_fetch(vie)) {
 		error = vie_fetch_instruction(vie, vm, vcpuid, inst_addr,
@@ -1597,8 +1581,6 @@ vm_handle_mmio_emul(struct vm *vm, int vcpuid)
 	}
 
 	if (vie_decode_instruction(vie, vm, vcpuid, cs_d) != 0) {
-		VCPU_CTR1(vm, vcpuid, "Error decoding instruction at %lx",
-		    inst_addr);
 		/* Dump (unrecognized) instruction bytes in userspace */
 		vie_fallback_exitinfo(vie, vme);
 		return (-1);
@@ -1765,7 +1747,6 @@ vm_handle_suspend(struct vm *vm, int vcpuid)
 		int rc;
 
 		if (CPU_CMP(&vm->suspended_cpus, &vm->active_cpus) == 0) {
-			VCPU_CTR0(vm, vcpuid, "All vcpus suspended");
 			break;
 		}
 
@@ -2435,8 +2416,6 @@ exit:
 	vmm_savectx(&vcpu->vtc);
 	kpreempt_enable();
 
-	VCPU_CTR2(vm, vcpuid, "retu %d/%d", error, vme->exitcode);
-
 	vcpu_ustate_change(vm, vcpuid, VU_EMU_USER);
 	return (error);
 }
@@ -2464,8 +2443,6 @@ vm_restart_instruction(void *arg, int vcpuid)
 		 * instruction to be restarted.
 		 */
 		vcpu->exitinfo.inst_length = 0;
-		VCPU_CTR1(vm, vcpuid, "restarting instruction at %lx by "
-		    "setting inst_length to zero", vcpu->exitinfo.rip);
 	} else if (state == VCPU_FROZEN) {
 		/*
 		 * When a vcpu is "frozen" it is outside the critical section
@@ -2475,8 +2452,6 @@ vm_restart_instruction(void *arg, int vcpuid)
 		 */
 		error = vm_get_register(vm, vcpuid, VM_REG_GUEST_RIP, &rip);
 		KASSERT(!error, ("%s: error %d getting rip", __func__, error));
-		VCPU_CTR2(vm, vcpuid, "restarting instruction by updating "
-		    "nextrip from %lx to %lx", vcpu->nextrip, rip);
 		vcpu->nextrip = rip;
 	} else {
 		panic("%s: invalid state %d", __func__, state);
@@ -3125,7 +3100,6 @@ vm_activate_cpu(struct vm *vm, int vcpuid)
 		return (EBUSY);
 	}
 
-	VCPU_CTR0(vm, vcpuid, "activated");
 	CPU_SET_ATOMIC(vcpuid, &vm->active_cpus);
 
 	/*
