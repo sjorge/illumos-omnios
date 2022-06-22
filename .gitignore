@@ -8644,6 +8644,7 @@ usr/src/test/bhyve-tests/tests/kdev/vlapic_freq_periodic
 usr/src/test/bhyve-tests/tests/kdev/vlapic_mmio_access
 usr/src/test/bhyve-tests/tests/kdev/vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/vpmtmr_freq
+usr/src/test/bhyve-tests/tests/vmm/check_iommu
 usr/src/test/bhyve-tests/tests/vmm/fpu_getset
 usr/src/test/bhyve-tests/tests/vmm/interface_version
 usr/src/test/bhyve-tests/tests/vmm/mem_devmem
