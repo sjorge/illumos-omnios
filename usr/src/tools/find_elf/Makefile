@@ -48,7 +48,7 @@ CSTD = $(CSTD_GNU99)
 all:	$(PROG)
 
 install: all .WAIT $(ROOTONBLDMACHPROG) $(ROOTONBLDDATAFILES) \
-	$(ROOTONBLDMAN1ONBLDFILES)
+	$(ROOTONBLDMAN1ONBLDFILES) $(ROOTONBLDPROG)
 
 clean:
 	$(RM) -f $(OBJS)
@@ -56,6 +56,9 @@ clean:
 $(PROG): $(OBJS)
 	$(LINK.c) $(OBJS) -o $@ $(LDLIBS)
 	$(POST_PROCESS)
+
+$(ROOTONBLDPROG): $(ROOTONBLDMACHPROG)
+	-$(RM) $@; $(SYMLINK) $(MACH)/$(@F) $@
 
 %.o: %.c
 	$(COMPILE.c) -o $@ $<
