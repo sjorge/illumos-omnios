@@ -394,7 +394,6 @@ file path=kernel/sched/$(ARCH64)/TS_DPTBL group=sys mode=0755
 dir  path=kernel/socketmod group=sys
 dir  path=kernel/socketmod/$(ARCH64) group=sys
 file path=kernel/socketmod/$(ARCH64)/datafilt group=sys mode=0755
-file path=kernel/socketmod/$(ARCH64)/httpfilt group=sys mode=0755
 hardlink path=kernel/socketmod/$(ARCH64)/icmp \
     target=../../../kernel/drv/$(ARCH64)/icmp
 hardlink path=kernel/socketmod/$(ARCH64)/rts \
