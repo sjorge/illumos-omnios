@@ -476,8 +476,6 @@ usr/src/cmd/cmd-inet/usr.sbin/ipsecutils/ikecert
 usr/src/cmd/cmd-inet/usr.sbin/ipsecutils/ipsecalgs
 usr/src/cmd/cmd-inet/usr.sbin/ipsecutils/ipsecconf
 usr/src/cmd/cmd-inet/usr.sbin/ipsecutils/ipseckey
-usr/src/cmd/cmd-inet/usr.sbin/kssl/kssladm/kssladm
-usr/src/cmd/cmd-inet/usr.sbin/kssl/ksslcfg/ksslcfg
 usr/src/cmd/cmd-inet/usr.sbin/ndd
 usr/src/cmd/cmd-inet/usr.sbin/ndp
 usr/src/cmd/cmd-inet/usr.sbin/nwamadm/nwamadm
@@ -1813,9 +1811,6 @@ usr/src/cmd/sgs/lari/lari
 usr/src/cmd/sgs/ld/amd64/ld
 usr/src/cmd/sgs/ld/amd64/msg.c
 usr/src/cmd/sgs/ld/amd64/msg.h
-usr/src/cmd/sgs/ld/i386/ld
-usr/src/cmd/sgs/ld/i386/msg.c
-usr/src/cmd/sgs/ld/i386/msg.h
 usr/src/cmd/sgs/ldd/amd64/ldd
 usr/src/cmd/sgs/ldd/amd64/msg.c
 usr/src/cmd/sgs/ldd/amd64/msg.h
@@ -7864,6 +7859,15 @@ usr/src/man/man9e/mc_stop.9e
 usr/src/man/man9e/mcl_set.9e
 usr/src/man/man9e/mct_info.9e
 usr/src/man/man9e/mct_read.9e
+usr/src/man/man9e/mgi_addmac.9e
+usr/src/man/man9e/mgi_addvlan.9e
+usr/src/man/man9e/mgi_remmac.9e
+usr/src/man/man9e/mgi_remvlan.9e
+usr/src/man/man9e/mgi_stop.9e
+usr/src/man/man9e/mi_disable.9e
+usr/src/man/man9e/mri_start.9e
+usr/src/man/man9e/mri_stop.9e
+usr/src/man/man9e/mri_tx.9e
 usr/src/man/man9e/tran_destroy_pkt.9e
 usr/src/man/man9e/tran_pkt_constructor.9e
 usr/src/man/man9e/tran_pkt_destructor.9e
@@ -8305,8 +8309,10 @@ usr/src/man/man9f/mac_prop_info_set_default_uint64.9f
 usr/src/man/man9f/mac_prop_info_set_default_uint8.9f
 usr/src/man/man9f/mac_prop_info_set_perm.9f
 usr/src/man/man9f/mac_prop_info_set_range_uint32.9f
+usr/src/man/man9f/mac_ring_rx.9f
 usr/src/man/man9f/mac_transceiver_info_set_present.9f
 usr/src/man/man9f/mac_transceiver_info_set_usable.9f
+usr/src/man/man9f/mac_tx_ring_update.9f
 usr/src/man/man9f/mac_unregister.9f
 usr/src/man/man9f/makecom_g0.9f
 usr/src/man/man9f/makecom_g0_s.9f
@@ -8481,6 +8487,7 @@ usr/src/man/man9f/scsi_hba_iportmap_iport_add.9f
 usr/src/man/man9f/scsi_hba_iportmap_iport_remove.9f
 usr/src/man/man9f/scsi_hba_pkt_free.9f
 usr/src/man/man9f/scsi_hba_tgtmap_destroy.9f
+usr/src/man/man9f/scsi_hba_tgtmap_scan_luns.9f
 usr/src/man/man9f/scsi_hba_tgtmap_set_add.9f
 usr/src/man/man9f/scsi_hba_tgtmap_set_begin.9f
 usr/src/man/man9f/scsi_hba_tgtmap_set_end.9f
@@ -8589,7 +8596,10 @@ usr/src/man/man9p/inquiry-vendor-id.9p
 usr/src/man/man9s/dblk.9s
 usr/src/man/man9s/intro.9s
 usr/src/man/man9s/mac_callbacks_t.9s
+usr/src/man/man9s/mac_group_info_t.9s
+usr/src/man/man9s/mac_intr_t.9s
 usr/src/man/man9s/mac_register_t.9s
+usr/src/man/man9s/mac_ring_info_t.9s
 usr/src/man/man9s/mblk.9s
 usr/src/man/man9s/usb_bulk_req_t.9s
 usr/src/man/man9s/usb_bulk_request.9s
@@ -9037,6 +9047,7 @@ usr/src/tools/elfextract/elfextract
 usr/src/tools/env/illumos
 usr/src/tools/env/omnios-illumos-gate
 usr/src/tools/env/omnios-illumos-omnios
+usr/src/tools/find_elf/find_elf
 usr/src/tools/findunref/exception_list
 usr/src/tools/findunref/findunref
 usr/src/tools/geniconvtbl/geniconvtbl
@@ -9073,7 +9084,6 @@ usr/src/tools/scripts/checkpaths
 usr/src/tools/scripts/copyrightchk
 usr/src/tools/scripts/cstyle
 usr/src/tools/scripts/elfcmp
-usr/src/tools/scripts/find_elf
 usr/src/tools/scripts/flg.flp
 usr/src/tools/scripts/genoffsets
 usr/src/tools/scripts/git-pbchk
