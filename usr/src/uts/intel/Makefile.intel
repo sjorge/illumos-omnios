@@ -23,7 +23,7 @@
 # Copyright (c) 2013 Andrew Stormont.  All rights reserved.
 # Copyright (c) 2014 by Delphix. All rights reserved.
 # Copyright 2019 Joyent, Inc.
-# Copyright 2016 Garrett D'Amore <garrett@damore.org>
+# Copyright 2022 Garrett D'Amore <garrett@damore.org>
 # Copyright 2018 Nexenta Systems, Inc.
 # Copyright (c) 2014, 2017 by Delphix. All rights reserved.
 # Copyright 2019 RackTop Systems
@@ -268,7 +268,6 @@ DRV_KMODS	+= iwp
 DRV_KMODS	+= iwscn
 DRV_KMODS	+= kb8042
 DRV_KMODS	+= keysock
-DRV_KMODS	+= kssl
 DRV_KMODS	+= kstat
 DRV_KMODS	+= ksyms
 DRV_KMODS	+= kmdb
@@ -733,7 +732,6 @@ SOCKET_KMODS	+= sockpfp
 SOCKET_KMODS	+= socksctp
 SOCKET_KMODS    += socksdp
 SOCKET_KMODS	+= sockrds
-SOCKET_KMODS	+= ksslf
 SOCKET_KMODS	+= httpfilt
 SOCKET_KMODS	+= datafilt
 
