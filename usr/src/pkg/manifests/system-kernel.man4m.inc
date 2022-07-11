@@ -16,6 +16,7 @@
 
 file path=usr/share/man/man4m/bufmod.4m
 file path=usr/share/man/man4m/connld.4m
+file path=usr/share/man/man4m/datafilt.4m
 file path=usr/share/man/man4m/ldterm.4m
 file path=usr/share/man/man4m/pckt.4m
 file path=usr/share/man/man4m/pfmod.4m

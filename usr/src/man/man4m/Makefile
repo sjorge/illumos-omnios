@@ -20,6 +20,7 @@ MANSECT= 	4m
 
 _MANFILES = 	bufmod.4m	\
 		connld.4m	\
+		datafilt.4m	\
 		ldterm.4m	\
 		pckt.4m		\
 		pfmod.4m	\

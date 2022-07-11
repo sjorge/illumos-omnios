@@ -15,6 +15,7 @@
 # Copyright 2019 Joyent, Inc.
 # Copyright 2020-2021 Tintri by DDN, Inc. All rights reserved.
 # Copyright 2016 Hans Rosenfeld <rosenfeld@grumpf.hope-2000.org>
+# Copyright 2022 RackTop Systems, Inc.
 #
 
 include		$(SRC)/Makefile.master
@@ -984,8 +985,10 @@ MANLINKS=	AVL_NEXT.9f					\
 		mac_prop_info_set_default_uint8.9f		\
 		mac_prop_info_set_perm.9f			\
 		mac_prop_info_set_range_uint32.9f		\
+		mac_ring_rx.9f					\
 		mac_transceiver_info_set_present.9f		\
 		mac_transceiver_info_set_usable.9f		\
+		mac_tx_ring_update.9f				\
 		mac_unregister.9f				\
 		makecom_g0.9f					\
 		makecom_g0_s.9f					\
@@ -1159,6 +1162,7 @@ MANLINKS=	AVL_NEXT.9f					\
 		scsi_hba_iportmap_iport_remove.9f		\
 		scsi_hba_pkt_free.9f				\
 		scsi_hba_tgtmap_destroy.9f			\
+		scsi_hba_tgtmap_scan_luns.9f			\
 		scsi_hba_tgtmap_set_begin.9f			\
 		scsi_hba_tgtmap_set_add.9f			\
 		scsi_hba_tgtmap_set_end.9f			\
@@ -1802,8 +1806,12 @@ mac_prop_info_set_default_uint64.9f	:= LINKSRC = mac_prop_info.9f
 mac_prop_info_set_perm.9f		:= LINKSRC = mac_prop_info.9f
 mac_prop_info_set_range_uint32.9f	:= LINKSRC = mac_prop_info.9f
 
+mac_ring_rx.9f				:= LINKSRC = mac_rx.9f
+
 mac_transceiver_info_set_present.9f	:= LINKSRC = mac_transceiver_info.9f
 mac_transceiver_info_set_usable.9f	:= LINKSRC = mac_transceiver_info.9f
+
+mac_tx_ring_update.9f			:= LINKSRC = mac_tx_update.9f
 
 mac_unregister.9f			:= LINKSRC = mac_register.9f
 
@@ -2020,6 +2028,7 @@ scsi_hba_iport_find.9f			:= LINKSRC = scsi_hba_iport_exist.9f
 scsi_hba_pkt_free.9f			:= LINKSRC = scsi_hba_pkt_alloc.9f
 
 scsi_hba_tgtmap_destroy.9f		:= LINKSRC = scsi_hba_tgtmap_create.9f
+scsi_hba_tgtmap_scan_luns.9f		:= LINKSRC = scsi_hba_tgtmap_create.9f
 scsi_hba_tgtmap_set_begin.9f		:= LINKSRC = scsi_hba_tgtmap_create.9f
 scsi_hba_tgtmap_set_add.9f		:= LINKSRC = scsi_hba_tgtmap_create.9f
 scsi_hba_tgtmap_set_end.9f		:= LINKSRC = scsi_hba_tgtmap_create.9f
