@@ -341,9 +341,6 @@
 
 #include <sys/nvme.h>
 
-#include <sys/sysevent/eventdefs.h>
-#include <sys/sysevent/dev.h>
-
 #ifdef __x86
 #include <sys/x86_archext.h>
 #endif

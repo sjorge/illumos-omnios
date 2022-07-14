@@ -90,8 +90,6 @@
 #include <sys/ctype.h>
 #include <sys/sysmacros.h>
 #include <sys/dkioc_free_util.h>
-#include <sys/sysevent/eventdefs.h>
-#include <sys/sysevent/dev.h>
 
 #include "virtio.h"
 #include "vioblk.h"
