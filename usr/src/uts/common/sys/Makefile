@@ -22,7 +22,7 @@
 #
 # Copyright (c) 1989, 2010, Oracle and/or its affiliates. All rights reserved.
 # Copyright 2019 Joyent, Inc.
-# Copyright 2013 Garrett D'Amore <garrett@damore.org>
+# Copyright 2022 Garrett D'Amore
 # Copyright 2013 Saso Kiselkov. All rights reserved.
 # Copyright 2015 Igor Kozhukhov <ikozhukhov@gmail.com>
 # Copyright 2015, Joyent, Inc. All rights reserved.
@@ -413,8 +413,6 @@ CHKHDRS=			\
 	msio.h			\
 	msreg.h			\
 	mtio.h			\
-	multidata.h		\
-	multidata_impl.h	\
 	mutex.h			\
 	nbmlock.h		\
 	ndifm.h			\
@@ -985,7 +983,6 @@ SATAGENHDRS=		\
 	sata_cfgadm.h
 
 SYSEVENTHDRS=		\
-	ap_driver.h     \
 	datalink.h	\
 	dev.h		\
 	domain.h        \

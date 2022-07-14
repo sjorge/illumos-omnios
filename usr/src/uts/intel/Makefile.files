@@ -471,11 +471,6 @@ HV_TIMESYNC_OBJS = \
 	vmbus_timesync.o
 
 #
-# VMware PVSCSI SCSI Controller
-#
-PVSCSI_OBJS =	pvscsi.o
-
-#
 # Intel Temperature Module
 #
 CORETEMP_OBJS =	coretemp.o
