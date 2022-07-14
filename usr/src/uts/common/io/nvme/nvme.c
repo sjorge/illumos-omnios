@@ -325,6 +325,7 @@
 #include <sys/sunddi.h>
 #include <sys/sunndi.h>
 #include <sys/bitmap.h>
+#include <sys/stdbool.h>
 #include <sys/sysmacros.h>
 #include <sys/param.h>
 #include <sys/varargs.h>
@@ -3817,27 +3818,6 @@ nvme_remove_callback(dev_info_t *dip, ddi_eventcookie_t cookie, void *a,
 	}
 }
 
-static void
-nvme_attach_children(void *arg)
-{
-	nvme_t *nvme = arg;
-	int i;
-
-	mutex_enter(&nvme->n_mgmt_mutex);
-
-	for (i = 1; i <= nvme->n_namespace_count; i++) {
-		int rv;
-
-		rv = nvme_attach_ns(nvme, i);
-		if (rv != 0 && rv != ENOTSUP) {
-			dev_err(nvme->n_dip, CE_WARN,
-			    "!failed to attach namespace %d: %d", i, rv);
-		}
-	}
-
-	mutex_exit(&nvme->n_mgmt_mutex);
-}
-
 static int
 nvme_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 {
@@ -4053,8 +4033,6 @@ nvme_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 		}
 	}
 
-	mutex_exit(&nvme->n_mgmt_mutex);
-
 	if (ddi_create_minor_node(dip, "devctl", S_IFCHR,
 	    NVME_MINOR(ddi_get_instance(dip), 0), DDI_NT_NVME_NEXUS, 0)
 	    != DDI_SUCCESS) {
@@ -4063,16 +4041,30 @@ nvme_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 		goto fail;
 	}
 
-	nvme->n_tq = ddi_taskq_create(dip, "attach_children", 1,
-	    TASKQ_DEFAULTPRI, 0);
-	if (nvme->n_tq == NULL) {
-		dev_err(dip, CE_WARN,
-		    "!failed to create attach_children taskq");
-		goto fail;
+	bool attached_ns = false;
+	for (i = 1; i <= nvme->n_namespace_count; i++) {
+		int rv;
+
+		rv = nvme_attach_ns(nvme, i);
+		if (rv == 0) {
+			attached_ns = true;
+		} else if (rv != ENOTSUP) {
+			dev_err(nvme->n_dip, CE_WARN,
+			    "!failed to attach namespace %d: %d", i, rv);
+			/*
+			 * Once we have successfully attached a namespace, we
+			 * can no longer fail the driver attach as there is now
+			 * a blkdev child node linked to this device, and
+			 * this node is not yet in the attached state.
+			 */
+			if (!attached_ns) {
+				mutex_exit(&nvme->n_mgmt_mutex);
+				goto fail;
+			}
+		}
 	}
 
-	(void) ddi_taskq_dispatch(nvme->n_tq, nvme_attach_children, nvme,
-	    DDI_SLEEP);
+	mutex_exit(&nvme->n_mgmt_mutex);
 
 	return (DDI_SUCCESS);
 
@@ -4101,9 +4093,6 @@ nvme_detach(dev_info_t *dip, ddi_detach_cmd_t cmd)
 
 	if (nvme == NULL)
 		return (DDI_FAILURE);
-
-	if (nvme->n_tq != NULL)
-		ddi_taskq_destroy(nvme->n_tq);
 
 	ddi_remove_minor_node(dip, "devctl");
 
