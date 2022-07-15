@@ -25,7 +25,7 @@
 # Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
 # Copyright 2015, Joyent, Inc.
 # Copyright 2018 Nexenta Systems, Inc.
-# Copyright 2022 Garrett D'Amore <garrett@damore.org>
+# Copyright 2022 Garrett D'Amore
 # Copyright 2020 Joyent, Inc.
 # Copyright 2016 OmniTI Computer Consulting, Inc.  All rights reserved.
 # Copyright 2016 Hans Rosenfeld <rosenfeld@grumpf.hope-2000.org>
@@ -250,7 +250,6 @@ GENUNIX_OBJS +=	\
 		mount.o		\
 		move.o		\
 		msacct.o	\
-		multidata.o	\
 		nbmlock.o	\
 		ndifm.o		\
 		nice.o		\
@@ -630,8 +629,6 @@ SPPPCOMP_OBJS += spppcomp.o spppcomp_mod.o deflate.o bsd-comp.o vjcompress.o \
 TCP_OBJS +=	tcpddi.o
 
 TCP6_OBJS +=	tcp6ddi.o
-
-NCA_OBJS +=	ncaddi.o
 
 SDP_SOCK_MOD_OBJS += sockmod_sdp.o socksdp.o socksdpsubr.o
 
@@ -1300,8 +1297,7 @@ SOCK_OBJS +=	socksubr.o	sockvfsops.o	sockparams.o	\
 		sockcommon_vnops.o	sockcommon_subr.o \
 		sockcommon_sops.o	sockcommon.o	\
 		sock_notsupp.o	socknotify.o \
-		nl7c.o		nl7curi.o	nl7chttp.o	nl7clogd.o \
-		nl7cnca.o	sodirect.o	sockfilter.o
+		sodirect.o	sockfilter.o
 
 TMPFS_OBJS +=	tmp_dir.o	tmp_subr.o	tmp_tnode.o	tmp_vfsops.o \
 		tmp_vnops.o
@@ -1954,6 +1950,8 @@ SKD_OBJS = skd.o
 
 NVME_OBJS = nvme.o
 
+PVSCSI_OBJS = pvscsi.o
+
 #
 #	Build up defines and paths.
 #
@@ -2331,4 +2329,3 @@ MLXCX_OBJS +=	mlxcx.o mlxcx_dma.o mlxcx_cmd.o mlxcx_intr.o mlxcx_gld.o \
 #
 ENA_OBJS +=	ena.o ena_admin.o ena_dma.o ena_gld.o ena_hw.o ena_intr.o \
 		ena_stats.o ena_tx.o ena_rx.o
-

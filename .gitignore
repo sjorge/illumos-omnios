@@ -408,7 +408,6 @@ usr/src/cmd/cmd-inet/usr.bin/dns-sd/dns-sd
 usr/src/cmd/cmd-inet/usr.bin/finger
 usr/src/cmd/cmd-inet/usr.bin/ftp/ftp
 usr/src/cmd/cmd-inet/usr.bin/nc/nc
-usr/src/cmd/cmd-inet/usr.bin/nca/ncab2clf
 usr/src/cmd/cmd-inet/usr.bin/netstat/netstat
 usr/src/cmd/cmd-inet/usr.bin/pppd/pppd
 usr/src/cmd/cmd-inet/usr.bin/pppdump/pppdump
@@ -439,7 +438,6 @@ usr/src/cmd/cmd-inet/usr.lib/in.timed/in.timed
 usr/src/cmd/cmd-inet/usr.lib/inetd/inetd
 usr/src/cmd/cmd-inet/usr.lib/inetd/inetd-upgrade
 usr/src/cmd/cmd-inet/usr.lib/mdnsd/mdnsd
-usr/src/cmd/cmd-inet/usr.lib/ncaconfd/ncaconfd
 usr/src/cmd/cmd-inet/usr.lib/pppoe/pppoec
 usr/src/cmd/cmd-inet/usr.lib/pppoe/pppoed
 usr/src/cmd/cmd-inet/usr.lib/slpd/slpd
@@ -1360,7 +1358,6 @@ usr/src/cmd/mdb/intel/amd64/mdb_ks/kmod/
 usr/src/cmd/mdb/intel/amd64/mm/kmod/
 usr/src/cmd/mdb/intel/amd64/mpt_sas/kmod/
 usr/src/cmd/mdb/intel/amd64/mr_sas/kmod/
-usr/src/cmd/mdb/intel/amd64/nca/kmod/
 usr/src/cmd/mdb/intel/amd64/neti/kmod/
 usr/src/cmd/mdb/intel/amd64/nsmb/kmod/
 usr/src/cmd/mdb/intel/amd64/pmcs/kmod/
@@ -1748,19 +1745,12 @@ usr/src/cmd/sgs/demo_rdb/i386/rdb
 usr/src/cmd/sgs/demo_rdb/sparc/Makefile.demo
 usr/src/cmd/sgs/demo_rdb/sparcv9/Makefile.demo
 usr/src/cmd/sgs/dump/amd64/dump
-usr/src/cmd/sgs/dump/i386/dump
 usr/src/cmd/sgs/elfdump/amd64/check_struct_layout
 usr/src/cmd/sgs/elfdump/amd64/elfdump
 usr/src/cmd/sgs/elfdump/amd64/gen_struct_layout
 usr/src/cmd/sgs/elfdump/amd64/msg.c
 usr/src/cmd/sgs/elfdump/amd64/msg.h
 usr/src/cmd/sgs/elfdump/amd64/struct_layout_amd64.tmp
-usr/src/cmd/sgs/elfdump/i386/check_struct_layout
-usr/src/cmd/sgs/elfdump/i386/elfdump
-usr/src/cmd/sgs/elfdump/i386/gen_struct_layout
-usr/src/cmd/sgs/elfdump/i386/msg.c
-usr/src/cmd/sgs/elfdump/i386/msg.h
-usr/src/cmd/sgs/elfdump/i386/struct_layout_i386.tmp
 usr/src/cmd/sgs/elfedit/amd64/elfedit
 usr/src/cmd/sgs/elfedit/amd64/msg.c
 usr/src/cmd/sgs/elfedit/amd64/msg.h
@@ -3442,7 +3432,6 @@ usr/src/man/man1/select.1
 usr/src/man/man1/setenv.1
 usr/src/man/man1/settime.1
 usr/src/man/man1/sh.1
-usr/src/man/man1/snca.1
 usr/src/man/man1/source.1
 usr/src/man/man1/spellin.1
 usr/src/man/man1/stop.1
@@ -8654,6 +8643,7 @@ usr/src/test/bhyve-tests/tests/kdev/vlapic_freq_periodic
 usr/src/test/bhyve-tests/tests/kdev/vlapic_mmio_access
 usr/src/test/bhyve-tests/tests/kdev/vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/vpmtmr_freq
+usr/src/test/bhyve-tests/tests/viona/interface_version
 usr/src/test/bhyve-tests/tests/vmm/check_iommu
 usr/src/test/bhyve-tests/tests/vmm/fpu_getset
 usr/src/test/bhyve-tests/tests/vmm/interface_version
@@ -9293,5 +9283,4 @@ usr/src/uts/intel/os/priv_names
 usr/src/uts/intel/sha1/sha1-x86_64.s
 usr/src/uts/intel/sha2/sha256-x86_64.s
 usr/src/uts/intel/sha2/sha512-x86_64.s
-usr/src/uts/intel/sockfs/nl7ctokgen.h
 usr/src/uts/intel/uathfw/uathbin

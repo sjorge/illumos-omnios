@@ -1138,8 +1138,7 @@ hn_tx_prepare_rndis_pkt(struct hn_softc *sc, struct rndis_packet_msg *pkt,
 	/*
 	 * Get hardware checksum and lso info for mblk
 	 */
-	hcksum_retrieve(mp, NULL, NULL, &hck_start, NULL, NULL, NULL,
-	    &hck_flags);
+	mac_hcksum_get(mp, &hck_start, NULL, NULL, NULL, &hck_flags);
 	mac_lso_get(mp, &mss, &lso_flag);
 
 	unsigned char *ptr = mp->b_rptr;
