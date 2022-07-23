@@ -39,6 +39,7 @@
 
 /*
  * Copyright (c) 2017 by Delphix. All rights reserved.
+ * Copyright 2022 RackTop Systems, Inc.
  */
 
 /*
@@ -986,8 +987,6 @@ vmbus_add_child(struct vmbus_channel *chan)
 	ddi_set_parent_data(chan->ch_dev, chan);
 	int err = ndi_devi_online(chan->ch_dev, 0);
 	if (err != NDI_SUCCESS) {
-		(void) ndi_devi_free(chan->ch_dev);
-		chan->ch_dev = NULL;
 		mutex_exit(&vmbus_lock);
 		dev_err(parent, CE_CONT, "?failed to online: classid %s, "
 		    "devname %s for chan%u, err %d\n", classid, devname,
