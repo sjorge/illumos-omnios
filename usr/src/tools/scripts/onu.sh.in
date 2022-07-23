@@ -256,7 +256,7 @@ if [ -n "$repodir" ]; then
 	[[ ! -e $cfgfile ]] && cfgfile=$redistdir/pkg5.repository
 	# need an absolute path
 	[[ $redistdir == /* ]] || redistdir=$PWD/$redistdir
-	redistpub=$(python@PYTHON3_VERSION@ <<# EOF
+	redistpub=$(python@PYTHON_VERSION@ <<# EOF
 		import configparser
 		p = configparser.ConfigParser()
 		p.read("$cfgfile")
