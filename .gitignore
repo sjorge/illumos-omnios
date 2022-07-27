@@ -2560,8 +2560,6 @@ usr/src/lib/brand/sn1/zone/sn1_boot
 usr/src/lib/brand/solaris10/cmd/s10_isaexec_wrapper
 usr/src/lib/brand/solaris10/cmd/s10_native
 usr/src/lib/brand/solaris10/cmd/s10_net_physical
-usr/src/lib/brand/solaris10/cmd/s10_python_wrapper
-usr/src/lib/brand/solaris10/cmd/s10_python_wrapper.sh
 usr/src/lib/brand/solaris10/s10_replacefile/s10_replacefile
 usr/src/lib/brand/solaris10/s10_support/s10_support
 usr/src/lib/brand/solaris10/zone/attach
@@ -8006,6 +8004,12 @@ usr/src/man/man9f/avl_numnodes.9f
 usr/src/man/man9f/avl_remove.9f
 usr/src/man/man9f/avl_swap.9f
 usr/src/man/man9f/bcanputnext.9f
+usr/src/man/man9f/bitset16.9f
+usr/src/man/man9f/bitset32.9f
+usr/src/man/man9f/bitset8.9f
+usr/src/man/man9f/bitx16.9f
+usr/src/man/man9f/bitx32.9f
+usr/src/man/man9f/bitx8.9f
 usr/src/man/man9f/crdup.9f
 usr/src/man/man9f/crfree.9f
 usr/src/man/man9f/crget.9f
@@ -8926,6 +8930,7 @@ usr/src/test/os-tests/tests/uccid/yk-poll
 usr/src/test/os-tests/tests/uccid/yk-readonly
 usr/src/test/os-tests/tests/writev.32
 usr/src/test/os-tests/tests/writev.64
+usr/src/test/os-tests/tests/zen_umc/zen_umc_test
 usr/src/test/smbclient-tests/cmd/abort_conn/abort_conn
 usr/src/test/smbclient-tests/cmd/close_wr/close_wr
 usr/src/test/smbclient-tests/cmd/cp_mmap/cp_mmap
