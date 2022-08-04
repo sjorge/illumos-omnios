@@ -1185,8 +1185,7 @@ usr/src/cmd/listen/nlps_server
 usr/src/cmd/loadkeys/dumpkeys
 usr/src/cmd/loadkeys/loadkeys
 usr/src/cmd/loadkeys/loadkeys.c
-usr/src/cmd/locale/amd64/locale
-usr/src/cmd/locale/i386/locale
+usr/src/cmd/locale/locale
 usr/src/cmd/localedef/localedef
 usr/src/cmd/localedef/parser.tab.c
 usr/src/cmd/localedef/parser.tab.h
@@ -1715,8 +1714,6 @@ usr/src/cmd/sendmail/util/vacation
 usr/src/cmd/setfacl/setfacl
 usr/src/cmd/setmnt/setmnt
 usr/src/cmd/setpgrp/setpgrp
-usr/src/cmd/setuname/amd64/setuname
-usr/src/cmd/setuname/i386/setuname
 usr/src/cmd/sgs/ar/amd64/ar
 usr/src/cmd/sgs/ar/amd64/msg.c
 usr/src/cmd/sgs/ar/amd64/msg.h
@@ -2038,7 +2035,6 @@ usr/src/cmd/sgs/rtld/mdbmod/amd64/msg.h
 usr/src/cmd/sgs/rtld/mdbmod/i386/msg.c
 usr/src/cmd/sgs/rtld/mdbmod/i386/msg.h
 usr/src/cmd/sgs/size/amd64/size
-usr/src/cmd/sgs/size/i386/size
 usr/src/cmd/sgs/symorder/symorder
 usr/src/cmd/sgs/tsort/i386/tsort
 usr/src/cmd/sgs/unifdef/i386/unifdef
@@ -8648,7 +8644,9 @@ usr/src/test/bhyve-tests/tests/kdev/vlapic_mmio_access
 usr/src/test/bhyve-tests/tests/kdev/vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/vpmtmr_freq
 usr/src/test/bhyve-tests/tests/viona/interface_version
+usr/src/test/bhyve-tests/tests/vmm/auto_destruct
 usr/src/test/bhyve-tests/tests/vmm/check_iommu
+usr/src/test/bhyve-tests/tests/vmm/drv_hold
 usr/src/test/bhyve-tests/tests/vmm/fpu_getset
 usr/src/test/bhyve-tests/tests/vmm/interface_version
 usr/src/test/bhyve-tests/tests/vmm/mem_devmem

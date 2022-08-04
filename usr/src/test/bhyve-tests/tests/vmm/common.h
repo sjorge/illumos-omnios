@@ -16,8 +16,10 @@
 #ifndef _COMMON_H_
 #define	_COMMON_H_
 
+void name_test_vm(const char *, char *);
 struct vmctx *create_test_vm(const char *);
 int alloc_memseg(struct vmctx *, int, size_t, const char *);
+int open_drv_test(void);
 
 #define	PROT_ALL	(PROT_READ | PROT_WRITE | PROT_EXEC)
 
