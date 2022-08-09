@@ -325,17 +325,19 @@ lxi_net_plumb(const char *iface)
 	/* ipadm_create_if stomps on ifbuf, so create a copy: */
 	(void) strncpy(ifbuf, iface, sizeof (ifbuf));
 
-	if ((status = ipadm_create_if(iph, ifbuf, AF_INET, IPADM_OPT_ACTIVE))
-	    != IPADM_SUCCESS) {
+	status = ipadm_create_if(iph, ifbuf, AF_INET, IPADM_OPT_ACTIVE);
+	if (status != IPADM_SUCCESS && status != IPADM_IF_EXISTS) {
 		lxi_err("ipadm_create_if error %d: %s/v4: %s",
 		    status, iface, ipadm_status2str(status));
 	}
 
-	if (ipv6_enable &&
-	    (status = ipadm_create_if(iph, ifbuf, AF_INET6, IPADM_OPT_ACTIVE))
-	    != IPADM_SUCCESS) {
-		lxi_err("ipadm_create_if error %d: %s/v6: %s",
-		    status, iface, ipadm_status2str(status));
+	if (ipv6_enable) {
+		status = ipadm_create_if(iph, ifbuf, AF_INET6,
+		    IPADM_OPT_ACTIVE);
+		if (status != IPADM_SUCCESS && status != IPADM_IF_EXISTS) {
+			lxi_err("ipadm_create_if error %d: %s/v6: %s",
+			    status, iface, ipadm_status2str(status));
+		}
 	}
 }
 
