@@ -325,7 +325,6 @@
 #include <sys/sunddi.h>
 #include <sys/sunndi.h>
 #include <sys/bitmap.h>
-#include <sys/stdbool.h>
 #include <sys/sysmacros.h>
 #include <sys/param.h>
 #include <sys/varargs.h>
@@ -3827,6 +3826,7 @@ nvme_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	off_t regsize;
 	int i;
 	char name[32];
+	boolean_t attached_ns;
 
 	if (cmd != DDI_ATTACH)
 		return (DDI_FAILURE);
@@ -4036,26 +4036,27 @@ nvme_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	if (ddi_create_minor_node(dip, "devctl", S_IFCHR,
 	    NVME_MINOR(ddi_get_instance(dip), 0), DDI_NT_NVME_NEXUS, 0)
 	    != DDI_SUCCESS) {
+		mutex_exit(&nvme->n_mgmt_mutex);
 		dev_err(dip, CE_WARN, "nvme_attach: "
 		    "cannot create devctl minor node");
 		goto fail;
 	}
 
-	bool attached_ns = false;
+	attached_ns = B_FALSE;
 	for (i = 1; i <= nvme->n_namespace_count; i++) {
 		int rv;
 
 		rv = nvme_attach_ns(nvme, i);
 		if (rv == 0) {
-			attached_ns = true;
+			attached_ns = B_TRUE;
 		} else if (rv != ENOTSUP) {
 			dev_err(nvme->n_dip, CE_WARN,
 			    "!failed to attach namespace %d: %d", i, rv);
 			/*
-			 * Once we have successfully attached a namespace, we
+			 * Once we have successfully attached a namespace we
 			 * can no longer fail the driver attach as there is now
 			 * a blkdev child node linked to this device, and
-			 * this node is not yet in the attached state.
+			 * our node is not yet in the attached state.
 			 */
 			if (!attached_ns) {
 				mutex_exit(&nvme->n_mgmt_mutex);

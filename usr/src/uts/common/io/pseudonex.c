@@ -42,7 +42,7 @@
  * that for their collection of device nodes.  To do so, add a driver alias
  * for the name of the nexus child and a line in pseudo.conf such as:
  *
- * 	name="foo" parent="/pseudo" instance=<n> valid-children="bar","baz";
+ *	name="foo" parent="/pseudo" instance=<n> valid-children="bar","baz";
  *
  * Setting 'valid-children' is important because we have an annoying problem;
  * we need to prevent pseudo devices with 'parent="pseudo"' set from binding
@@ -327,7 +327,7 @@ pseudonex_check_assignment(dev_info_t *child, int test_inst)
 {
 	dev_info_t	*tdip;
 	kmutex_t	*dmp;
-	const char 	*childname = ddi_driver_name(child);
+	const char	*childname = ddi_driver_name(child);
 	major_t		childmaj = ddi_name_to_major((char *)childname);
 
 	dmp = &devnamesp[childmaj].dn_lock;
@@ -360,7 +360,7 @@ pseudonex_auto_assign(dev_info_t *child)
 {
 	dev_info_t	*tdip;
 	kmutex_t	*dmp;
-	const char 	*childname = ddi_driver_name(child);
+	const char	*childname = ddi_driver_name(child);
 	major_t		childmaj = ddi_name_to_major((char *)childname);
 	int inst = 0;
 
@@ -386,6 +386,19 @@ pseudonex_auto_assign(dev_info_t *child)
 }
 
 /* ARGSUSED */
+static int
+pseudonex_fm_init(dev_info_t *dip, dev_info_t *tdip, int cap,
+    ddi_iblock_cookie_t *ibc)
+{
+	pseudonex_state_t *pnx_state;
+
+	pnx_state = ddi_get_soft_state(pseudonex_state, ddi_get_instance(dip));
+	ASSERT(pnx_state != NULL);
+	ASSERT(ibc != NULL);
+	*ibc = pnx_state->pnx_fm_ibc;
+	return (pnx_state->pnx_fmcap & cap);
+}
+
 static int
 pseudonex_fm_init(dev_info_t *dip, dev_info_t *tdip, int cap,
     ddi_iblock_cookie_t *ibc)

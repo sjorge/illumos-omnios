@@ -16,8 +16,8 @@
 # Copyright 2016 Hans Rosenfeld <rosenfeld@grumpf.hope-2000.org>
 # Copyright 2018 Nexenta Systems, Inc.
 # Copyright 2020 Peter Tribble
-# Copyright 2021 Oxide Computer Company
 # Copyright 2022 RackTop Systems, Inc.
+# Copyright 2022 Oxide Computer Company
 #
 
 include		$(SRC)/Makefile.master
@@ -171,10 +171,7 @@ sparc_MANFILES=	audiocs.4d	\
 		pcicmu.4d	\
 		pcipsy.4d	\
 		pcisch.4d	\
-		sf.4d		\
 		smbus.4d	\
-		socal.4d	\
-		ssd.4d		\
 		su.4d		\
 		todopl.4d	\
 		tsalarm.4d	\
@@ -243,6 +240,7 @@ i386_MANFILES=	ahci.4d		\
 		ural.4d		\
 		urtw.4d		\
 		usmn.4d		\
+		vio9p.4d	\
 		vioblk.4d	\
 		vioif.4d	\
 		vioscsi.4d	\
