@@ -385,20 +385,6 @@ pseudonex_auto_assign(dev_info_t *child)
 	return (-1);
 }
 
-/* ARGSUSED */
-static int
-pseudonex_fm_init(dev_info_t *dip, dev_info_t *tdip, int cap,
-    ddi_iblock_cookie_t *ibc)
-{
-	pseudonex_state_t *pnx_state;
-
-	pnx_state = ddi_get_soft_state(pseudonex_state, ddi_get_instance(dip));
-	ASSERT(pnx_state != NULL);
-	ASSERT(ibc != NULL);
-	*ibc = pnx_state->pnx_fm_ibc;
-	return (pnx_state->pnx_fmcap & cap);
-}
-
 static int
 pseudonex_fm_init(dev_info_t *dip, dev_info_t *tdip, int cap,
     ddi_iblock_cookie_t *ibc)
