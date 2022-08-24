@@ -158,7 +158,16 @@
  *
  * On the other hand, each major AMD architecture generally has its own family.
  * For example, the K8 is family 0x10, Bulldozer 0x15, and Zen 0x17. Within it
- * the model number is used to help identify specific processors.
+ * the model number is used to help identify specific processors.  As AMD's
+ * product lines have expanded, they have started putting a mixed bag of
+ * processors into the same family, with each processor under a single
+ * identifying banner (e.g., Milan, Cezanne) using a range of model numbers.  We
+ * refer to each such collection as a processor family, distinct from cpuid
+ * family.  Importantly, each processor family has a BIOS and Kernel Developer's
+ * Guide (BKDG, older parts) or Processor Programming Reference (PPR) that
+ * defines the processor family's non-architectural features.  In general, we'll
+ * use "family" here to mean the family number reported by the cpuid instruction
+ * and distinguish the processor family from it where appropriate.
  *
  * The stepping is used to refer to a revision of a specific microprocessor. The
  * term comes from equipment used to produce masks that are used to create
@@ -195,25 +204,74 @@
  * programmatic consumption. That is what the family, model, and stepping are
  * for.
  *
+ * We use the x86_chiprev_t to encode a combination of vendor, processor family,
+ * and stepping(s) that refer to a single or very closely related set of silicon
+ * implementations; while there are sometimes more specific ways to learn of the
+ * presence or absence of a particular erratum or workaround, one may generally
+ * assume that all processors of the same chiprev have the same errata and we
+ * have chosen to represent them this way precisely because that is how AMD
+ * groups them in their revision guides (errata documentation).  The processor
+ * family (x86_processor_family_t) may be extracted from the chiprev if that
+ * level of detail is not needed.  Processor families are considered unordered
+ * but revisions within a family may be compared for either an exact match or at
+ * least as recent as a reference revision.  See the chiprev_xxx() functions
+ * below.
+ *
+ * Similarly, each processor family implements a particular microarchitecture,
+ * which itself may have multiple revisions.  In general, non-architectural
+ * features are specific to a processor family, but some may exist across
+ * families containing cores that implement the same microarchitectural revision
+ * (and, such cores share common bugs, too).  We provide utility routines
+ * analogous to those for extracting and comparing chiprevs for
+ * microarchitectures as well; see the uarch_xxx() functions.
+ *
+ * Both chiprevs and uarchrevs are defined in x86_archext.h and both are at
+ * present used and available only for AMD and AMD-like processors.
+ *
  * ------------
  * CPUID Passes
  * ------------
  *
  * As part of performing feature detection, we break this into several different
- * passes. The passes are as follows:
+ * passes. There used to be a pass 0 that was done from assembly in locore.s to
+ * support processors that have a missing or broken cpuid instruction (notably
+ * certain Cyrix processors) but those were all 32-bit processors which are no
+ * longer supported. Passes are no longer numbered explicitly to make it easier
+ * to break them up or move them around as needed; however, they still have a
+ * well-defined execution ordering enforced by the definition of cpuid_pass_t in
+ * x86_archext.h. The external interface to execute a cpuid pass or determine
+ * whether a pass has been completed consists of cpuid_execpass() and
+ * cpuid_checkpass() respectively.  The passes now, in that execution order,
+ * are as follows:
  *
- *	Pass 0		This is a primordial pass done in locore.s to deal with
- *			Cyrix CPUs that don't support cpuid. The reality is that
- *			we likely don't run on them any more, but there is still
- *			logic for handling them.
+ *	PRELUDE		This pass does not have any dependencies on system
+ *			setup; in particular, unlike all subsequent passes it is
+ *			guaranteed not to require PCI config space access.  It
+ *			sets the flag indicating that the processor we are
+ *			running on supports the cpuid instruction, which all
+ *			64-bit processors do.  This would also be the place to
+ *			add any other basic state that is required later on and
+ *			can be learned without dependencies.
  *
- *	Pass 1		This is the primary pass and is responsible for doing a
+ *	IDENT		Determine which vendor manufactured the CPU, the family,
+ *			model, and stepping information, and compute basic
+ *			identifying tags from those values.  This is done first
+ *			so that machine-dependent code can control the features
+ *			the cpuid instruction will report during subsequent
+ *			passes if needed, and so that any intervening
+ *			machine-dependent code that needs basic identity will
+ *			have it available.  This includes synthesised
+ *			identifiers such as chiprev and uarchrev as well as the
+ *			values obtained directly from cpuid.  Prior to executing
+ *			this pass, machine-depedent boot code is responsible for
+ *			ensuring that the PCI configuration space access
+ *			functions have been set up and, if necessary, that
+ *			determine_platform() has been called.
+ *
+ *	BASIC		This is the primary pass and is responsible for doing a
  *			large number of different things:
  *
- *			1. Determine which vendor manufactured the CPU and
- *			determining the family, model, and stepping information.
- *
- *			2. Gathering a large number of feature flags to
+ *			1. Gathering a large number of feature flags to
  *			determine which features the CPU support and which
  *			indicate things that we need to do other work in the OS
  *			to enable. Features detected this way are added to the
@@ -222,31 +280,31 @@
  *			all of the basic and extended CPU features that we care
  *			about.
  *
- *			3. Determining the CPU's topology. This includes
+ *			2. Determining the CPU's topology. This includes
  *			information about how many cores and threads are present
  *			in the package. It also is responsible for figuring out
  *			which logical CPUs are potentially part of the same core
  *			and what other resources they might share. For more
  *			information see the 'Topology' section.
  *
- *			4. Determining the set of CPU security-specific features
+ *			3. Determining the set of CPU security-specific features
  *			that we need to worry about and determine the
  *			appropriate set of workarounds.
  *
  *			Pass 1 on the boot CPU occurs before KMDB is started.
  *
- *	Pass 2		The second pass is done after startup(). Here, we check
+ *	EXTENDED	The second pass is done after startup(). Here, we check
  *			other miscellaneous features. Most of this is gathering
  *			additional basic and extended features that we'll use in
  *			later passes or for debugging support.
  *
- *	Pass 3		The third pass occurs after the kernel memory allocator
+ *	DYNAMIC		The third pass occurs after the kernel memory allocator
  *			has been fully initialized. This gathers information
  *			where we might need dynamic memory available for our
  *			uses. This includes several varying width leaves that
  *			have cache information and the processor's brand string.
  *
- *	Pass 4		The fourth and final normal pass is performed after the
+ *	RESOLVE		The fourth and final normal pass is performed after the
  *			kernel has brought most everything online. This is
  *			invoked from post_startup(). In this pass, we go through
  *			the set of features that we have enabled and turn that
@@ -255,21 +313,34 @@
  *			by the run-time link-editor (RTLD), though userland
  *			software could also refer to it directly.
  *
- *	Microcode	After a microcode update, we do a selective rescan of
- *			the cpuid leaves to determine what features have
- *			changed. Microcode updates can provide more details
- *			about security related features to deal with issues like
- *			Spectre and L1TF. On occasion, vendors have violated
- *			their contract and removed bits. However, we don't try
- *			to detect that because that puts us in a situation that
- *			we really can't deal with. As such, the only thing we
- *			rescan are security related features today. See
- *			cpuid_pass_ucode().
+ * The function that performs a pass is currently assumed to be infallible, and
+ * all existing implementation are.  This simplifies callers by allowing
+ * cpuid_execpass() to return void. Similarly, implementers do not need to check
+ * for a NULL CPU argument; the current CPU's cpu_t is substituted if necessary.
+ * Both of these assumptions can be relaxed if needed by future developments.
+ * Tracking of completed states is handled by cpuid_execpass(). It is programmer
+ * error to attempt to execute a pass before all previous passes have been
+ * completed on the specified CPU, or to request cpuid information before the
+ * pass that captures it has been executed.  These conditions can be tested
+ * using cpuid_checkpass().
  *
- * All of the passes (except pass 0) are run on all CPUs. However, for the most
- * part we only care about what the boot CPU says about this information and use
- * the other CPUs as a rough guide to sanity check that we have the same feature
- * set.
+ * The Microcode Pass
+ *
+ * After a microcode update, we do a selective rescan of the cpuid leaves to
+ * determine what features have changed. Microcode updates can provide more
+ * details about security related features to deal with issues like Spectre and
+ * L1TF. On occasion, vendors have violated their contract and removed bits.
+ * However, we don't try to detect that because that puts us in a situation that
+ * we really can't deal with. As such, the only thing we rescan are security
+ * related features today. See cpuid_pass_ucode().  This pass may be run in a
+ * different sequence on APs and therefore is not part of the sequential order;
+ * It is invoked directly instead of by cpuid_execpass() and its completion
+ * status cannot be checked by cpuid_checkpass().  This could be integrated with
+ * a more complex dependency mechanism if warranted by future developments.
+ *
+ * All of the passes are run on all CPUs. However, for the most part we only
+ * care about what the boot CPU says about this information and use the other
+ * CPUs as a rough guide to sanity check that we have the same feature set.
  *
  * We do not support running multiple logical CPUs with disjoint, let alone
  * different, feature sets.
@@ -1347,10 +1418,11 @@
  * We track whether or not we should do this based on what cpuid pass we're in.
  * Whenever we hit cpuid_scan_security() on the boot CPU and we're still on pass
  * 1 of the cpuid logic, then we can completely turn off TSX. Notably this
- * should happen twice. Once in the normal cpuid_pass1() code and then a second
- * time after we do the initial microcode update.  As a result we need to be
- * careful in cpuid_apply_tsx() to only use the MSR if we've loaded a suitable
- * microcode on the current CPU (which happens prior to cpuid_pass_ucode()).
+ * should happen twice. Once in the normal cpuid_pass_basic() code and then a
+ * second time after we do the initial microcode update.  As a result we need to
+ * be careful in cpuid_apply_tsx() to only use the MSR if we've loaded a
+ * suitable microcode on the current CPU (which happens prior to
+ * cpuid_pass_ucode()).
  *
  * If TAA has been fixed, then it will be enumerated in IA32_ARCH_CAPABILITIES
  * as TAA_NO. In such a case, we will still disable TSX: it's proven to be an
@@ -1748,9 +1820,10 @@ struct cpuid_info {
 	/*
 	 * Synthesized information, where known.
 	 */
-	uint32_t cpi_chiprev;		/* See X86_CHIPREV_* in x86_archext.h */
+	x86_chiprev_t cpi_chiprev;	/* See X86_CHIPREV_* in x86_archext.h */
 	const char *cpi_chiprevstr;	/* May be NULL if chiprev unknown */
 	uint32_t cpi_socket;		/* Chip package/socket type */
+	x86_uarchrev_t cpi_uarchrev;	/* Microarchitecture and revision */
 
 	struct mwait_info cpi_mwait;	/* fn 5: monitor/mwait info */
 	uint32_t cpi_apicid;
@@ -1884,8 +1957,9 @@ static struct cpuid_info cpuid_info0;
  */
 extern uint32_t _cpuid_skt(uint_t, uint_t, uint_t, uint_t);
 extern const char *_cpuid_sktstr(uint_t, uint_t, uint_t, uint_t);
-extern uint32_t _cpuid_chiprev(uint_t, uint_t, uint_t, uint_t);
+extern x86_chiprev_t _cpuid_chiprev(uint_t, uint_t, uint_t, uint_t);
 extern const char *_cpuid_chiprevstr(uint_t, uint_t, uint_t, uint_t);
+extern x86_uarchrev_t _cpuid_uarchrev(uint_t, uint_t, uint_t, uint_t);
 extern uint_t _cpuid_vendorstr_to_vendorcode(char *);
 
 /*
@@ -2022,8 +2096,9 @@ cpuid_free_space(cpu_t *cpu)
  * Determine the type of the underlying platform. This is used to customize
  * initialization of various subsystems (e.g. TSC). determine_platform() must
  * only ever be called once to prevent two processors from seeing different
- * values of platform_type. Must be called before cpuid_pass1(), the earliest
- * consumer to execute (uses _cpuid_chiprev --> synth_amd_info --> get_hwenv).
+ * values of platform_type. Must be called before cpuid_pass_ident(), the
+ * earliest consumer to execute; the identification pass will call
+ * synth_amd_info() to compute the chiprev, which in turn calls get_hwenv().
  */
 void
 determine_platform(void)
@@ -2489,7 +2564,7 @@ cpuid_amd_get_coreid(cpu_t *cpu)
  *     synthesize this case by using cpu->cpu_id.  This scheme does not,
  *     however, guarantee that sibling cores of a chip will have sequential
  *     coreids starting at a multiple of the number of cores per chip - that is
- *     usually the case, but if the ACPI MADT table is presented in a different
+ *     usually the case, but if the APIC IDs have been set up in a different
  *     order then we need to perform a few more gymnastics for the pkgcoreid.
  *
  *  2. In families 0x15 and 16x (Bulldozer and co.) the cores came in groups
@@ -3161,7 +3236,7 @@ setup_xfem(void)
 }
 
 static void
-cpuid_pass1_topology(cpu_t *cpu, uchar_t *featureset)
+cpuid_basic_topology(cpu_t *cpu, uchar_t *featureset)
 {
 	struct cpuid_info *cpi;
 
@@ -3282,7 +3357,7 @@ cpuid_pass1_topology(cpu_t *cpu, uchar_t *featureset)
  * for below.
  */
 static void
-cpuid_pass1_thermal(cpu_t *cpu, uchar_t *featureset)
+cpuid_basic_thermal(cpu_t *cpu, uchar_t *featureset)
 {
 	struct cpuid_regs *cp;
 	struct cpuid_info *cpi = cpu->cpu_m.mcpu_cpi;
@@ -3317,7 +3392,7 @@ cpuid_pass1_thermal(cpu_t *cpu, uchar_t *featureset)
  */
 #if !defined(__xpv)
 static void
-cpuid_pass1_ppin(cpu_t *cpu, uchar_t *featureset)
+cpuid_basic_ppin(cpu_t *cpu, uchar_t *featureset)
 {
 	on_trap_data_t otd;
 	struct cpuid_info *cpi = cpu->cpu_m.mcpu_cpi;
@@ -3365,29 +3440,36 @@ cpuid_pass1_ppin(cpu_t *cpu, uchar_t *featureset)
 }
 #endif	/* ! __xpv */
 
-void
-cpuid_pass1(cpu_t *cpu, uchar_t *featureset)
+static void
+cpuid_pass_prelude(cpu_t *cpu, void *arg)
 {
-	uint32_t mask_ecx, mask_edx;
-	struct cpuid_info *cpi;
-	struct cpuid_regs *cp;
-	int xcpuid;
-#if !defined(__xpv)
-	extern int idle_cpu_prefer_mwait;
-#endif
+	uchar_t *featureset = (uchar_t *)arg;
 
 	/*
-	 * Space statically allocated for BSP, ensure pointer is set
+	 * We don't run on any processor that doesn't have cpuid, and could not
+	 * possibly have arrived here.
 	 */
-	if (cpu->cpu_id == 0) {
-		if (cpu->cpu_m.mcpu_cpi == NULL)
-			cpu->cpu_m.mcpu_cpi = &cpuid_info0;
-	}
-
 	add_x86_feature(featureset, X86FSET_CPUID);
+}
+
+static void
+cpuid_pass_ident(cpu_t *cpu, void *arg __unused)
+{
+	struct cpuid_info *cpi;
+	struct cpuid_regs *cp;
+
+	/*
+	 * We require that virtual/native detection be complete and that PCI
+	 * config space access has been set up; at present there is no reliable
+	 * way to determine the latter.
+	 */
+#if !defined(__xpv)
+	ASSERT3S(platform_type, !=, -1);
+#endif	/* !__xpv */
 
 	cpi = cpu->cpu_m.mcpu_cpi;
 	ASSERT(cpi != NULL);
+
 	cp = &cpi->cpi_std[0];
 	cp->cp_eax = 0;
 	cpi->cpi_maxeax = __cpuid_insn(cp);
@@ -3408,7 +3490,7 @@ cpuid_pass1(cpu_t *cpu, uchar_t *featureset)
 	if (cpi->cpi_maxeax > CPI_MAXEAX_MAX)
 		cpi->cpi_maxeax = CPI_MAXEAX_MAX;
 	if (cpi->cpi_maxeax < 1)
-		goto pass1_done;
+		return;
 
 	cp = &cpi->cpi_std[1];
 	cp->cp_eax = 1;
@@ -3449,6 +3531,42 @@ cpuid_pass1(cpu_t *cpu, uchar_t *featureset)
 
 	cpi->cpi_step = CPI_STEP(cpi);
 	cpi->cpi_brandid = CPI_BRANDID(cpi);
+
+	/*
+	 * Synthesize chip "revision" and socket type
+	 */
+	cpi->cpi_chiprev = _cpuid_chiprev(cpi->cpi_vendor, cpi->cpi_family,
+	    cpi->cpi_model, cpi->cpi_step);
+	cpi->cpi_chiprevstr = _cpuid_chiprevstr(cpi->cpi_vendor,
+	    cpi->cpi_family, cpi->cpi_model, cpi->cpi_step);
+	cpi->cpi_socket = _cpuid_skt(cpi->cpi_vendor, cpi->cpi_family,
+	    cpi->cpi_model, cpi->cpi_step);
+	cpi->cpi_uarchrev = _cpuid_uarchrev(cpi->cpi_vendor, cpi->cpi_family,
+	    cpi->cpi_model, cpi->cpi_step);
+}
+
+static void
+cpuid_pass_basic(cpu_t *cpu, void *arg)
+{
+	uchar_t *featureset = (uchar_t *)arg;
+	uint32_t mask_ecx, mask_edx;
+	struct cpuid_info *cpi;
+	struct cpuid_regs *cp;
+	int xcpuid;
+#if !defined(__xpv)
+	extern int idle_cpu_prefer_mwait;
+#endif
+
+	cpi = cpu->cpu_m.mcpu_cpi;
+	ASSERT(cpi != NULL);
+
+	if (cpi->cpi_maxeax < 1)
+		return;
+
+	/*
+	 * This was filled during the identification pass.
+	 */
+	cp = &cpi->cpi_std[1];
 
 	/*
 	 * *default* assumptions:
@@ -3993,7 +4111,7 @@ cpuid_pass1(cpu_t *cpu, uchar_t *featureset)
 
 	/*
 	 * Work on the "extended" feature information, doing
-	 * some basic initialization for cpuid_pass2()
+	 * some basic initialization to be used in the extended pass.
 	 */
 	xcpuid = 0;
 	switch (cpi->cpi_vendor) {
@@ -4227,24 +4345,14 @@ cpuid_pass1(cpu_t *cpu, uchar_t *featureset)
 	}
 
 	/*
-	 * cpuid_pass1_ppin assumes that cpuid_pass1_topology has already been
+	 * cpuid_basic_ppin assumes that cpuid_basic_topology has already been
 	 * run and thus gathered some of its dependent leaves.
 	 */
-	cpuid_pass1_topology(cpu, featureset);
-	cpuid_pass1_thermal(cpu, featureset);
+	cpuid_basic_topology(cpu, featureset);
+	cpuid_basic_thermal(cpu, featureset);
 #if !defined(__xpv)
-	cpuid_pass1_ppin(cpu, featureset);
+	cpuid_basic_ppin(cpu, featureset);
 #endif
-
-	/*
-	 * Synthesize chip "revision" and socket type
-	 */
-	cpi->cpi_chiprev = _cpuid_chiprev(cpi->cpi_vendor, cpi->cpi_family,
-	    cpi->cpi_model, cpi->cpi_step);
-	cpi->cpi_chiprevstr = _cpuid_chiprevstr(cpi->cpi_vendor,
-	    cpi->cpi_family, cpi->cpi_model, cpi->cpi_step);
-	cpi->cpi_socket = _cpuid_skt(cpi->cpi_vendor, cpi->cpi_family,
-	    cpi->cpi_model, cpi->cpi_step);
 
 	if (cpi->cpi_vendor == X86_VENDOR_AMD ||
 	    cpi->cpi_vendor == X86_VENDOR_HYGON) {
@@ -4316,9 +4424,6 @@ cpuid_pass1(cpu_t *cpu, uchar_t *featureset)
 	 * Check the processor leaves that are used for security features.
 	 */
 	cpuid_scan_security(cpu, featureset);
-
-pass1_done:
-	cpi->cpi_pass = 1;
 }
 
 /*
@@ -4329,9 +4434,8 @@ pass1_done:
  * this stuff in a crash dump.
  */
 
-/*ARGSUSED*/
-void
-cpuid_pass2(cpu_t *cpu)
+static void
+cpuid_pass_extended(cpu_t *cpu, void *_arg __unused)
 {
 	uint_t n, nmax;
 	int i;
@@ -4340,19 +4444,17 @@ cpuid_pass2(cpu_t *cpu)
 	uint32_t *iptr;
 	struct cpuid_info *cpi = cpu->cpu_m.mcpu_cpi;
 
-	ASSERT(cpi->cpi_pass == 1);
-
 	if (cpi->cpi_maxeax < 1)
-		goto pass2_done;
+		return;
 
 	if ((nmax = cpi->cpi_maxeax + 1) > NMAX_CPI_STD)
 		nmax = NMAX_CPI_STD;
 	/*
-	 * (We already handled n == 0 and n == 1 in pass 1)
+	 * (We already handled n == 0 and n == 1 in the basic pass)
 	 */
 	for (n = 2, cp = &cpi->cpi_std[2]; n < nmax; n++, cp++) {
 		/*
-		 * leaves 6 and 7 were handled in pass 1
+		 * leaves 6 and 7 were handled in the basic pass
 		 */
 		if (n == 6 || n == 7)
 			continue;
@@ -4368,7 +4470,7 @@ cpuid_pass2(cpu_t *cpu)
 		 * caches.
 		 *
 		 * Here, populate cpi_std[4] with the information returned by
-		 * function 4 when %ecx == 0, and do the rest in cpuid_pass3()
+		 * function 4 when %ecx == 0, and do the rest in a later pass
 		 * when dynamic memory allocation becomes available.
 		 *
 		 * Note: we need to explicitly initialize %ecx here, since
@@ -4442,7 +4544,8 @@ cpuid_pass2(cpu_t *cpu)
 			size_t mwait_size;
 
 			/*
-			 * check cpi_mwait.support which was set in cpuid_pass1
+			 * check cpi_mwait.support which was set in
+			 * cpuid_pass_basic()
 			 */
 			if (!(cpi->cpi_mwait.support & MWAIT_SUPPORT))
 				break;
@@ -4700,13 +4803,13 @@ cpuid_pass2(cpu_t *cpu)
 
 
 	if ((cpi->cpi_xmaxeax & CPUID_LEAF_EXT_0) == 0)
-		goto pass2_done;
+		return;
 
 	if ((nmax = cpi->cpi_xmaxeax - CPUID_LEAF_EXT_0 + 1) > NMAX_CPI_EXTD)
 		nmax = NMAX_CPI_EXTD;
 	/*
 	 * Copy the extended properties, fixing them as we go.
-	 * (We already handled n == 0 and n == 1 in pass 1)
+	 * (We already handled n == 0 and n == 1 in the basic pass)
 	 */
 	iptr = (void *)cpi->cpi_brandstr;
 	for (n = 2, cp = &cpi->cpi_extd[2]; n < nmax; cp++, n++) {
@@ -4806,9 +4909,6 @@ cpuid_pass2(cpu_t *cpu)
 			break;
 		}
 	}
-
-pass2_done:
-	cpi->cpi_pass = 2;
 }
 
 static const char *
@@ -4816,9 +4916,7 @@ intel_cpubrand(const struct cpuid_info *cpi)
 {
 	int i;
 
-	if (!is_x86_feature(x86_featureset, X86FSET_CPUID) ||
-	    cpi->cpi_maxeax < 1 || cpi->cpi_family < 5)
-		return ("i486");
+	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	switch (cpi->cpi_family) {
 	case 5:
@@ -4950,9 +5048,7 @@ intel_cpubrand(const struct cpuid_info *cpi)
 static const char *
 amd_cpubrand(const struct cpuid_info *cpi)
 {
-	if (!is_x86_feature(x86_featureset, X86FSET_CPUID) ||
-	    cpi->cpi_maxeax < 1 || cpi->cpi_family < 5)
-		return ("i486 compatible");
+	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	switch (cpi->cpi_family) {
 	case 5:
@@ -5020,10 +5116,7 @@ amd_cpubrand(const struct cpuid_info *cpi)
 static const char *
 cyrix_cpubrand(struct cpuid_info *cpi, uint_t type)
 {
-	if (!is_x86_feature(x86_featureset, X86FSET_CPUID) ||
-	    cpi->cpi_maxeax < 1 || cpi->cpi_family < 5 ||
-	    type == X86_TYPE_CYRIX_486)
-		return ("i486 compatible");
+	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	switch (type) {
 	case X86_TYPE_CYRIX_6x86:
@@ -5153,16 +5246,14 @@ fabricate_brandstr(struct cpuid_info *cpi)
  * Fixup the brand string, and collect any information from cpuid
  * that requires dynamically allocated storage to represent.
  */
-/*ARGSUSED*/
-void
-cpuid_pass3(cpu_t *cpu)
+
+static void
+cpuid_pass_dynamic(cpu_t *cpu, void *_arg __unused)
 {
 	int	i, max, shft, level, size;
 	struct cpuid_regs regs;
 	struct cpuid_regs *cp;
 	struct cpuid_info *cpi = cpu->cpu_m.mcpu_cpi;
-
-	ASSERT(cpi->cpi_pass == 2);
 
 	/*
 	 * Deterministic cache parameters
@@ -5220,7 +5311,7 @@ cpuid_pass3(cpu_t *cpu)
 		/*
 		 * Allocate the cpi_cache_leaves array. The first element
 		 * references the regs for the corresponding leaf with %ecx set
-		 * to 0. This was gathered in cpuid_pass2().
+		 * to 0. This was gathered in cpuid_pass_extended().
 		 */
 		if (size > 0) {
 			cpi->cpi_cache_leaves =
@@ -5327,7 +5418,6 @@ cpuid_pass3(cpu_t *cpu)
 		} else
 			fabricate_brandstr(cpi);
 	}
-	cpi->cpi_pass = 3;
 }
 
 /*
@@ -5336,17 +5426,15 @@ cpuid_pass3(cpu_t *cpu)
  * the hardware feature support and kernel support for those features into
  * what we're actually going to tell applications via the aux vector.
  */
-void
-cpuid_pass4(cpu_t *cpu, uint_t *hwcap_out)
+
+static void
+cpuid_pass_resolve(cpu_t *cpu, void *arg)
 {
+	uint_t *hwcap_out = (uint_t *)arg;
 	struct cpuid_info *cpi;
 	uint_t hwcap_flags = 0, hwcap_flags_2 = 0;
 
-	if (cpu == NULL)
-		cpu = CPU;
 	cpi = cpu->cpu_m.mcpu_cpi;
-
-	ASSERT(cpi->cpi_pass == 3);
 
 	if (cpi->cpi_maxeax >= 1) {
 		uint32_t *edx = &cpi->cpi_support[STD_EDX_FEATURES];
@@ -5536,7 +5624,7 @@ cpuid_pass4(cpu_t *cpu, uint_t *hwcap_out)
 		hwcap_flags_2 |= AV_386_2_CLZERO;
 
 	if (cpi->cpi_xmaxeax < 0x80000001)
-		goto pass4_done;
+		goto resolve_done;
 
 	switch (cpi->cpi_vendor) {
 		struct cpuid_regs cp;
@@ -5648,8 +5736,7 @@ cpuid_pass4(cpu_t *cpu, uint_t *hwcap_out)
 		break;
 	}
 
-pass4_done:
-	cpi->cpi_pass = 4;
+resolve_done:
 	if (hwcap_out != NULL) {
 		hwcap_out[0] = hwcap_flags;
 		hwcap_out[1] = hwcap_flags_2;
@@ -5672,7 +5759,7 @@ cpuid_insn(cpu_t *cpu, struct cpuid_regs *cp)
 		cpu = CPU;
 	cpi = cpu->cpu_m.mcpu_cpi;
 
-	ASSERT(cpuid_checkpass(cpu, 3));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_DYNAMIC));
 
 	/*
 	 * CPUID data is cached in two separate places: cpi_std for standard
@@ -5700,8 +5787,8 @@ cpuid_insn(cpu_t *cpu, struct cpuid_regs *cp)
 	return (cp->cp_eax);
 }
 
-int
-cpuid_checkpass(cpu_t *cpu, int pass)
+boolean_t
+cpuid_checkpass(const cpu_t *const cpu, const cpuid_pass_t pass)
 {
 	return (cpu != NULL && cpu->cpu_m.mcpu_cpi != NULL &&
 	    cpu->cpu_m.mcpu_cpi->cpi_pass >= pass);
@@ -5710,7 +5797,7 @@ cpuid_checkpass(cpu_t *cpu, int pass)
 int
 cpuid_getbrandstr(cpu_t *cpu, char *s, size_t n)
 {
-	ASSERT(cpuid_checkpass(cpu, 3));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_DYNAMIC));
 
 	return (snprintf(s, n, "%s", cpu->cpu_m.mcpu_cpi->cpi_brandstr));
 }
@@ -5721,7 +5808,7 @@ cpuid_is_cmt(cpu_t *cpu)
 	if (cpu == NULL)
 		cpu = CPU;
 
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 
 	return (cpu->cpu_m.mcpu_cpi->cpi_chipid >= 0);
 }
@@ -5742,7 +5829,7 @@ cpuid_is_cmt(cpu_t *cpu)
 int
 cpuid_syscall32_insn(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass((cpu == NULL ? CPU : cpu), 1));
+	ASSERT(cpuid_checkpass((cpu == NULL ? CPU : cpu), CPUID_PASS_BASIC));
 
 #if !defined(__xpv)
 	if (cpu == NULL)
@@ -5772,7 +5859,7 @@ cpuid_getidstr(cpu_t *cpu, char *s, size_t n)
 	static const char fmt_ht[] =
 	    "x86 (chipid 0x%x %s %X family %d model %d step %d clock %d MHz)";
 
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 
 	if (cpuid_is_cmt(cpu))
 		return (snprintf(s, n, fmt_ht, cpi->cpi_chipid,
@@ -5788,91 +5875,91 @@ cpuid_getidstr(cpu_t *cpu, char *s, size_t n)
 const char *
 cpuid_getvendorstr(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return ((const char *)cpu->cpu_m.mcpu_cpi->cpi_vendorstr);
 }
 
 uint_t
 cpuid_getvendor(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_vendor);
 }
 
 uint_t
 cpuid_getfamily(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_family);
 }
 
 uint_t
 cpuid_getmodel(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_model);
 }
 
 uint_t
 cpuid_get_ncpu_per_chip(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_ncpu_per_chip);
 }
 
 uint_t
 cpuid_get_ncore_per_chip(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_ncore_per_chip);
 }
 
 uint_t
 cpuid_get_ncpu_sharing_last_cache(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 2));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_EXTENDED));
 	return (cpu->cpu_m.mcpu_cpi->cpi_ncpu_shr_last_cache);
 }
 
 id_t
 cpuid_get_last_lvl_cacheid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 2));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_EXTENDED));
 	return (cpu->cpu_m.mcpu_cpi->cpi_last_lvl_cacheid);
 }
 
 uint_t
 cpuid_getstep(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_step);
 }
 
 uint_t
 cpuid_getsig(struct cpu *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_std[1].cp_eax);
 }
 
 uint32_t
 cpuid_getchiprev(struct cpu *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_chiprev);
 }
 
 const char *
 cpuid_getchiprevstr(struct cpu *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_chiprevstr);
 }
 
 uint32_t
 cpuid_getsockettype(struct cpu *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	return (cpu->cpu_m.mcpu_cpi->cpi_socket);
 }
 
@@ -5882,7 +5969,7 @@ cpuid_getsocketstr(cpu_t *cpu)
 	static const char *socketstr = NULL;
 	struct cpuid_info *cpi;
 
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_IDENT));
 	cpi = cpu->cpu_m.mcpu_cpi;
 
 	/* Assume that socket types are the same across the system */
@@ -5894,10 +5981,16 @@ cpuid_getsocketstr(cpu_t *cpu)
 	return (socketstr);
 }
 
+x86_uarchrev_t
+cpuid_getuarchrev(cpu_t *cpu)
+{
+	return (cpu->cpu_m.mcpu_cpi->cpi_uarchrev);
+}
+
 int
 cpuid_get_chipid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 
 	if (cpuid_is_cmt(cpu))
 		return (cpu->cpu_m.mcpu_cpi->cpi_chipid);
@@ -5907,63 +6000,63 @@ cpuid_get_chipid(cpu_t *cpu)
 id_t
 cpuid_get_coreid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_coreid);
 }
 
 int
 cpuid_get_pkgcoreid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_pkgcoreid);
 }
 
 int
 cpuid_get_clogid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_clogid);
 }
 
 int
 cpuid_get_cacheid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_last_lvl_cacheid);
 }
 
 uint_t
 cpuid_get_procnodeid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_procnodeid);
 }
 
 uint_t
 cpuid_get_procnodes_per_pkg(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_procnodes_per_pkg);
 }
 
 uint_t
 cpuid_get_compunitid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_compunitid);
 }
 
 uint_t
 cpuid_get_cores_per_compunit(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	return (cpu->cpu_m.mcpu_cpi->cpi_cores_per_compunit);
 }
 
 uint32_t
 cpuid_get_apicid(cpu_t *cpu)
 {
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	if (cpu->cpu_m.mcpu_cpi->cpi_maxeax < 1) {
 		return (UINT32_MAX);
 	} else {
@@ -5980,7 +6073,7 @@ cpuid_get_addrsize(cpu_t *cpu, uint_t *pabits, uint_t *vabits)
 		cpu = CPU;
 	cpi = cpu->cpu_m.mcpu_cpi;
 
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 
 	if (pabits)
 		*pabits = cpi->cpi_pabits;
@@ -6026,7 +6119,7 @@ cpuid_get_dtlb_nent(cpu_t *cpu, size_t pagesize)
 		cpu = CPU;
 	cpi = cpu->cpu_m.mcpu_cpi;
 
-	ASSERT(cpuid_checkpass(cpu, 1));
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 
 	/*
 	 * Check the L2 TLB info
@@ -6966,9 +7059,7 @@ cpuid_set_cpu_properties(void *dip, processorid_t cpu_id,
 			    "clock-frequency", (int)mul);
 	}
 
-	if (!is_x86_feature(x86_featureset, X86FSET_CPUID)) {
-		return;
-	}
+	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	/* vendor-id */
 	(void) ndi_prop_update_string(DDI_DEV_T_NONE, cpu_devi,
@@ -7290,7 +7381,7 @@ cpuid_mwait_alloc(cpu_t *cpu)
 	uint32_t	*ret;
 	size_t		mwait_size;
 
-	ASSERT(cpuid_checkpass(CPU, 2));
+	ASSERT(cpuid_checkpass(CPU, CPUID_PASS_EXTENDED));
 
 	mwait_size = CPU->cpu_m.mcpu_cpi->cpi_mwait.mon_max;
 	if (mwait_size == 0)
@@ -7376,12 +7467,10 @@ cpuid_deep_cstates_supported(void)
 	struct cpuid_info *cpi;
 	struct cpuid_regs regs;
 
-	ASSERT(cpuid_checkpass(CPU, 1));
+	ASSERT(cpuid_checkpass(CPU, CPUID_PASS_BASIC));
+	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	cpi = CPU->cpu_m.mcpu_cpi;
-
-	if (!is_x86_feature(x86_featureset, X86FSET_CPUID))
-		return (0);
 
 	switch (cpi->cpi_vendor) {
 	case X86_VENDOR_Intel:
@@ -7389,7 +7478,7 @@ cpuid_deep_cstates_supported(void)
 			return (0);
 
 		/*
-		 * TSC run at a constant rate in all ACPI C-states?
+		 * Does TSC run at a constant rate in all C-states?
 		 */
 		regs.cp_eax = 0x80000007;
 		(void) __cpuid_insn(&regs);
@@ -7459,12 +7548,13 @@ enable_pcid(void)
  * ops will execute on the processor before the MSRs are properly set up.
  *
  * Current implementation has the following assumption:
- * - cpuid_pass1() is done, so that X86 features are known.
+ * - cpuid_pass_basic() is done, so that X86 features are known.
  * - fpu_probe() is done, so that fp_save_mech is chosen.
  */
 void
 xsave_setup_msr(cpu_t *cpu)
 {
+	ASSERT(cpuid_checkpass(cpu, CPUID_PASS_BASIC));
 	ASSERT(fp_save_mech == FP_XSAVE);
 	ASSERT(is_x86_feature(x86_featureset, X86FSET_XSAVE));
 
@@ -7489,7 +7579,7 @@ cpuid_arat_supported(void)
 	struct cpuid_info *cpi;
 	struct cpuid_regs regs;
 
-	ASSERT(cpuid_checkpass(CPU, 1));
+	ASSERT(cpuid_checkpass(CPU, CPUID_PASS_BASIC));
 	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	cpi = CPU->cpu_m.mcpu_cpi;
@@ -7521,10 +7611,10 @@ cpuid_iepb_supported(struct cpu *cp)
 	struct cpuid_info *cpi = cp->cpu_m.mcpu_cpi;
 	struct cpuid_regs regs;
 
-	ASSERT(cpuid_checkpass(cp, 1));
+	ASSERT(cpuid_checkpass(cp, CPUID_PASS_BASIC));
+	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
-	if (!(is_x86_feature(x86_featureset, X86FSET_CPUID)) ||
-	    !(is_x86_feature(x86_featureset, X86FSET_MSR))) {
+	if (!(is_x86_feature(x86_featureset, X86FSET_MSR))) {
 		return (0);
 	}
 
@@ -7555,7 +7645,7 @@ cpuid_deadline_tsc_supported(void)
 	struct cpuid_info *cpi = CPU->cpu_m.mcpu_cpi;
 	struct cpuid_regs regs;
 
-	ASSERT(cpuid_checkpass(CPU, 1));
+	ASSERT(cpuid_checkpass(CPU, CPUID_PASS_BASIC));
 	ASSERT(is_x86_feature(x86_featureset, X86FSET_CPUID));
 
 	switch (cpi->cpi_vendor) {
@@ -7608,7 +7698,7 @@ cpuid_get_ext_topo(cpu_t *cpu, uint_t *core_nbits, uint_t *strand_nbits)
 {
 	struct cpuid_info *cpi;
 
-	VERIFY(cpuid_checkpass(CPU, 1));
+	VERIFY(cpuid_checkpass(CPU, CPUID_PASS_BASIC));
 	cpi = cpu->cpu_m.mcpu_cpi;
 
 	if (cpi->cpi_ncore_bits > *core_nbits) {
@@ -7776,4 +7866,126 @@ cpuid_post_ucodeadm(void)
 		}
 	}
 	kmem_free(argdata, sizeof (x86_featureset) * NCPU);
+}
+
+typedef void (*cpuid_pass_f)(cpu_t *, void *);
+
+typedef struct cpuid_pass_def {
+	cpuid_pass_t cpd_pass;
+	cpuid_pass_f cpd_func;
+} cpuid_pass_def_t;
+
+/*
+ * See block comment at the top; note that cpuid_pass_ucode is not a pass in the
+ * normal sense and should not appear here.
+ */
+static const cpuid_pass_def_t cpuid_pass_defs[] = {
+	{ CPUID_PASS_PRELUDE, cpuid_pass_prelude },
+	{ CPUID_PASS_IDENT, cpuid_pass_ident },
+	{ CPUID_PASS_BASIC, cpuid_pass_basic },
+	{ CPUID_PASS_EXTENDED, cpuid_pass_extended },
+	{ CPUID_PASS_DYNAMIC, cpuid_pass_dynamic },
+	{ CPUID_PASS_RESOLVE, cpuid_pass_resolve },
+};
+
+void
+cpuid_execpass(cpu_t *cp, cpuid_pass_t pass, void *arg)
+{
+	VERIFY3S(pass, !=, CPUID_PASS_NONE);
+
+	if (cp == NULL)
+		cp = CPU;
+
+	/*
+	 * Space statically allocated for BSP, ensure pointer is set
+	 */
+	if (cp->cpu_id == 0 && cp->cpu_m.mcpu_cpi == NULL)
+		cp->cpu_m.mcpu_cpi = &cpuid_info0;
+
+	ASSERT(cpuid_checkpass(cp, pass - 1));
+
+	for (uint_t i = 0; i < ARRAY_SIZE(cpuid_pass_defs); i++) {
+		if (cpuid_pass_defs[i].cpd_pass == pass) {
+			cpuid_pass_defs[i].cpd_func(cp, arg);
+			cp->cpu_m.mcpu_cpi->cpi_pass = pass;
+			return;
+		}
+	}
+
+	panic("unable to execute invalid cpuid pass %d on cpu%d\n",
+	    pass, cp->cpu_id);
+}
+
+/*
+ * Extract the processor family from a chiprev.  Processor families are not the
+ * same as cpuid families; see comments above and in x86_archext.h.
+ */
+x86_processor_family_t
+chiprev_family(const x86_chiprev_t cr)
+{
+	return ((x86_processor_family_t)_X86_CHIPREV_FAMILY(cr));
+}
+
+/*
+ * A chiprev matches its template if the vendor and family are identical and the
+ * revision of the chiprev matches one of the bits set in the template.  Callers
+ * may bitwise-OR together chiprevs of the same vendor and family to form the
+ * template, or use the _ANY variant.  It is not possible to match chiprevs of
+ * multiple vendors or processor families with a single call.  Note that this
+ * function operates on processor families, not cpuid families.
+ */
+boolean_t
+chiprev_matches(const x86_chiprev_t cr, const x86_chiprev_t template)
+{
+	return (_X86_CHIPREV_VENDOR(cr) == _X86_CHIPREV_VENDOR(template) &&
+	    _X86_CHIPREV_FAMILY(cr) == _X86_CHIPREV_FAMILY(template) &&
+	    (_X86_CHIPREV_REV(cr) & _X86_CHIPREV_REV(template)) != 0);
+}
+
+/*
+ * A chiprev is at least min if the vendor and family are identical and the
+ * revision of the chiprev is at least as recent as that of min.  Processor
+ * families are considered unordered and cannot be compared using this function.
+ * Note that this function operates on processor families, not cpuid families.
+ * Use of the _ANY chiprev variant with this function is not useful; it will
+ * always return B_FALSE if the _ANY variant is supplied as the minimum
+ * revision.  To determine only whether a chiprev is of a given processor
+ * family, test the return value of chiprev_family() instead.
+ */
+boolean_t
+chiprev_at_least(const x86_chiprev_t cr, const x86_chiprev_t min)
+{
+	return (_X86_CHIPREV_VENDOR(cr) == _X86_CHIPREV_VENDOR(min) &&
+	    _X86_CHIPREV_FAMILY(cr) == _X86_CHIPREV_FAMILY(min) &&
+	    _X86_CHIPREV_REV(cr) >= _X86_CHIPREV_REV(min));
+}
+
+/*
+ * The uarch functions operate in a manner similar to the chiprev functions
+ * above.  While it is tempting to allow these to operate on microarchitectures
+ * produced by a specific vendor in an ordered fashion (e.g., ZEN3 is "newer"
+ * than ZEN2), we elect not to do so because a manufacturer may supply
+ * processors of multiple different microarchitecture families each of which may
+ * be internally ordered but unordered with respect to those of other families.
+ */
+x86_uarch_t
+uarchrev_uarch(const x86_uarchrev_t ur)
+{
+	return ((x86_uarch_t)_X86_UARCHREV_UARCH(ur));
+}
+
+boolean_t
+uarchrev_matches(const x86_uarchrev_t ur, const x86_uarchrev_t template)
+{
+	return (_X86_UARCHREV_VENDOR(ur) == _X86_UARCHREV_VENDOR(template) &&
+	    _X86_UARCHREV_UARCH(ur) == _X86_UARCHREV_UARCH(template) &&
+	    (_X86_UARCHREV_REV(ur) & _X86_UARCHREV_REV(template)) != 0);
+}
+
+boolean_t
+uarchrev_at_least(const x86_uarchrev_t ur, const x86_uarchrev_t min)
+{
+	return (_X86_UARCHREV_VENDOR(ur) == _X86_UARCHREV_VENDOR(min) &&
+	    _X86_UARCHREV_UARCH(ur) == _X86_UARCHREV_UARCH(min) &&
+	    _X86_UARCHREV_REV(ur) >= _X86_UARCHREV_REV(min));
 }
