@@ -8875,6 +8875,8 @@ usr/src/test/os-tests/tests/pf_key/kmc-update
 usr/src/test/os-tests/tests/pf_key/kmc-updater
 usr/src/test/os-tests/tests/poll/epoll_test
 usr/src/test/os-tests/tests/poll/poll_test
+usr/src/test/os-tests/tests/portfs/file_assoc.32
+usr/src/test/os-tests/tests/portfs/file_assoc.64
 usr/src/test/os-tests/tests/sdevfs/sdevfs_eisdir
 usr/src/test/os-tests/tests/secflags/addrs-32
 usr/src/test/os-tests/tests/secflags/addrs-64
