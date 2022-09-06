@@ -173,8 +173,8 @@ struct brand_ops {
 	void	(*b_freelwp)(klwp_t *);
 	void	(*b_lwpexit)(klwp_t *);
 	int	(*b_elfexec)(struct vnode *, struct execa *, struct uarg *,
-	    struct intpdata *, int, size_t *, int, caddr_t, struct cred *,
-	    int *);
+		struct intpdata *, int, size_t *, int, caddr_t, struct cred *,
+		int *);
 	void	(*b_sigset_native_to_brand)(sigset_t *);
 	void	(*b_sigset_brand_to_native)(sigset_t *);
 	void	(*b_sigfd_translate)(k_siginfo_t *);
@@ -210,7 +210,7 @@ struct brand_ops {
  */
 typedef struct brand {
 	int			b_version;
-	char    		*b_name;
+	char			*b_name;
 	struct brand_ops	*b_ops;
 	struct brand_mach_ops	*b_machops;
 	size_t			b_data_size;

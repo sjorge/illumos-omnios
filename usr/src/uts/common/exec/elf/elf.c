@@ -163,7 +163,6 @@ handle_secflag_dt(proc_t *p, uint_t dt, uint_t val)
 	return (0);
 }
 
-
 #ifndef _ELF32_COMPAT
 void
 elf_ctx_resize_scratch(elf_core_ctx_t *ctx, size_t sz)
@@ -329,7 +328,6 @@ mapexec_brand(vnode_t *vp, uarg_t *args, Ehdr *ehdr, Addr *uphdr_vaddr,
 	return (error);
 }
 
-/*ARGSUSED*/
 int
 elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
     int level, size_t *execsz, int setid, caddr_t exec_file, cred_t *cred,
@@ -339,7 +337,8 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	caddr_t		bssbase = 0;
 	caddr_t		brkbase = 0;
 	size_t		brksize = 0;
-	size_t		dlnsize, nsize = 0;
+	size_t		nsize = 0;
+	size_t		dlnsize;
 	aux_entry_t	*aux;
 	int		error;
 	ssize_t		resid;
@@ -363,7 +362,7 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	int		hasauxv = 0;
 	int		hasintp = 0;
 	int		branded = 0;
-	int		dynuphdr = 0;
+	boolean_t	dynuphdr = B_FALSE;
 
 	struct proc *p = ttoproc(curthread);
 	struct user *up = PTOU(p);
@@ -396,8 +395,9 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	if ((error = getelfhead(vp, CRED(), ehdrp, &nshdrs, &shstrndx,
 	    &nphdrs)) != 0 ||
 	    (error = getelfphdr(vp, CRED(), ehdrp, nphdrs, &phdrbase,
-	    &phdrsize)) != 0)
+	    &phdrsize)) != 0) {
 		goto out;
+	}
 
 	/*
 	 * Prevent executing an ELF file that has no entry point.
@@ -598,10 +598,8 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	 * If this is a native binary that's been given a modified interpreter
 	 * root, inform it that the native system exists at that root.
 	 */
-	if (args->brand_nroot != NULL) {
+	if (args->brand_nroot != NULL)
 		args->auxsize += sizeof (aux_entry_t);
-	}
-
 
 	/*
 	 * On supported kernels (x86_64) make room in the auxv for the
@@ -622,9 +620,8 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	 *	AT_SUN_GID
 	 *	AT_SUN_RGID
 	 */
-	if (cred != NULL) {
+	if (cred != NULL)
 		args->auxsize += 4 * sizeof (aux_entry_t);
-	}
 
 	if ((*brand_action != EBA_NATIVE) && (PROC_IS_BRANDED(p))) {
 		branded = 1;
@@ -739,6 +736,7 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	error = mapelfexec(vp, ehdrp, nphdrs, phdrbase, &uphdr, &intphdr,
 	    &stphdr, &dtrphdr, dataphdrp, &bssbase, &brkbase, &voffset, NULL,
 	    len, execsz, &brksize);
+
 	/*
 	 * Our uphdr has been dynamically allocated if (and only if) its
 	 * program header flags are clear.  To avoid leaks, this must be
@@ -746,9 +744,8 @@ elfexec(vnode_t *vp, execa_t *uap, uarg_t *args, intpdata_t *idatap,
 	 */
 	dynuphdr = (uphdr != NULL && uphdr->p_flags == 0);
 
-	if (error != 0) {
+	if (error != 0)
 		goto bad;
-	}
 
 	if (uphdr != NULL && intphdr == NULL)
 		goto bad;
@@ -1302,8 +1299,9 @@ getelfhead(vnode_t *vp, cred_t *credp, Ehdr *ehdr, uint_t *nshdrs,
 
 		if ((error = vn_rdwr(UIO_READ, vp, (caddr_t)&shdr,
 		    sizeof (shdr), (offset_t)ehdr->e_shoff, UIO_SYSSPACE, 0,
-		    (rlim64_t)0, credp, NULL)) != 0)
+		    (rlim64_t)0, credp, NULL)) != 0) {
 			return (error);
+		}
 
 		if (*nshdrs == 0)
 			*nshdrs = shdr.sh_size;
@@ -1381,8 +1379,9 @@ getelfshdr(vnode_t *vp, cred_t *credp, const Ehdr *ehdr, uint_t nshdrs,
 	 * of the string table section must also be valid.
 	 */
 	if (ehdr->e_shentsize < MINSHDRSZ || (ehdr->e_shentsize & 3) ||
-	    nshdrs == 0 || shstrndx >= nshdrs)
+	    nshdrs == 0 || shstrndx >= nshdrs) {
 		return (EINVAL);
+	}
 
 	*shsizep = nshdrs * ehdr->e_shentsize;
 
@@ -1437,7 +1436,6 @@ getelfshdr(vnode_t *vp, cred_t *credp, const Ehdr *ehdr, uint_t nshdrs,
 	return (0);
 }
 
-
 int
 elfreadhdr(vnode_t *vp, cred_t *credp, Ehdr *ehdrp, uint_t *nphdrs,
     caddr_t *phbasep, size_t *phsizep)
@@ -1453,7 +1451,6 @@ elfreadhdr(vnode_t *vp, cred_t *credp, Ehdr *ehdrp, uint_t *nphdrs,
 	}
 	return (0);
 }
-
 
 static int
 mapelfexec(
@@ -1577,8 +1574,8 @@ mapelfexec(
 
 			addr = (caddr_t)((uintptr_t)phdr->p_vaddr + *voffset);
 
-			if ((*intphdr != NULL) && uphdr != NULL &&
-			    (*uphdr == NULL)) {
+			if (*intphdr != NULL && uphdr != NULL &&
+			    *uphdr == NULL) {
 				/*
 				 * The PT_PHDR program header is, strictly
 				 * speaking, optional.  If we find that this
@@ -1910,38 +1907,28 @@ elf_copy_scn(elf_core_ctx_t *ctx, const Shdr *src, vnode_t *src_vp, Shdr *dst)
 }
 
 /*
- * The design of this check is intentional.
- * In particular, we want to capture any sections that begin with '.debug_' for
- * a few reasons:
- *
- * 1) Various revisions to the DWARF spec end up changing the set of section
- *    headers that exist. This ensures that we don't need to change the kernel
- *    to get a new version.
- *
- * 2) Other software uses .debug_ sections for things which aren't DWARF. This
- *    allows them to be captured as well.
- */
-#define	IS_DEBUGSECTION(name) (strncmp(name, ".debug_", strlen(".debug_")) == 0)
-
-/*
  * Walk sections for a given ELF object, counting (or copying) those of
  * interest (CTF, symtab, strtab, .debug_*).
  */
-static uint_t
+static int
 elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
-    Shdr *v, uint_t idx, uint_t remain, shstrtab_t *shstrtab, int *errp)
+    Shdr *v, uint_t idx, uint_t remain, shstrtab_t *shstrtab, uint_t *countp)
 {
 	Ehdr ehdr;
 	const core_content_t content = ctx->ecc_content;
 	cred_t *credp = ctx->ecc_credp;
 	Shdr *ctf = NULL, *symtab = NULL, *strtab = NULL;
 	uintptr_t off = 0;
-	uint_t nshdrs, shstrndx, nphdrs, ndebug, count = 0;
+	uint_t nshdrs, shstrndx, nphdrs, count = 0;
 	u_offset_t *doffp = &ctx->ecc_doffset;
 	boolean_t ctf_link = B_FALSE;
 	caddr_t shbase;
 	size_t shsize, shstrsize;
 	char *shstrbase;
+	int error = 0;
+	const boolean_t justcounting = v == NULL;
+
+	*countp = 0;
 
 	if ((content &
 	    (CC_CONTENT_CTF | CC_CONTENT_SYMTAB | CC_CONTENT_DEBUG)) == 0) {
@@ -1956,7 +1943,6 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 
 	/* Starting at index 1 skips SHT_NULL which is expected at index 0 */
 	off = ehdr.e_shentsize;
-	ndebug = 0;
 	for (uint_t i = 1; i < nshdrs; i++, off += ehdr.e_shentsize) {
 		Shdr *shdr, *symchk = NULL, *strchk;
 		const char *name;
@@ -1984,8 +1970,51 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		    strcmp(name, shstrtab_data[STR_SYMTAB]) == 0) {
 			symchk = shdr;
 		} else if ((content & CC_CONTENT_DEBUG) != 0 &&
-		    IS_DEBUGSECTION(name)) {
-			ndebug++;
+		    strncmp(name, ".debug_", strlen(".debug_")) == 0) {
+			/*
+			 * The design of the above check is intentional. In
+			 * particular, we want to capture any sections that
+			 * begin with '.debug_' for a few reasons:
+			 *
+			 * 1) Various revisions to the DWARF spec end up
+			 * changing the set of section headers that exist. This
+			 * ensures that we don't need to change the kernel to
+			 * get a new version.
+			 *
+			 * 2) Other software uses .debug_ sections for things
+			 * which aren't DWARF. This allows them to be captured
+			 * as well.
+			 */
+			count++;
+
+			if (!justcounting) {
+				if (count > remain) {
+					error = ENOMEM;
+					goto done;
+				}
+
+				elf_ctx_resize_scratch(ctx, shdr->sh_size);
+
+				if (!shstrtab_ndx(shstrtab,
+				    name, &v[idx].sh_name)) {
+					error = ENOMEM;
+					goto done;
+				}
+
+				v[idx].sh_addr = (Addr)(uintptr_t)saddr;
+				v[idx].sh_type = shdr->sh_type;
+				v[idx].sh_addralign = shdr->sh_addralign;
+				*doffp = roundup(*doffp, v[idx].sh_addralign);
+				v[idx].sh_offset = *doffp;
+				v[idx].sh_size = shdr->sh_size;
+				v[idx].sh_link = 0;
+				v[idx].sh_entsize = shdr->sh_entsize;
+				v[idx].sh_info = shdr->sh_info;
+
+				elf_copy_scn(ctx, shdr, mvp, &v[idx]);
+				idx++;
+			}
+
 			continue;
 		} else {
 			continue;
@@ -2017,11 +2046,16 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		count += 1;
 	if (symtab != NULL)
 		count += 2;
-	count += ndebug;
-	if (v == NULL || count == 0 || count > remain) {
-		count = MIN(count, remain);
+
+	if (count > remain) {
+		count = remain;
+		if (!justcounting)
+			error = ENOMEM;
 		goto done;
 	}
+
+	if (justcounting)
+		goto done;
 
 	/* output CTF section */
 	if (ctf != NULL) {
@@ -2029,7 +2063,7 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 
 		if (!shstrtab_ndx(shstrtab,
 		    shstrtab_data[STR_CTF], &v[idx].sh_name)) {
-			*errp = ENOMEM;
+			error = ENOMEM;
 			goto done;
 		}
 		v[idx].sh_addr = (Addr)(uintptr_t)saddr;
@@ -2072,12 +2106,12 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 
 		if (!shstrtab_ndx(shstrtab,
 		    shstrtab_data[symtab_type], &symtab_name)) {
-			*errp = ENOMEM;
+			error = ENOMEM;
 			goto done;
 		}
 		if (!shstrtab_ndx(shstrtab,
 		    shstrtab_data[strtab_type], &strtab_name)) {
-			*errp = ENOMEM;
+			error = ENOMEM;
 			goto done;
 		}
 
@@ -2112,52 +2146,14 @@ elf_process_obj_scns(elf_core_ctx_t *ctx, vnode_t *mvp, caddr_t saddr,
 		idx++;
 	}
 
-	if (ndebug == 0)
-		goto done;
-
-	/* output DEBUG sections */
-	off = 0;
-	for (uint_t i = 1; i < nshdrs; i++, off += ehdr.e_shentsize) {
-		const char *name;
-		Shdr *shdr;
-
-		shdr = (Shdr *)(shbase + off);
-		if (shdr->sh_name >= shstrsize || shdr->sh_type == SHT_NULL)
-			continue;
-
-		name = shstrbase + shdr->sh_name;
-
-		if (!IS_DEBUGSECTION(name))
-			continue;
-
-		elf_ctx_resize_scratch(ctx, shdr->sh_size);
-
-		if (!shstrtab_ndx(shstrtab, name, &v[idx].sh_name)) {
-			*errp = ENOMEM;
-			goto done;
-		}
-
-		v[idx].sh_addr = (Addr)(uintptr_t)saddr;
-		v[idx].sh_type = shdr->sh_type;
-		v[idx].sh_addralign = shdr->sh_addralign;
-		*doffp = roundup(*doffp, v[idx].sh_addralign);
-		v[idx].sh_offset = *doffp;
-		v[idx].sh_size = shdr->sh_size;
-		v[idx].sh_link = 0;
-		v[idx].sh_entsize = shdr->sh_entsize;
-		v[idx].sh_info = shdr->sh_info;
-
-		elf_copy_scn(ctx, shdr, mvp, &v[idx]);
-		idx++;
-
-		if (--ndebug == 0)
-			break;
-	}
-
 done:
 	kmem_free(shstrbase, shstrsize);
 	kmem_free(shbase, shsize);
-	return (count);
+
+	if (error == 0)
+		*countp = count;
+
+	return (error);
 }
 
 /*
@@ -2229,8 +2225,8 @@ elf_process_scns(elf_core_ctx_t *ctx, Shdr *v, uint_t nv, uint_t *nshdrsp)
 		if ((prot & (PROT_WRITE | PROT_EXEC)) != PROT_EXEC)
 			continue;
 
-		count = elf_process_obj_scns(ctx, mvp, saddr, v, idx, remain,
-		    &shstrtab, &error);
+		error = elf_process_obj_scns(ctx, mvp, saddr, v, idx, remain,
+		    &shstrtab, &count);
 		if (error != 0)
 			goto done;
 
@@ -2765,9 +2761,8 @@ exclude:
 done:
 	if (zeropg != NULL)
 		kmem_free(zeropg, elf_zeropg_sz);
-	if (ctx.ecc_bufsz != 0) {
+	if (ctx.ecc_bufsz != 0)
 		kmem_free(ctx.ecc_buf, ctx.ecc_bufsz);
-	}
 	kmem_free(bigwad, bigsize);
 	return (error);
 }

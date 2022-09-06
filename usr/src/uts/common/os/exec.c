@@ -24,7 +24,7 @@
  */
 
 /*	Copyright (c) 1988 AT&T	*/
-/*	All Rights Reserved	*/
+/*	  All Rights Reserved	*/
 /*
  * Copyright 2019 Joyent, Inc.
  */

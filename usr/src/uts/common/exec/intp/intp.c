@@ -26,7 +26,7 @@
  */
 
 /*	Copyright (c) 1988 AT&T	*/
-/*	  All Rights Reserved  	*/
+/*	  All Rights Reserved	*/
 
 
 /* from S5R4 1.6 */
@@ -134,7 +134,7 @@ getintphead(struct vnode *vp, struct intpdata *idatap)
 	 * to the arguments provided on the command line. Thus, for example,
 	 * you can say
 	 *
-	 * 	#! /usr/bin/awk -f
+	 *	#! /usr/bin/awk -f
 	 *
 	 * However, handling of interpreter arguments varies across operating
 	 * systems and other systems allow more than one argument. In
