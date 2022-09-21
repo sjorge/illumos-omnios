@@ -26,6 +26,7 @@
  * Copyright 2012 Nexenta Systems, Inc. All rights reserved.
  * Copyright (c) 2018, Joyent, Inc.
  * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2022 Oxide Computer Company
  */
 
 #include <sys/asm_linkage.h>
@@ -67,67 +68,60 @@ static ucode_file_t ucodefile;
 static void* ucode_zalloc(processorid_t, size_t);
 static void ucode_free(processorid_t, void *, size_t);
 
-static int ucode_capable_amd(cpu_t *);
-static int ucode_capable_intel(cpu_t *);
-
-static ucode_errno_t ucode_extract_amd(ucode_update_t *, uint8_t *, int);
-static ucode_errno_t ucode_extract_intel(ucode_update_t *, uint8_t *,
-    int);
-
-static void ucode_file_reset_amd(ucode_file_t *, processorid_t);
-static void ucode_file_reset_intel(ucode_file_t *, processorid_t);
-
-static uint32_t ucode_load_amd(ucode_file_t *, cpu_ucode_info_t *, cpu_t *);
 static uint32_t ucode_load_intel(ucode_file_t *, cpu_ucode_info_t *, cpu_t *);
-
-#ifdef	__xpv
-static void ucode_load_xpv(ucode_update_t *);
-static void ucode_chipset_amd(uint8_t *, int);
-#endif
-
-static int ucode_equiv_cpu_amd(cpu_t *, uint16_t *);
-
-static ucode_errno_t ucode_locate_amd(cpu_t *, cpu_ucode_info_t *,
-    ucode_file_t *);
+static int ucode_capable_intel(cpu_t *);
+static ucode_errno_t ucode_extract_intel(ucode_update_t *, uint8_t *, int);
+static void ucode_file_reset_intel(ucode_file_t *, processorid_t);
 static ucode_errno_t ucode_locate_intel(cpu_t *, cpu_ucode_info_t *,
     ucode_file_t *);
+static ucode_errno_t ucode_match_intel(int, cpu_ucode_info_t *,
+    ucode_header_intel_t *, ucode_ext_table_intel_t *);
+static void ucode_read_rev_intel(cpu_ucode_info_t *);
 
+
+static int ucode_capable_amd(cpu_t *);
+static ucode_errno_t ucode_extract_amd(ucode_update_t *, uint8_t *, int);
+static void ucode_file_reset_amd(ucode_file_t *, processorid_t);
+static uint32_t ucode_load_amd(ucode_file_t *, cpu_ucode_info_t *, cpu_t *);
+static int ucode_equiv_cpu_amd(cpu_t *, uint16_t *);
+static ucode_errno_t ucode_locate_amd(cpu_t *, cpu_ucode_info_t *,
+    ucode_file_t *);
 #ifndef __xpv
 static ucode_errno_t ucode_match_amd(uint16_t, cpu_ucode_info_t *,
     ucode_file_amd_t *, int);
+#else
+static void ucode_load_xpv(ucode_update_t *);
+static void ucode_chipset_amd(uint8_t *, int);
 #endif
-static ucode_errno_t ucode_match_intel(int, cpu_ucode_info_t *,
-    ucode_header_intel_t *, ucode_ext_table_intel_t *);
-
 static void ucode_read_rev_amd(cpu_ucode_info_t *);
-static void ucode_read_rev_intel(cpu_ucode_info_t *);
+
 
 static const struct ucode_ops ucode_amd = {
-	MSR_AMD_PATCHLOADER,
-	ucode_capable_amd,
-	ucode_file_reset_amd,
-	ucode_read_rev_amd,
-	ucode_load_amd,
-	ucode_validate_amd,
-	ucode_extract_amd,
-	ucode_locate_amd
+	.write_msr	= MSR_AMD_PATCHLOADER,
+	.capable	= ucode_capable_amd,
+	.file_reset	= ucode_file_reset_amd,
+	.read_rev	= ucode_read_rev_amd,
+	.load		= ucode_load_amd,
+	.validate	= ucode_validate_amd,
+	.extract	= ucode_extract_amd,
+	.locate		= ucode_locate_amd
 };
 
 static const struct ucode_ops ucode_intel = {
-	MSR_INTC_UCODE_WRITE,
-	ucode_capable_intel,
-	ucode_file_reset_intel,
-	ucode_read_rev_intel,
-	ucode_load_intel,
-	ucode_validate_intel,
-	ucode_extract_intel,
-	ucode_locate_intel
+	.write_msr	= MSR_INTC_UCODE_WRITE,
+	.capable	= ucode_capable_intel,
+	.file_reset	= ucode_file_reset_intel,
+	.read_rev	= ucode_read_rev_intel,
+	.load		= ucode_load_intel,
+	.validate	= ucode_validate_intel,
+	.extract	= ucode_extract_intel,
+	.locate		= ucode_locate_intel
 };
 
 const struct ucode_ops *ucode;
 
 static const char ucode_failure_fmt[] =
-	"cpu%d: failed to update microcode from version 0x%x to 0x%x\n";
+	"cpu%d: failed to update microcode from version 0x%x to 0x%x";
 static const char ucode_success_fmt[] =
 	"?cpu%d: microcode has been updated from version 0x%x to 0x%x\n";
 
@@ -181,7 +175,7 @@ ucode_cleanup()
 static void*
 ucode_zalloc(processorid_t id, size_t size)
 {
-	if (id)
+	if (id != 0)
 		return (kmem_zalloc(size, KM_NOSLEEP));
 
 	/* BOP_ALLOC() failure results in panic */
@@ -191,7 +185,7 @@ ucode_zalloc(processorid_t id, size_t size)
 static void
 ucode_free(processorid_t id, void* buf, size_t size)
 {
-	if (id)
+	if (id != 0)
 		kmem_free(buf, size);
 }
 
@@ -212,7 +206,6 @@ ucode_free(processorid_t id, void* buf, size_t size)
 #define	XPVDOMU_OR_HVM	\
 	((hwenv == HW_XEN_PV && !is_controldom()) || (hwenv & HW_VIRTUAL) != 0)
 
-/*ARGSUSED*/
 static int
 ucode_capable_amd(cpu_t *cp)
 {
@@ -293,15 +286,15 @@ ucode_equiv_cpu_amd(cpu_t *cp, uint16_t *eq_sig)
 	(void) snprintf(name, MAXPATHLEN, "/%s/%s/equivalence-table",
 	    UCODE_INSTALL_PATH, cpuid_getvendorstr(cp));
 
-	/*
-	 * No kmem_zalloc() etc. available on boot cpu.
-	 */
 	if (cp->cpu_id == 0) {
+		/*
+		 * No kmem_zalloc() etc. available on boot cpu.
+		 */
+		ucode_eqtbl_amd_t boot_eqtbl;
+		eqtbl = &boot_eqtbl;
+
 		if ((fd = kobj_open(name)) == -1)
 			return (EM_OPENFILE);
-		/* ucode_zalloc() cannot fail on boot cpu */
-		eqtbl = ucode_zalloc(cp->cpu_id, sizeof (*eqtbl));
-		ASSERT(eqtbl);
 		do {
 			count = kobj_read(fd, (int8_t *)eqtbl,
 			    sizeof (*eqtbl), offset);
@@ -312,45 +305,45 @@ ucode_equiv_cpu_amd(cpu_t *cp, uint16_t *eq_sig)
 			offset += count;
 		} while (eqtbl->ue_inst_cpu && eqtbl->ue_inst_cpu != cpi_sig);
 		(void) kobj_close(fd);
-	}
+		*eq_sig = eqtbl->ue_equiv_cpu;
+	} else {
+		/*
+		 * If not already done, load the equivalence table.
+		 * Not done on boot CPU.
+		 */
+		if (eqtbl == NULL) {
+			struct _buf *eq;
+			uint64_t size;
 
-	/*
-	 * If not already done, load the equivalence table.
-	 * Not done on boot CPU.
-	 */
-	if (eqtbl == NULL) {
-		struct _buf *eq;
-		uint64_t size;
+			if ((eq = kobj_open_file(name)) == (struct _buf *)-1)
+				return (EM_OPENFILE);
 
-		if ((eq = kobj_open_file(name)) == (struct _buf *)-1)
-			return (EM_OPENFILE);
+			if (kobj_get_filesize(eq, &size) < 0) {
+				kobj_close_file(eq);
+				return (EM_OPENFILE);
+			}
 
-		if (kobj_get_filesize(eq, &size) < 0) {
+			ucode_eqtbl_amd = kmem_zalloc(size, KM_NOSLEEP);
+			if (ucode_eqtbl_amd == NULL) {
+				kobj_close_file(eq);
+				return (EM_NOMEM);
+			}
+
+			count = kobj_read_file(eq, (char *)ucode_eqtbl_amd,
+			    size, 0);
 			kobj_close_file(eq);
-			return (EM_OPENFILE);
+
+			if (count != size)
+				return (EM_FILESIZE);
 		}
 
-		ucode_eqtbl_amd = kmem_zalloc(size, KM_NOSLEEP);
-		if (ucode_eqtbl_amd == NULL) {
-			kobj_close_file(eq);
-			return (EM_NOMEM);
-		}
-
-		count = kobj_read_file(eq, (char *)ucode_eqtbl_amd, size, 0);
-		kobj_close_file(eq);
-
-		if (count != size)
-			return (EM_FILESIZE);
-	}
-
-	/* Get the equivalent CPU id. */
-	if (cp->cpu_id)
 		for (eqtbl = ucode_eqtbl_amd;
 		    eqtbl->ue_inst_cpu && eqtbl->ue_inst_cpu != cpi_sig;
-		    eqtbl++)
+		    eqtbl++) {
 			;
-
-	*eq_sig = eqtbl->ue_equiv_cpu;
+		}
+		*eq_sig = eqtbl->ue_equiv_cpu;
+	}
 
 	/* No equivalent CPU id found, assume outdated microcode file. */
 	if (*eq_sig == 0)
@@ -403,7 +396,6 @@ ucode_chipset_amd(uint8_t *buf, int size)
  *
  * Return EM_OK on success, corresponding error code on failure.
  */
-/*ARGSUSED*/
 static ucode_errno_t
 ucode_locate_amd(cpu_t *cp, cpu_ucode_info_t *uinfop, ucode_file_t *ufp)
 {
@@ -414,7 +406,6 @@ ucode_locate_amd(cpu_t *cp, cpu_ucode_info_t *uinfop, ucode_file_t *ufp)
 
 #ifndef __xpv
 	uint16_t eq_sig = 0;
-	int i;
 
 	/* get equivalent CPU id */
 	if ((rc = ucode_equiv_cpu_amd(cp, &eq_sig)) != EM_OK)
@@ -425,11 +416,13 @@ ucode_locate_amd(cpu_t *cp, cpu_ucode_info_t *uinfop, ucode_file_t *ufp)
 	 * allocated before, check for a matching microcode to avoid loading
 	 * the file again.
 	 */
-	if (ucodefp == NULL)
+
+	if (ucodefp == NULL) {
 		ucodefp = ucode_zalloc(cp->cpu_id, sizeof (*ucodefp));
-	else if (ucode_match_amd(eq_sig, uinfop, ucodefp, sizeof (*ucodefp))
-	    == EM_OK)
+	} else if (ucode_match_amd(eq_sig, uinfop, ucodefp, sizeof (*ucodefp))
+	    == EM_OK) {
 		return (EM_OK);
+	}
 
 	if (ucodefp == NULL)
 		return (EM_NOMEM);
@@ -444,7 +437,7 @@ ucode_locate_amd(cpu_t *cp, cpu_ucode_info_t *uinfop, ucode_file_t *ufp)
 	 * patch that matches.
 	 */
 
-	for (i = 0; i < 0xff; i++) {
+	for (uint_t i = 0; i < 0xff; i++) {
 		(void) snprintf(name, MAXPATHLEN, "/%s/%s/%04X-%02X",
 		    UCODE_INSTALL_PATH, cpuid_getvendorstr(cp), eq_sig, i);
 		if ((fd = kobj_open(name)) == -1)
@@ -663,8 +656,9 @@ ucode_match_amd(uint16_t eq_sig, cpu_ucode_info_t *uinfop,
 	 */
 	if (uh->uh_cpu_rev < 0x5000 &&
 	    size > offsetof(ucode_file_amd_t, uf_code_present) &&
-	    ucodefp->uf_code_present)
+	    ucodefp->uf_code_present) {
 		return (EM_NOMATCH);
+	}
 
 	if (eq_sig != uh->uh_cpu_rev)
 		return (EM_NOMATCH);
@@ -730,51 +724,6 @@ ucode_match_intel(int cpi_sig, cpu_ucode_info_t *uinfop,
 	return (EM_NOMATCH);
 }
 
-/*ARGSUSED*/
-static int
-ucode_write(xc_arg_t arg1, xc_arg_t unused2, xc_arg_t unused3)
-{
-	ucode_update_t *uusp = (ucode_update_t *)arg1;
-	cpu_ucode_info_t *uinfop = CPU->cpu_m.mcpu_ucode_info;
-#ifndef __xpv
-	on_trap_data_t otd;
-#endif
-
-	ASSERT(ucode);
-	ASSERT(uusp->ucodep);
-
-#ifndef	__xpv
-	/*
-	 * Check one more time to see if it is really necessary to update
-	 * microcode just in case this is a hyperthreaded processor where
-	 * the threads share the same microcode.
-	 */
-	if (!ucode_force_update) {
-		ucode->read_rev(uinfop);
-		uusp->new_rev = uinfop->cui_rev;
-		if (uinfop->cui_rev >= uusp->expected_rev)
-			return (0);
-	}
-
-	if (!on_trap(&otd, OT_DATA_ACCESS)) {
-		/*
-		 * On some platforms a cache invalidation is required for the
-		 * ucode update to be successful due to the parts of the
-		 * processor that the microcode is updating.
-		 */
-		invalidate_cache();
-		wrmsr(ucode->write_msr, (uintptr_t)uusp->ucodep);
-	}
-
-	no_trap();
-#endif
-	ucode->read_rev(uinfop);
-	uusp->new_rev = uinfop->cui_rev;
-
-	return (0);
-}
-
-/*ARGSUSED*/
 static uint32_t
 ucode_load_amd(ucode_file_t *ufp, cpu_ucode_info_t *uinfop, cpu_t *cp)
 {
@@ -792,14 +741,14 @@ ucode_load_amd(ucode_file_t *ufp, cpu_ucode_info_t *uinfop, cpu_t *cp)
 	kpreempt_disable();
 	if (on_trap(&otd, OT_DATA_ACCESS)) {
 		no_trap();
-		kpreempt_enable();
-		return (0);
+		goto out;
 	}
 	wrmsr(ucode->write_msr, (uintptr_t)ucodefp);
 	no_trap();
 	ucode->read_rev(uinfop);
-	kpreempt_enable();
 
+out:
+	kpreempt_enable();
 	return (ucodefp->uf_header.uh_patch_id);
 #else
 	uus.ucodep = ucodefp->ucodep;
@@ -812,7 +761,6 @@ ucode_load_amd(ucode_file_t *ufp, cpu_ucode_info_t *uinfop, cpu_t *cp)
 #endif
 }
 
-/*ARGSUSED2*/
 static uint32_t
 ucode_load_intel(ucode_file_t *ufp, cpu_ucode_info_t *uinfop, cpu_t *cp)
 {
@@ -1043,6 +991,50 @@ ucode_extract_intel(ucode_update_t *uusp, uint8_t *ucodep, int size)
 
 	return (EM_OK);
 }
+
+static int
+ucode_write(xc_arg_t arg1, xc_arg_t unused2, xc_arg_t unused3)
+{
+	ucode_update_t *uusp = (ucode_update_t *)arg1;
+	cpu_ucode_info_t *uinfop = CPU->cpu_m.mcpu_ucode_info;
+#ifndef __xpv
+	on_trap_data_t otd;
+#endif
+
+	ASSERT(ucode);
+	ASSERT(uusp->ucodep);
+
+#ifndef	__xpv
+	/*
+	 * Check one more time to see if it is really necessary to update
+	 * microcode just in case this is a hyperthreaded processor where
+	 * the threads share the same microcode.
+	 */
+	if (!ucode_force_update) {
+		ucode->read_rev(uinfop);
+		uusp->new_rev = uinfop->cui_rev;
+		if (uinfop->cui_rev >= uusp->expected_rev)
+			return (0);
+	}
+
+	if (!on_trap(&otd, OT_DATA_ACCESS)) {
+		/*
+		 * On some platforms a cache invalidation is required for the
+		 * ucode update to be successful due to the parts of the
+		 * processor that the microcode is updating.
+		 */
+		invalidate_cache();
+		wrmsr(ucode->write_msr, (uintptr_t)uusp->ucodep);
+	}
+
+	no_trap();
+#endif
+	ucode->read_rev(uinfop);
+	uusp->new_rev = uinfop->cui_rev;
+
+	return (0);
+}
+
 /*
  * Entry point to microcode update from the ucode_drv driver.
  *
@@ -1156,10 +1148,8 @@ ucode_update(uint8_t *ucodep, int size)
 }
 
 /*
+ * Entry point to microcode update from mlsetup() and mp_startup()
  * Initialize mcpu_ucode_info, and perform microcode update if necessary.
- * This is the entry point from boot path where pointer to CPU structure
- * is available.
- *
  * cpuid_info must be initialized before ucode_check can be called.
  */
 void
@@ -1167,7 +1157,6 @@ ucode_check(cpu_t *cp)
 {
 	cpu_ucode_info_t *uinfop;
 	ucode_errno_t rc = EM_OK;
-	uint32_t new_rev = 0;
 
 	ASSERT(cp);
 	/*
@@ -1222,11 +1211,18 @@ ucode_check(cpu_t *cp)
 	 * Check to see if we need ucode update
 	 */
 	if ((rc = ucode->locate(cp, uinfop, &ucodefile)) == EM_OK) {
+		uint32_t old_rev, new_rev;
+
+		old_rev = uinfop->cui_rev;
 		new_rev = ucode->load(&ucodefile, uinfop, cp);
 
-		if (uinfop->cui_rev != new_rev)
+		if (uinfop->cui_rev != new_rev) {
 			cmn_err(CE_WARN, ucode_failure_fmt, cp->cpu_id,
-			    uinfop->cui_rev, new_rev);
+			    old_rev, new_rev);
+		} else {
+			cmn_err(CE_CONT, ucode_success_fmt, cp->cpu_id,
+			    old_rev, new_rev);
+		}
 	}
 
 	/*
