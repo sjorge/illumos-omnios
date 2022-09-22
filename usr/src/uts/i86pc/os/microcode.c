@@ -57,6 +57,7 @@
  * AMD-specific equivalence table
  */
 static ucode_eqtbl_amd_t *ucode_eqtbl_amd;
+static uint_t ucode_eqtbl_amd_entries;
 
 /*
  * mcpu_ucode_info for the boot CPU.  Statically allocated.
@@ -278,10 +279,7 @@ static int
 ucode_equiv_cpu_amd(cpu_t *cp, uint16_t *eq_sig)
 {
 	char name[MAXPATHLEN];
-	intptr_t fd;
-	int count;
-	int offset = 0, cpi_sig = cpuid_getsig(cp);
-	ucode_eqtbl_amd_t *eqtbl = ucode_eqtbl_amd;
+	int cpi_sig = cpuid_getsig(cp);
 
 	(void) snprintf(name, MAXPATHLEN, "/%s/%s/equivalence-table",
 	    UCODE_INSTALL_PATH, cpuid_getvendorstr(cp));
@@ -290,30 +288,35 @@ ucode_equiv_cpu_amd(cpu_t *cp, uint16_t *eq_sig)
 		/*
 		 * No kmem_zalloc() etc. available on boot cpu.
 		 */
-		ucode_eqtbl_amd_t boot_eqtbl;
-		eqtbl = &boot_eqtbl;
+		ucode_eqtbl_amd_t eqtbl;
+		int count, offset = 0;
+		intptr_t fd;
 
 		if ((fd = kobj_open(name)) == -1)
 			return (EM_OPENFILE);
 		do {
-			count = kobj_read(fd, (int8_t *)eqtbl,
-			    sizeof (*eqtbl), offset);
-			if (count != sizeof (*eqtbl)) {
+			count = kobj_read(fd, (int8_t *)&eqtbl,
+			    sizeof (eqtbl), offset);
+			if (count != sizeof (eqtbl)) {
 				(void) kobj_close(fd);
 				return (EM_HIGHERREV);
 			}
 			offset += count;
-		} while (eqtbl->ue_inst_cpu && eqtbl->ue_inst_cpu != cpi_sig);
+		} while (eqtbl.ue_inst_cpu != 0 &&
+		    eqtbl.ue_inst_cpu != cpi_sig);
 		(void) kobj_close(fd);
-		*eq_sig = eqtbl->ue_equiv_cpu;
+		*eq_sig = eqtbl.ue_equiv_cpu;
 	} else {
+		ucode_eqtbl_amd_t *eqtbl;
+
 		/*
 		 * If not already done, load the equivalence table.
 		 * Not done on boot CPU.
 		 */
-		if (eqtbl == NULL) {
+		if (ucode_eqtbl_amd == NULL) {
 			struct _buf *eq;
 			uint64_t size;
+			int count;
 
 			if ((eq = kobj_open_file(name)) == (struct _buf *)-1)
 				return (EM_OPENFILE);
@@ -323,31 +326,47 @@ ucode_equiv_cpu_amd(cpu_t *cp, uint16_t *eq_sig)
 				return (EM_OPENFILE);
 			}
 
+			if (size == 0 ||
+			    size % sizeof (*ucode_eqtbl_amd) != 0) {
+				kobj_close_file(eq);
+				return (EM_HIGHERREV);
+			}
+
 			ucode_eqtbl_amd = kmem_zalloc(size, KM_NOSLEEP);
 			if (ucode_eqtbl_amd == NULL) {
 				kobj_close_file(eq);
 				return (EM_NOMEM);
 			}
-
 			count = kobj_read_file(eq, (char *)ucode_eqtbl_amd,
 			    size, 0);
 			kobj_close_file(eq);
 
-			if (count != size)
+			if (count != size) {
+				ucode_eqtbl_amd_entries = 0;
 				return (EM_FILESIZE);
+			}
+
+			ucode_eqtbl_amd_entries =
+			    size / sizeof (*ucode_eqtbl_amd);
 		}
 
-		for (eqtbl = ucode_eqtbl_amd;
-		    eqtbl->ue_inst_cpu && eqtbl->ue_inst_cpu != cpi_sig;
-		    eqtbl++) {
-			;
+		eqtbl = ucode_eqtbl_amd;
+		*eq_sig = 0;
+		for (uint_t i = 0; i < ucode_eqtbl_amd_entries; i++, eqtbl++) {
+			if (eqtbl->ue_inst_cpu == 0) {
+				/* End of table */
+				return (EM_HIGHERREV);
+			}
+			if (eqtbl->ue_inst_cpu == cpi_sig) {
+				*eq_sig = eqtbl->ue_equiv_cpu;
+				return (EM_OK);
+			}
 		}
-		*eq_sig = eqtbl->ue_equiv_cpu;
-	}
-
-	/* No equivalent CPU id found, assume outdated microcode file. */
-	if (*eq_sig == 0)
+		/*
+		 * No equivalent CPU id found, assume outdated microcode file.
+		 */
 		return (EM_HIGHERREV);
+	}
 
 	return (EM_OK);
 }
