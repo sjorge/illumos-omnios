@@ -231,9 +231,9 @@ PYTHON3=		/usr/bin/python$(PYTHON3_VERSION)
 # BUILDPY3b should be overridden in the env file in order to build python
 # modules with a secondary python to aid migration between versions.
 BUILDPY3b=		$(POUND_SIGN)
-PYTHON3b_VERSION=	3.9
-PYTHON3b_PKGVERS=	-39
-PYTHON3b_SUFFIX=
+PYTHON3b_VERSION=	3.5
+PYTHON3b_PKGVERS=	-35
+PYTHON3b_SUFFIX=	m
 #
 $(BUILDPY3b)PYTHON3b=	/usr/bin/python$(PYTHON3b_VERSION)
 TOOLS_PYTHON=		$(PYTHON3)
