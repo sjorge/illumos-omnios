@@ -36,6 +36,7 @@
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2019 Joyent, Inc.
  * Copyright 2022 Oxide Computer Company
+ * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #ifndef	_VIONA_IMPL_H
@@ -159,6 +160,7 @@ struct viona_link {
 	mac_handle_t		l_mh;
 	mac_client_handle_t	l_mch;
 	mac_promisc_handle_t	l_mph;
+	viona_promisc_t		l_promisc;
 
 	pollhead_t		l_pollhead;
 
@@ -246,6 +248,9 @@ struct virtio_net_hdr {
 	DTRACE_PROBE2(viona__##name, arg1, arg2, arg3, arg4)
 #define	VIONA_PROBE3(name, arg1, arg2, arg3, arg4, arg5, arg6)	\
 	DTRACE_PROBE3(viona__##name, arg1, arg2, arg3, arg4, arg5, arg6)
+#define	VIONA_PROBE4(name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) \
+	DTRACE_PROBE4(viona__##name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, \
+	arg8)
 #define	VIONA_PROBE5(name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, \
 	arg9, arg10) \
 	DTRACE_PROBE5(viona__##name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, \
@@ -316,7 +321,7 @@ uint16_t viona_ring_num_avail(viona_vring_t *);
 
 void viona_rx_init(void);
 void viona_rx_fini(void);
-int viona_rx_set(viona_link_t *);
+int viona_rx_set(viona_link_t *, viona_promisc_t);
 void viona_rx_clear(viona_link_t *);
 void viona_worker_rx(viona_vring_t *, viona_link_t *);
 
