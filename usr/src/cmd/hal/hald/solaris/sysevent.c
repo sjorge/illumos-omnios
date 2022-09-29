@@ -184,7 +184,7 @@ sysevent_dev_handler(sysevent_t *ev)
 
 		snprintf(s, sizeof (s), "%s %s %s\n",
 		    class, subclass, phys_path);
-		nwritten = write(sysevent_pipe_fds[1], s, strlen(s) + 1);
+		nwritten = write(sysevent_pipe_fds[1], s, strlen(s));
 
 		HAL_INFO (("sysevent_dev_handler: wrote %d bytes", nwritten));
 		goto out;
@@ -233,7 +233,7 @@ sysevent_dev_handler(sysevent_t *ev)
 
 	snprintf(s, sizeof (s), "%s %s %s %s %s %s %d\n",
 	    class, subclass, phys_path, dev_name, dev_hid, dev_uid, dev_index);
-	nwritten = write(sysevent_pipe_fds[1], s, strlen(s) + 1);
+	nwritten = write(sysevent_pipe_fds[1], s, strlen(s));
 
 	HAL_INFO (("sysevent_dev_handler: wrote %d bytes", nwritten));
 
