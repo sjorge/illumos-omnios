@@ -8562,11 +8562,14 @@ usr/src/pkg/license-list
 usr/src/pkg/packages.i386/
 usr/src/pkg/proto_list_i386
 usr/src/test/bhyve-tests/tests/inst_emul/cpuid
+usr/src/test/bhyve-tests/tests/inst_emul/exit_paging
 usr/src/test/bhyve-tests/tests/inst_emul/payload_cpuid
+usr/src/test/bhyve-tests/tests/inst_emul/payload_exit_paging
 usr/src/test/bhyve-tests/tests/inst_emul/payload_rdmsr
 usr/src/test/bhyve-tests/tests/inst_emul/payload_triple_fault
 usr/src/test/bhyve-tests/tests/inst_emul/payload_wrmsr
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_cpuid.s
+usr/src/test/bhyve-tests/tests/inst_emul/pobj_exit_paging.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_rdmsr.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_triple_fault.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_wrmsr.s
@@ -8833,6 +8836,7 @@ usr/src/test/os-tests/tests/poll/epoll_test
 usr/src/test/os-tests/tests/poll/poll_test
 usr/src/test/os-tests/tests/portfs/file_assoc.32
 usr/src/test/os-tests/tests/portfs/file_assoc.64
+usr/src/test/os-tests/tests/regression/illumos-15031
 usr/src/test/os-tests/tests/sdevfs/sdevfs_eisdir
 usr/src/test/os-tests/tests/secflags/addrs-32
 usr/src/test/os-tests/tests/secflags/addrs-64
