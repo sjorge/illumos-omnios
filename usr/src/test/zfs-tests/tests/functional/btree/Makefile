@@ -10,28 +10,12 @@
 #
 
 #
-# Copyright (c) 2012 by Delphix. All rights reserved.
+# Copyright (c) 2019 by Delphix. All rights reserved.
 #
 
 include $(SRC)/Makefile.master
-include $(SRC)/test/Makefile.com
 
-ROOTOPTPKG = $(ROOT)/opt/test-runner
-ROOTBIN = $(ROOTOPTPKG)/bin
+ROOTOPTPKG = $(ROOT)/opt/zfs-tests
+TARGETDIR = $(ROOTOPTPKG)/tests/functional/btree
 
-PROGS = run
-
-CMDS = $(PROGS:%=$(ROOTBIN)/%)
-$(CMDS) := FILEMODE = 0555
-
-all clean clobber:
-
-install: $(CMDS)
-
-$(CMDS): $(ROOTBIN)
-
-$(ROOTBIN):
-	$(INS.dir)
-
-$(ROOTBIN)/%: %
-	$(INS.pyfile)
+include $(SRC)/test/zfs-tests/Makefile.com

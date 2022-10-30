@@ -10,28 +10,14 @@
 #
 
 #
-# Copyright (c) 2012 by Delphix. All rights reserved.
+# Copyright 2022 Toomas Soome <tsoome@me.com>
 #
 
-include $(SRC)/Makefile.master
-include $(SRC)/test/Makefile.com
+PROG = btree_test
 
-ROOTOPTPKG = $(ROOT)/opt/test-runner
-ROOTBIN = $(ROOTOPTPKG)/bin
+include $(SRC)/cmd/Makefile.cmd
 
-PROGS = run
+CPPFLAGS += -I$(SRC)/uts/common/fs/zfs -DDEBUG
+LDLIBS += -lavl -lzpool -lumem
 
-CMDS = $(PROGS:%=$(ROOTBIN)/%)
-$(CMDS) := FILEMODE = 0555
-
-all clean clobber:
-
-install: $(CMDS)
-
-$(CMDS): $(ROOTBIN)
-
-$(ROOTBIN):
-	$(INS.dir)
-
-$(ROOTBIN)/%: %
-	$(INS.pyfile)
+include ../Makefile.subdirs
