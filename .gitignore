@@ -551,7 +551,6 @@ usr/src/cmd/devmgmt/cmds/putdev
 usr/src/cmd/devmgmt/cmds/putdgrp
 usr/src/cmd/devprop/devprop
 usr/src/cmd/dfs.cmds/dfshares/dfshares
-usr/src/cmd/dfs.cmds/general/unshare
 usr/src/cmd/dfs.cmds/shareall/shareall
 usr/src/cmd/dfs.cmds/sharectl/i386/sharectl
 usr/src/cmd/dfs.cmds/sharectl/i386/shareutil.c
@@ -8601,6 +8600,8 @@ usr/src/test/bhyve-tests/tests/viona/interface_version
 usr/src/test/bhyve-tests/tests/vmm/auto_destruct
 usr/src/test/bhyve-tests/tests/vmm/check_iommu
 usr/src/test/bhyve-tests/tests/vmm/cpuid_ioctl
+usr/src/test/bhyve-tests/tests/vmm/datarw_constraints
+usr/src/test/bhyve-tests/tests/vmm/default_capabs
 usr/src/test/bhyve-tests/tests/vmm/drv_hold
 usr/src/test/bhyve-tests/tests/vmm/fpu_getset
 usr/src/test/bhyve-tests/tests/vmm/interface_version
@@ -8608,6 +8609,7 @@ usr/src/test/bhyve-tests/tests/vmm/legacy_destruct
 usr/src/test/bhyve-tests/tests/vmm/mem_devmem
 usr/src/test/bhyve-tests/tests/vmm/mem_partial
 usr/src/test/bhyve-tests/tests/vmm/mem_seg_map
+usr/src/test/bhyve-tests/tests/vmm/pause_resume
 usr/src/test/bhyve-tests/tests/vmm/self_destruct
 usr/src/test/crypto-tests/tests/digest/md5_32_kcf
 usr/src/test/crypto-tests/tests/digest/md5_32_pkcs
@@ -8837,6 +8839,7 @@ usr/src/test/os-tests/tests/poll/poll_test
 usr/src/test/os-tests/tests/portfs/file_assoc.32
 usr/src/test/os-tests/tests/portfs/file_assoc.64
 usr/src/test/os-tests/tests/regression/illumos-15031
+usr/src/test/os-tests/tests/regression/illumos-15036
 usr/src/test/os-tests/tests/sdevfs/sdevfs_eisdir
 usr/src/test/os-tests/tests/secflags/addrs-32
 usr/src/test/os-tests/tests/secflags/addrs-64
@@ -8899,6 +8902,9 @@ usr/src/test/smbclient-tests/cmd/mkfile_mmap/mkfile_mmap
 usr/src/test/smbclient-tests/cmd/no_close/no_close
 usr/src/test/smbclient-tests/cmd/prot_mmap/prot_mmap
 usr/src/test/smbclient-tests/cmd/rw_mmap/rw_mmap
+usr/src/test/smbsrv-tests/tests/smb_sid/large_sids_kern
+usr/src/test/smbsrv-tests/tests/smb_sid/large_sids_lib
+usr/src/test/smbsrv-tests/tests/smb_sid/smb_sid.c
 usr/src/test/util-tests/tests/bunyan/btest
 usr/src/test/util-tests/tests/ctf/check-array
 usr/src/test/util-tests/tests/ctf/check-enum
@@ -8950,6 +8956,7 @@ usr/src/test/util-tests/tests/mdb/progs/number_symbol
 usr/src/test/util-tests/tests/mergeq/mqt
 usr/src/test/util-tests/tests/smbios/smbios
 usr/src/test/util-tests/tests/workq/wqt
+usr/src/test/zfs-tests/cmd/btree_test/btree_test
 usr/src/test/zfs-tests/cmd/chg_usr_exec/chg_usr_exec
 usr/src/test/zfs-tests/cmd/devname2devid/devname2devid
 usr/src/test/zfs-tests/cmd/dir_rd_update/dir_rd_update
