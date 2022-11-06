@@ -2037,4 +2037,5 @@ legacy pkg=SUNWdtrt category=internal \
     hotline="Contact the DTrace discussion forum" name="DTrace Test Suite"
 license cr_Sun license=cr_Sun
 license lic_CDDL license=lic_CDDL
+depend type=require fmri=diagnostic/cpu-counters
 depend type=require fmri=runtime/java
