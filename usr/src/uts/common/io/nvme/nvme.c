@@ -403,17 +403,6 @@ uint32_t nvme_vendor_specific_admin_cmd_size = 1 << 24;
  */
 uint_t nvme_vendor_specific_admin_cmd_max_timeout = 60;
 
-/*
- * Tunable to control whether the namespace GUID (introduced with NVMe 1.2)
- * is used to construct the devid, and whether the new NVMe-specific devid
- * types are used. When this is enabled, the devid will change compared to an
- * older NVMe driver and, once that happens, it is difficult to then go back to
- * a BE which does not have illumos 14745. Since 14745 was only recently
- * backported to the OmniOS stable releases, this tunable is off by default
- * until the start of the r151045 bloody cycle.
- */
-boolean_t nvme_new_devids = B_FALSE;
-
 static int nvme_attach(dev_info_t *, ddi_attach_cmd_t);
 static int nvme_detach(dev_info_t *, ddi_detach_cmd_t);
 static int nvme_quiesce(dev_info_t *);
@@ -4665,17 +4654,15 @@ nvme_bd_devid(void *arg, dev_info_t *devinfo, ddi_devid_t *devid)
 		return (EIO);
 	}
 
-	if (nvme_new_devids && (*(uint64_t *)ns->ns_nguid != 0 ||
-	    *(uint64_t *)(ns->ns_nguid + 8) != 0)) {
+	if (*(uint64_t *)ns->ns_nguid != 0 ||
+	    *(uint64_t *)(ns->ns_nguid + 8) != 0) {
 		return (ddi_devid_init(devinfo, DEVID_NVME_NGUID,
 		    sizeof (ns->ns_nguid), ns->ns_nguid, devid));
 	} else if (*(uint64_t *)ns->ns_eui64 != 0) {
-		return (ddi_devid_init(devinfo,
-		    nvme_new_devids ? DEVID_NVME_EUI64 : DEVID_SCSI3_WWN,
+		return (ddi_devid_init(devinfo, DEVID_NVME_EUI64,
 		    sizeof (ns->ns_eui64), ns->ns_eui64, devid));
 	} else {
-		return (ddi_devid_init(devinfo,
-		    nvme_new_devids ? DEVID_NVME_NSID : DEVID_ENCAP,
+		return (ddi_devid_init(devinfo, DEVID_NVME_NSID,
 		    strlen(ns->ns_devid), ns->ns_devid, devid));
 	}
 }
