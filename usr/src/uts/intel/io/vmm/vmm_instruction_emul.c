@@ -434,6 +434,25 @@ static enum vm_reg_name gpr_map[16] = {
 	VM_REG_GUEST_R15
 };
 
+static const char *gpr_name_map[][16] = {
+	[1] = {
+		"a[hl]", "c[hl]", "d[hl]", "b[hl]", "spl", "bpl", "sil", "dil",
+		"r8b", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b",
+	},
+	[2] = {
+		"ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
+		"r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w",
+	},
+	[4] = {
+		"eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
+		"r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d",
+	},
+	[8] = {
+		"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+		"r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+	},
+};
+
 static enum vm_reg_name cr_map[16] = {
 	VM_REG_GUEST_CR0,
 	VM_REG_LAST,
@@ -490,6 +509,14 @@ vie_regnum_map(uint8_t regnum)
 {
 	VERIFY3U(regnum, <, 16);
 	return (gpr_map[regnum]);
+}
+
+const char *
+vie_regnum_name(uint8_t regnum, uint8_t size)
+{
+	VERIFY3U(regnum, <, 16);
+	VERIFY(size == 1 || size == 2 || size == 4 || size == 8);
+	return (gpr_name_map[size][regnum]);
 }
 
 static void
@@ -1957,6 +1984,10 @@ vie_emulate_mul(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 
 		error = vie_update_register(vm, vcpuid, reg, nval, size);
 
+		DTRACE_PROBE4(vie__imul,
+		    const char *, vie_regnum_name(vie->reg, size),
+		    uint64_t, val1, uint64_t, val2, __uint128_t, nval);
+
 		break;
 	default:
 		break;
@@ -1973,6 +2004,9 @@ vie_emulate_mul(struct vie *vie, struct vm *vm, int vcpuid, uint64_t gpa)
 		rflags |= rflags2 & RFLAGS_STATUS_BITS;
 		error = vie_update_register(vm, vcpuid, VM_REG_GUEST_RFLAGS,
 		    rflags, 8);
+
+		DTRACE_PROBE2(vie__imul__rflags,
+		    uint64_t, rflags, uint64_t, rflags2);
 	}
 
 	return (error);
