@@ -3809,6 +3809,7 @@ usr/src/man/man3c/endutxent.3c
 usr/src/man/man3c/epoll_create1.3c
 usr/src/man/man3c/epoll_pwait.3c
 usr/src/man/man3c/erand48.3c
+usr/src/man/man3c/errc.3c
 usr/src/man/man3c/errno.3c
 usr/src/man/man3c/errx.3c
 usr/src/man/man3c/etext.3c
@@ -4388,6 +4389,7 @@ usr/src/man/man3c/utmpxname.3c
 usr/src/man/man3c/valloc.3c
 usr/src/man/man3c/vasprintf.3c
 usr/src/man/man3c/verr.3c
+usr/src/man/man3c/verrc.3c
 usr/src/man/man3c/verrx.3c
 usr/src/man/man3c/vfprintf.3c
 usr/src/man/man3c/vfscanf.3c
@@ -4399,11 +4401,13 @@ usr/src/man/man3c/vsscanf.3c
 usr/src/man/man3c/vswprintf.3c
 usr/src/man/man3c/vswscanf.3c
 usr/src/man/man3c/vwarn.3c
+usr/src/man/man3c/vwarnc.3c
 usr/src/man/man3c/vwarnx.3c
 usr/src/man/man3c/vwprintf.3c
 usr/src/man/man3c/vwscanf.3c
 usr/src/man/man3c/wait4.3c
 usr/src/man/man3c/warn.3c
+usr/src/man/man3c/warnc.3c
 usr/src/man/man3c/warnx.3c
 usr/src/man/man3c/watof.3c
 usr/src/man/man3c/watoi.3c
@@ -8562,13 +8566,19 @@ usr/src/pkg/packages.i386/
 usr/src/pkg/proto_list_i386
 usr/src/test/bhyve-tests/tests/inst_emul/cpuid
 usr/src/test/bhyve-tests/tests/inst_emul/exit_paging
+usr/src/test/bhyve-tests/tests/inst_emul/imul
+usr/src/test/bhyve-tests/tests/inst_emul/page_dirty
 usr/src/test/bhyve-tests/tests/inst_emul/payload_cpuid
 usr/src/test/bhyve-tests/tests/inst_emul/payload_exit_paging
+usr/src/test/bhyve-tests/tests/inst_emul/payload_imul
+usr/src/test/bhyve-tests/tests/inst_emul/payload_page_dirty
 usr/src/test/bhyve-tests/tests/inst_emul/payload_rdmsr
 usr/src/test/bhyve-tests/tests/inst_emul/payload_triple_fault
 usr/src/test/bhyve-tests/tests/inst_emul/payload_wrmsr
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_cpuid.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_exit_paging.s
+usr/src/test/bhyve-tests/tests/inst_emul/pobj_imul.s
+usr/src/test/bhyve-tests/tests/inst_emul/pobj_page_dirty.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_rdmsr.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_triple_fault.s
 usr/src/test/bhyve-tests/tests/inst_emul/pobj_wrmsr.s
@@ -8696,6 +8706,7 @@ usr/src/test/libc-tests/tests/endian.32
 usr/src/test/libc-tests/tests/endian.64
 usr/src/test/libc-tests/tests/env-7076.32
 usr/src/test/libc-tests/tests/env-7076.64
+usr/src/test/libc-tests/tests/err/err
 usr/src/test/libc-tests/tests/fnmatch.32
 usr/src/test/libc-tests/tests/fnmatch.64
 usr/src/test/libc-tests/tests/fpround/fpround_test
@@ -8829,6 +8840,7 @@ usr/src/test/os-tests/tests/ksensor/ksensor_sread.64
 usr/src/test/os-tests/tests/libtopo/digraph-test
 usr/src/test/os-tests/tests/odirectory.32
 usr/src/test/os-tests/tests/odirectory.64
+usr/src/test/os-tests/tests/pf_key/15146
 usr/src/test/os-tests/tests/pf_key/acquire-compare
 usr/src/test/os-tests/tests/pf_key/acquire-spray
 usr/src/test/os-tests/tests/pf_key/eacq-enabler
@@ -8891,6 +8903,8 @@ usr/src/test/os-tests/tests/uccid/txn-pollerr
 usr/src/test/os-tests/tests/uccid/yk
 usr/src/test/os-tests/tests/uccid/yk-poll
 usr/src/test/os-tests/tests/uccid/yk-readonly
+usr/src/test/os-tests/tests/ucontext.32
+usr/src/test/os-tests/tests/ucontext.64
 usr/src/test/os-tests/tests/writev.32
 usr/src/test/os-tests/tests/writev.64
 usr/src/test/os-tests/tests/zen_umc/zen_umc_test
