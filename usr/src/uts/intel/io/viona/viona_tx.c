@@ -53,6 +53,11 @@
 #define	BNXE_NIC_DRIVER		"bnxe"
 
 /*
+ * Tunable to control whether the will always force full TX packet copying.
+ */
+boolean_t viona_always_force_copy = B_FALSE;
+
+/*
  * copy tx mbufs from virtio ring to avoid necessitating a wait for packet
  * transmission to free resources.
  */
@@ -100,6 +105,12 @@ static boolean_t
 viona_tx_copy_needed(void)
 {
 	boolean_t result;
+
+	/*
+	 * Return early if viona_always_force_copy tunable is set to true.
+	 */
+	if (viona_always_force_copy)
+		return B_TRUE;
 
 	mutex_enter(&viona_force_copy_lock);
 	if (viona_force_copy_state == VFC_UNINITALIZED) {
