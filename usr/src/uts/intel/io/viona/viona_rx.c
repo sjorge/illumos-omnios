@@ -725,8 +725,6 @@ viona_rx_set(viona_link_t *link, viona_promisc_t mode)
 	viona_vring_t *ring = &link->l_vrings[VIONA_VQ_RX];
 	int err = 0;
 
-	mutex_enter(&ring->vr_lock);
-
 	if (link->l_mph != NULL) {
 		mac_promisc_remove(link->l_mph);
 		link->l_mph = NULL;
@@ -760,7 +758,6 @@ viona_rx_set(viona_link_t *link, viona_promisc_t mode)
 		break;
 	}
 
-	mutex_exit(&ring->vr_lock);
 	return (err);
 }
 
