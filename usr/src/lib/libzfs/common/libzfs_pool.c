@@ -4100,7 +4100,7 @@ after_open:
 		if (strncmp(path, ZFS_DISK_ROOTD,
 		    sizeof (ZFS_DISK_ROOTD) - 1) == 0) {
 			memmove(path, path + sizeof (ZFS_DISK_ROOTD) - 1,
-			    strlen(path) - sizeof (ZFS_DISK_ROOTD));
+			    strlen(path) - sizeof (ZFS_DISK_ROOTD) + 2);
 		}
 
 		/*
