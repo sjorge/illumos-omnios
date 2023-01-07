@@ -24,8 +24,6 @@
  * Use is subject to license terms.
  */
 
-#pragma ident	"Copyright 2015 QLogic Corporation; ql_nx.c"
-
 /*
  * ISP2xxx Solaris Fibre Channel Adapter (FCA) driver source file.
  *

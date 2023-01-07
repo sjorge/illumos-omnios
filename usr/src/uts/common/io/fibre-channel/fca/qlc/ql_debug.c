@@ -25,8 +25,6 @@
  * Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights reserved.
  */
 
-#pragma ident	"Copyright 2015 QLogic Corporation; ql_debug.c"
-
 /*
  * Qlogic ISP22xx/ISP23xx/ISP24xx FCA driver source
  *
