@@ -27,8 +27,6 @@
  * Use is subject to license terms.
  */
 
-#pragma ident   "Copyright 2015 QLogic Corporation; ql_fw_8301fc.c"
-
 #include <sys/types.h>
 
 /*

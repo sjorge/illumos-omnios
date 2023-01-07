@@ -19,8 +19,6 @@
  * CDDL HEADER END
  */
 
-#pragma ident   "Copyright 2015 QLogic Corporation; qlc_fm.c"
-
 /*
  * ***********************************************************************
  * *                                                                    **
