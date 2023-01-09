@@ -35,8 +35,8 @@
  *
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2019 Joyent, Inc.
- * Copyright 2022 Oxide Computer Company
  * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2023 Oxide Computer Company
  */
 
 /*
@@ -247,6 +247,7 @@
 #include <sys/stat.h>
 
 #include <sys/dlpi.h>
+#include <sys/vlan.h>
 
 #include "viona_impl.h"
 
@@ -705,6 +706,7 @@ viona_ioc_create(viona_soft_state_t *ss, void *dptr, int md, cred_t *cr)
 	vmm_hold_t	*hold = NULL;
 	viona_neti_t	*nip = NULL;
 	zoneid_t	zid;
+	mac_diag_t	mac_diag = MAC_DIAG_NONE;
 
 	ASSERT(MUTEX_NOT_HELD(&ss->ss_lock));
 
@@ -758,6 +760,12 @@ viona_ioc_create(viona_soft_state_t *ss, void *dptr, int md, cred_t *cr)
 		goto bail;
 	}
 
+	err = mac_unicast_add(link->l_mch, NULL, MAC_UNICAST_PRIMARY,
+	    &link->l_muh, VLAN_ID_NONE, &mac_diag);
+	if (err != 0) {
+		goto bail;
+	}
+
 	viona_ring_alloc(link, &link->l_vrings[VIONA_VQ_RX]);
 	viona_ring_alloc(link, &link->l_vrings[VIONA_VQ_TX]);
 
@@ -788,6 +796,11 @@ viona_ioc_create(viona_soft_state_t *ss, void *dptr, int md, cred_t *cr)
 bail:
 	if (link != NULL) {
 		if (link->l_mch != NULL) {
+			if (link->l_muh != NULL) {
+				VERIFY0(mac_unicast_remove(link->l_mch,
+				    link->l_muh));
+				link->l_muh = NULL;
+			}
 			mac_client_close(link->l_mch, 0);
 		}
 		if (link->l_mh != NULL) {
@@ -852,6 +865,10 @@ viona_ioc_delete(viona_soft_state_t *ss, boolean_t on_close)
 	if (link->l_mch != NULL) {
 		/* Unhook the receive callbacks and close out the client */
 		viona_rx_clear(link);
+		if (link->l_muh != NULL) {
+			VERIFY0(mac_unicast_remove(link->l_mch, link->l_muh));
+			link->l_muh = NULL;
+		}
 		mac_client_close(link->l_mch, 0);
 	}
 	if (link->l_mh != NULL) {

@@ -35,8 +35,8 @@
  *
  * Copyright 2015 Pluribus Networks Inc.
  * Copyright 2019 Joyent, Inc.
- * Copyright 2022 Oxide Computer Company
  * Copyright 2022 OmniOS Community Edition (OmniOSce) Association.
+ * Copyright 2023 Oxide Computer Company
  */
 
 #ifndef	_VIONA_IMPL_H
@@ -160,6 +160,7 @@ struct viona_link {
 	mac_handle_t		l_mh;
 	mac_client_handle_t	l_mch;
 	mac_promisc_handle_t	l_mph;
+	mac_unicast_handle_t	l_muh;
 	viona_promisc_t		l_promisc;
 
 	pollhead_t		l_pollhead;
