@@ -8715,6 +8715,8 @@ usr/src/test/libc-tests/tests/fpround/fpround_test.i386
 usr/src/test/libc-tests/tests/i18n/bindtextdomain_test
 usr/src/test/libc-tests/tests/i18n/bindtextdomain_test.amd64
 usr/src/test/libc-tests/tests/i18n/bindtextdomain_test.i386
+usr/src/test/libc-tests/tests/isatty.32
+usr/src/test/libc-tests/tests/isatty.64
 usr/src/test/libc-tests/tests/memchr.32
 usr/src/test/libc-tests/tests/memchr.64
 usr/src/test/libc-tests/tests/memset_s.32
@@ -8727,6 +8729,8 @@ usr/src/test/libc-tests/tests/nl_langinfo/nl_langinfo_test.amd64
 usr/src/test/libc-tests/tests/nl_langinfo/nl_langinfo_test.i386
 usr/src/test/libc-tests/tests/posix_memalign.32
 usr/src/test/libc-tests/tests/posix_memalign.64
+usr/src/test/libc-tests/tests/printf-15294.32
+usr/src/test/libc-tests/tests/printf-15294.64
 usr/src/test/libc-tests/tests/printf-6961.64
 usr/src/test/libc-tests/tests/printf-9511.32
 usr/src/test/libc-tests/tests/printf-9511.64
