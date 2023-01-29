@@ -8,6 +8,7 @@ cscope.in.out
 cscope.po.out
 .make.state*
 .reviewboardrc
+/.vscode
 /log
 /packages
 /proto
