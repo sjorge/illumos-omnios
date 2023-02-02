@@ -22,6 +22,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2015, Joyent Inc.
+ * Copyright 2023 Oxide Computer Company
  */
 
 #include <assert.h>
@@ -552,8 +553,20 @@ dlmgmt_db_update(dlmgmt_db_op_t op, const char *entryname, dlmgmt_link_t *linkp,
 	assert((flags == DLMGMT_PERSIST) || (flags == DLMGMT_ACTIVE));
 
 	if ((req = dlmgmt_db_req_alloc(op, entryname, linkp->ll_linkid,
-	    linkp->ll_zoneid, flags, &err)) == NULL)
+	    linkp->ll_zoneid, flags, &err)) == NULL) {
 		return (err);
+	}
+
+	/*
+	 * If this is a transient link, then use the global zone cache file.
+	 * This is in order to allow recovery from a dlmgmtd failure that
+	 * leaves a zone in a 'down' state. In that state it is not possible
+	 * to read the zone's cache file (since it is always done from a sub
+	 * process running in the zone's context). As a result, datalinks would
+	 * otherwise remain stuck in the zone.
+	 */
+	if (flags == DLMGMT_ACTIVE && linkp->ll_transient)
+		req->ls_zoneid = GLOBAL_ZONEID;
 
 	/*
 	 * If the return error is EINPROGRESS, this request is handled
@@ -726,6 +739,7 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 		char		c = buf[i];
 		boolean_t	match = (c == '=' ||
 		    (c == ',' && !found_type) || c == ';');
+		boolean_t	rename = B_FALSE;
 
 		rename = B_FALSE;
 		/*
@@ -788,6 +802,10 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 					linkp->ll_zoneid = 0;
 					rename = B_TRUE;
 				}
+			} else if (strcmp(attr_name, "transient") == 0) {
+				if (read_boolean(curr, &attr_buf) == 0)
+					goto parse_fail;
+				linkp->ll_transient = *(boolean_t *)attr_buf;
 			} else {
 				attr_buf_len = translators[type].read_func(curr,
 				    &attr_buf);
@@ -837,10 +855,11 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 		 * reparenting it to the GZ and renaming it to avoid name
 		 * collisions.
 		 */
-		if (rename == B_TRUE) {
+		if (rename) {
 			(void) snprintf(linkp->ll_link, MAXLINKNAMELEN,
 			    "SUNWorphan%u", (uint16_t)(gethrtime() / 1000));
 		}
+
 		curr = buf + i + 1;
 	}
 
@@ -1154,7 +1173,8 @@ process_db_read(dlmgmt_db_req_t *req, FILE *fp)
 			continue;
 		}
 
-		link_in_file.ll_zoneid = req->ls_zoneid;
+		assert(req->ls_zoneid == 0 ||
+		    link_in_file.ll_zoneid == req->ls_zoneid);
 		link_in_db = link_by_name(link_in_file.ll_link,
 		    link_in_file.ll_zoneid);
 		if (link_in_db != NULL) {
@@ -1253,6 +1273,7 @@ generate_link_line(dlmgmt_link_t *linkp, boolean_t persist, char *buf)
 	ptr += snprintf(ptr, BUFLEN(lim, ptr), "%s\t", linkp->ll_link);
 	if (!persist) {
 		char zname[ZONENAME_MAX];
+
 		/*
 		 * We store the linkid and the zone name in the active database
 		 * so that dlmgmtd can recover in the event that it is
@@ -1270,6 +1291,11 @@ generate_link_line(dlmgmt_link_t *linkp, boolean_t persist, char *buf)
 	ptr += write_uint64(ptr, BUFLEN(lim, ptr), "class", &u64);
 	u64 = linkp->ll_media;
 	ptr += write_uint64(ptr, BUFLEN(lim, ptr), "media", &u64);
+
+	if (!persist && linkp->ll_transient) {
+		boolean_t b = B_TRUE;
+		ptr += write_boolean(ptr, BUFLEN(lim, ptr), "transient", &b);
+	}
 
 	/*
 	 * The daemon does not keep any active link attribute. Only store the
@@ -1495,10 +1521,12 @@ dlmgmt_db_init(zoneid_t zoneid, char *zoneroot)
 		boot = B_TRUE;
 	}
 
-	req->ls_flags = DLMGMT_PERSIST;
-	err = dlmgmt_process_db_req(req);
-	if (err != 0 && err != ENOENT)
-		goto done;
+	if (zone_file_exists(zoneroot, DLMGMT_PERSISTENT_DB_PATH)) {
+		req->ls_flags = DLMGMT_PERSIST;
+		err = dlmgmt_process_db_req(req);
+		if (err != 0 && err != ENOENT)
+			goto done;
+	}
 	err = 0;
 	if (rewrite_needed) {
 		/*

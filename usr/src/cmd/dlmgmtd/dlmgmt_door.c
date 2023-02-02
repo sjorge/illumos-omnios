@@ -23,6 +23,7 @@
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
  * Copyright 2019 Joyent, Inc.
+ * Copyright 2023 Oxide Computer Company
  */
 
 /*
@@ -435,6 +436,7 @@ dlmgmt_getname(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 		retvalp->lr_flags = linkp->ll_flags;
 		retvalp->lr_class = linkp->ll_class;
 		retvalp->lr_media = linkp->ll_media;
+		retvalp->lr_flags |= linkp->ll_transient ? DLMGMT_TRANSIENT : 0;
 	}
 
 	dlmgmt_table_unlock();
@@ -468,6 +470,7 @@ dlmgmt_getlinkid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 	retvalp->lr_flags = linkp->ll_flags;
 	retvalp->lr_class = linkp->ll_class;
 	retvalp->lr_media = linkp->ll_media;
+	retvalp->lr_flags |= linkp->ll_transient ? DLMGMT_TRANSIENT : 0;
 
 done:
 	dlmgmt_table_unlock();
@@ -511,6 +514,7 @@ dlmgmt_getnext(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 		retvalp->lr_class = linkp->ll_class;
 		retvalp->lr_media = linkp->ll_media;
 		retvalp->lr_flags = linkp->ll_flags;
+		retvalp->lr_flags |= linkp->ll_transient ? DLMGMT_TRANSIENT : 0;
 	}
 
 	dlmgmt_table_unlock();
@@ -939,7 +943,7 @@ static void
 dlmgmt_removeconf(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
     ucred_t *cred)
 {
-	dlmgmt_door_removeconf_t 	*removeconf = argp;
+	dlmgmt_door_removeconf_t	*removeconf = argp;
 	dlmgmt_removeconf_retval_t	*retvalp = retp;
 	dlmgmt_link_t			*linkp;
 	int				err;
@@ -1016,7 +1020,7 @@ dlmgmt_openconf(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 {
 	dlmgmt_door_openconf_t	*openconf = argp;
 	dlmgmt_openconf_retval_t *retvalp = retp;
-	dlmgmt_link_t 		*linkp;
+	dlmgmt_link_t		*linkp;
 	datalink_id_t		linkid = openconf->ld_linkid;
 	dlmgmt_dlconf_t		*dlconfp;
 	dlmgmt_linkattr_t	*attrp;
@@ -1085,7 +1089,7 @@ dlmgmt_getconfsnapshot(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 {
 	dlmgmt_door_getconfsnapshot_t	*snapshot = argp;
 	dlmgmt_getconfsnapshot_retval_t	*retvalp = retp;
-	dlmgmt_link_t 			*linkp;
+	dlmgmt_link_t			*linkp;
 	datalink_id_t			linkid = snapshot->ld_linkid;
 	dlmgmt_linkattr_t		*attrp;
 	char				*buf;
@@ -1283,8 +1287,10 @@ dlmgmt_setzoneid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 			    "zone %d: %s", linkid, oldzoneid, strerror(err));
 			goto done;
 		}
-		avl_remove(&dlmgmt_loan_avl, linkp);
-		linkp->ll_onloan = B_FALSE;
+		if (linkp->ll_onloan) {
+			avl_remove(&dlmgmt_loan_avl, linkp);
+			linkp->ll_onloan = B_FALSE;
+		}
 	}
 
 	if (newzoneid != GLOBAL_ZONEID) {
@@ -1295,8 +1301,10 @@ dlmgmt_setzoneid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 			(void) zone_add_datalink(oldzoneid, linkid);
 			goto done;
 		}
-		avl_add(&dlmgmt_loan_avl, linkp);
-		linkp->ll_onloan = B_TRUE;
+		if (!linkp->ll_transient) {
+			avl_add(&dlmgmt_loan_avl, linkp);
+			linkp->ll_onloan = B_TRUE;
+		}
 	}
 
 	avl_remove(&dlmgmt_name_avl, linkp);
