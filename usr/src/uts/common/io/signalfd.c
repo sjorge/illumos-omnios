@@ -590,6 +590,9 @@ signalfd_consume_signal(k_sigset_t set, uio_t *uio, bool should_block)
 	if (lwp->lwp_curinfo != NULL) {
 		k_siginfo_t *infop = &lwp->lwp_curinfo->sq_info;
 
+		if (PROC_IS_BRANDED(p) && BROP(p)->b_sigfd_translate)
+			BROP(p)->b_sigfd_translate(infop);
+
 		ssi.ssi_signo	= infop->si_signo;
 		ssi.ssi_errno	= infop->si_errno;
 		ssi.ssi_code	= infop->si_code;
@@ -620,9 +623,6 @@ signalfd_consume_signal(k_sigset_t set, uio_t *uio, bool should_block)
 	lwp->lwp_ru.nsignals++;
 	lwp->lwp_cursig = 0;
 	lwp->lwp_extsig = 0;
-
-	if (PROC_IS_BRANDED(p) && BROP(p)->b_sigfd_translate)
-		BROP(p)->b_sigfd_translate(infop);
 
 	if (lwp->lwp_curinfo != NULL) {
 		siginfofree(lwp->lwp_curinfo);
