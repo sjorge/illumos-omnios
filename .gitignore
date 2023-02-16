@@ -8704,6 +8704,8 @@ usr/src/test/libc-tests/tests/c11_tss.64
 usr/src/test/libc-tests/tests/call_once.32
 usr/src/test/libc-tests/tests/call_once.64
 usr/src/test/libc-tests/tests/catopen/catopen
+usr/src/test/libc-tests/tests/closefrom.32
+usr/src/test/libc-tests/tests/closefrom.64
 usr/src/test/libc-tests/tests/endian.32
 usr/src/test/libc-tests/tests/endian.64
 usr/src/test/libc-tests/tests/env-7076.32
@@ -8874,6 +8876,9 @@ usr/src/test/os-tests/tests/secflags/secflags_syscall
 usr/src/test/os-tests/tests/secflags/secflags_truss
 usr/src/test/os-tests/tests/secflags/secflags_zonecfg
 usr/src/test/os-tests/tests/secflags/stacky
+usr/src/test/os-tests/tests/signalfd/basic_args
+usr/src/test/os-tests/tests/signalfd/basic_read
+usr/src/test/os-tests/tests/signalfd/multipoll
 usr/src/test/os-tests/tests/sigqueue/sigqueue_queue_size
 usr/src/test/os-tests/tests/sockfs/conn
 usr/src/test/os-tests/tests/sockfs/dgram
@@ -9058,7 +9063,6 @@ usr/src/tools/protolist/protolist
 usr/src/tools/rpcgen/rpcgen
 usr/src/tools/scripts/Install
 usr/src/tools/scripts/bldenv.1onbld
-usr/src/tools/scripts/bringovercheck
 usr/src/tools/scripts/build_cscope
 usr/src/tools/scripts/cddlchk
 usr/src/tools/scripts/check_rtime
@@ -9077,7 +9081,6 @@ usr/src/tools/scripts/mapfilechk
 usr/src/tools/scripts/onu
 usr/src/tools/scripts/onu.sh
 usr/src/tools/scripts/protocmp.terse
-usr/src/tools/scripts/sccscheck
 usr/src/tools/scripts/validate_flg
 usr/src/tools/scripts/validate_paths
 usr/src/tools/scripts/validate_pkg
