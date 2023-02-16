@@ -24,6 +24,8 @@
  * Copyright 2019 Joyent, Inc.
  * Copyright 2021 OmniOS Community Edition (OmniOSce) Association.
  * Copyright 2022 Garrett D'Amore <garrett@damore.org>
+ * Copyright 2023 Oxide Computer Company
+ * Copyright 2023 MNX Cloud, Inc.
  */
 
 #include <sys/asm_linkage.h>
@@ -450,6 +452,7 @@ fcnname/**/_info:							\
 	STUB(nfssrv,		nfs_getfh,	nomod_minus_one);
 	STUB(nfssrv,		nfsl_flush,	nomod_minus_one);
 	STUB(nfssrv,		rfs4_check_delegated, nomod_zero);
+	STUB(nfssrv,		rfs4_clear_client_state, nomod_zero);
 	STUB(nfssrv,		mountd_args,	nomod_minus_one);
 	NO_UNLOAD_STUB(nfssrv,	rdma_start,	nomod_zero);
 	NO_UNLOAD_STUB(nfssrv,	nfs_svc,	nomod_zero);
@@ -1117,6 +1120,7 @@ fcnname/**/_info:							\
 	STUB(dld, dld_fini_ops, nomod_void);
 	STUB(dld, dld_devt_to_instance, nomod_minus_one);
 	STUB(dld, dld_autopush, nomod_minus_one);
+	STUB(dld, dld_getinfo, nomod_minus_one);
 	STUB(dld, dld_ioc_register, nomod_einval);
 	STUB(dld, dld_ioc_unregister, nomod_void);
 	END_MODULE(dld);
