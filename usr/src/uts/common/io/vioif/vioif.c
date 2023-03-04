@@ -89,8 +89,7 @@
  * driver, the following tuneable causes us to pretend that the request always
  * succeeds if the underlying virtual device does not have support.
  */
-int fake_promisc_success = 0;
-
+int vioif_fake_promisc_success = 1;
 
 static int vioif_quiesce(dev_info_t *);
 static int vioif_attach(dev_info_t *, ddi_attach_cmd_t);
@@ -773,7 +772,7 @@ vioif_m_setpromisc(void *arg, boolean_t on)
 	uint8_t val = on ? 1 : 0;
 
 	if (!vif->vif_has_ctrlq_rx) {
-		if (fake_promisc_success)
+		if (vioif_fake_promisc_success)
 			return (0);
 
 		return (ENOTSUP);

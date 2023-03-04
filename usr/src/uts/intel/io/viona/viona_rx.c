@@ -749,8 +749,9 @@ viona_rx_set(viona_link_t *link, viona_promisc_t mode)
 		 * generic classified callback so that packets continue to
 		 * flow to the guest.
 		 */
-		if (err != 0)
+		if (err != 0) {
 			mac_rx_set(link->l_mch, viona_rx_classified, ring);
+		}
 		break;
 	case VIONA_PROMISC_NONE:
 	default:
