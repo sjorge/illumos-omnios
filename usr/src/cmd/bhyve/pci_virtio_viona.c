@@ -225,8 +225,6 @@ pci_viona_ring_reset(struct pci_viona_softc *sc, int ring)
 			return;
 		}
 	}
-
-	sc->vsc_queues[ring].vq_pfn = 0;
 }
 
 static void
@@ -255,9 +253,8 @@ pci_viona_promisc_descr(viona_promisc_t mode)
 	case VIONA_PROMISC_ALL:
 		return ("all");
 	default:
-		break;
+		abort();
 	}
-	return ("???");
 }
 
 static int
@@ -269,8 +266,7 @@ pci_viona_eval_promisc(struct pci_viona_softc *sc)
 	/*
 	 * If the guest has explicitly requested promiscuous mode or has sent a
 	 * non-empty unicast MAC address table, then set viona to promiscuous
-	 * mode.
-	 * Otherwise, if the guest has explicitly requested multicast
+	 * mode. Otherwise, if the guest has explicitly requested multicast
 	 * promiscuity or has sent a non-empty multicast MAC address table,
 	 * then set viona to multicast promiscuous mode.
 	 */
@@ -974,7 +970,7 @@ pci_viona_baraddr(struct vmctx *ctx, struct pci_devinst *pi, int baridx,
 }
 
 static void
-pci_viona_write(struct vmctx *ctx, int vcpu, struct pci_devinst *pi,
+pci_viona_write(struct vmctx *ctx __unused, struct pci_devinst *pi,
     int baridx, uint64_t offset, int size, uint64_t value)
 {
 	struct pci_viona_softc *sc = pi->pi_arg;
@@ -1078,7 +1074,7 @@ pci_viona_write(struct vmctx *ctx, int vcpu, struct pci_devinst *pi,
 }
 
 static uint64_t
-pci_viona_read(struct vmctx *ctx, int vcpu, struct pci_devinst *pi,
+pci_viona_read(struct vmctx *ctx __unused, struct pci_devinst *pi,
     int baridx, uint64_t offset, int size)
 {
 	struct pci_viona_softc *sc = pi->pi_arg;

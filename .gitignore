@@ -1332,6 +1332,7 @@ usr/src/cmd/mdb/intel/amd64/idm/kmod/
 usr/src/cmd/mdb/intel/amd64/ip/kmod/
 usr/src/cmd/mdb/intel/amd64/ipc/kmod/
 usr/src/cmd/mdb/intel/amd64/ipp/kmod/
+usr/src/cmd/mdb/intel/amd64/klmmod/kmod/
 usr/src/cmd/mdb/intel/amd64/kmdb/kmdb_context_off.h
 usr/src/cmd/mdb/intel/amd64/kmdb/kmdb_modlinktest.c
 usr/src/cmd/mdb/intel/amd64/kmdb/kmdb_terminfo.c
@@ -1358,6 +1359,7 @@ usr/src/cmd/mdb/intel/amd64/mm/kmod/
 usr/src/cmd/mdb/intel/amd64/mpt_sas/kmod/
 usr/src/cmd/mdb/intel/amd64/mr_sas/kmod/
 usr/src/cmd/mdb/intel/amd64/neti/kmod/
+usr/src/cmd/mdb/intel/amd64/nfs/kmod/
 usr/src/cmd/mdb/intel/amd64/nsmb/kmod/
 usr/src/cmd/mdb/intel/amd64/pmcs/kmod/
 usr/src/cmd/mdb/intel/amd64/ptm/kmod/
@@ -8138,6 +8140,7 @@ usr/src/man/man9f/ddi_taskq_destroy.9f
 usr/src/man/man9f/ddi_taskq_dispatch.9f
 usr/src/man/man9f/ddi_taskq_resume.9f
 usr/src/man/man9f/ddi_taskq_suspend.9f
+usr/src/man/man9f/ddi_taskq_suspended.9f
 usr/src/man/man9f/ddi_taskq_wait.9f
 usr/src/man/man9f/ddi_trigger_softintr.9f
 usr/src/man/man9f/ddi_ufm_fini.9f
@@ -8164,9 +8167,7 @@ usr/src/man/man9f/dlphysaddrack.9f
 usr/src/man/man9f/dluderrorind.9f
 usr/src/man/man9f/esballoca.9f
 usr/src/man/man9f/firmware_close.9f
-usr/src/man/man9f/firmware_free.9f
 usr/src/man/man9f/firmware_get_size.9f
-usr/src/man/man9f/firmware_malloc.9f
 usr/src/man/man9f/firmware_open.9f
 usr/src/man/man9f/firmware_read.9f
 usr/src/man/man9f/free_pktiopb.9f
@@ -8473,7 +8474,6 @@ usr/src/man/man9f/strncpy.9f
 usr/src/man/man9f/strnlen.9f
 usr/src/man/man9f/strrchr.9f
 usr/src/man/man9f/strspn.9f
-usr/src/man/man9f/taskq_suspended.9f
 usr/src/man/man9f/uconv_u16tou8.9f
 usr/src/man/man9f/uconv_u32tou16.9f
 usr/src/man/man9f/uconv_u32tou8.9f

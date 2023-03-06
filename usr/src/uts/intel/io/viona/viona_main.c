@@ -1106,14 +1106,17 @@ viona_ioc_set_promisc(viona_link_t *link, viona_promisc_t mode)
 {
 	int err;
 
-	if (mode >= VIONA_PROMISC_MAX)
+	if (mode >= VIONA_PROMISC_MAX) {
 		return (EINVAL);
+	}
 
-	if (mode == link->l_promisc)
+	if (mode == link->l_promisc) {
 		return (0);
+	}
 
-	if ((err = viona_rx_set(link, mode)) != 0)
+	if ((err = viona_rx_set(link, mode)) != 0) {
 		return (err);
+	}
 
 	link->l_promisc = mode;
 	return (0);
