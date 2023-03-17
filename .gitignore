@@ -111,7 +111,7 @@ usr/src/boot/libsa/amd64/libstand_bzlib_private.h
 usr/src/boot/libsa/amd64/libstand_gzguts.h
 usr/src/boot/libsa/amd64/libstand_zutil.h
 usr/src/boot/libsa/amd64/machine
-usr/src/boot/libsa/amd64/sha1-x86_64.s
+usr/src/boot/libsa/amd64/sha1-x86_64.S
 usr/src/boot/libsa/amd64/x86
 usr/src/boot/libsa/i386/_bzlib.c
 usr/src/boot/libsa/i386/_crctable.c
@@ -3036,7 +3036,7 @@ usr/src/lib/libc/amd64/genassym
 usr/src/lib/libc/extract-copyright
 usr/src/lib/libc/i386/assym.h
 usr/src/lib/libc/i386/cp_offsets.h
-usr/src/lib/libc/i386/crt/_rtbootld.s
+usr/src/lib/libc/i386/crt/_rtbootld.S
 usr/src/lib/libc/i386/etc/caplib
 usr/src/lib/libc/i386/genassym
 usr/src/lib/libc/i386_hwcap1/assym.h
@@ -3115,11 +3115,11 @@ usr/src/lib/libldap5/amd64/libldap.so.5
 usr/src/lib/libldap5/i386/libldap.so.5
 usr/src/lib/libm/amd64/libm.so.2
 usr/src/lib/libm/i386/libm.so.2
-usr/src/lib/libmd/amd64/md5_amd64.s
+usr/src/lib/libmd/amd64/md5_amd64.S
 usr/src/lib/libmd/amd64/pics/
-usr/src/lib/libmd/amd64/sha1-x86_64.s
-usr/src/lib/libmd/amd64/sha256-x86_64.s
-usr/src/lib/libmd/amd64/sha512-x86_64.s
+usr/src/lib/libmd/amd64/sha1-x86_64.S
+usr/src/lib/libmd/amd64/sha256-x86_64.S
+usr/src/lib/libmd/amd64/sha512-x86_64.S
 usr/src/lib/libmlrpc/amd64/libmlrpc.so.2
 usr/src/lib/libmlrpc/amd64/rpcpdu_ndr.c
 usr/src/lib/libmlrpc/i386/libmlrpc.so.2
@@ -3279,7 +3279,7 @@ usr/src/lib/libxcurses2/src/libc/xcurses/strname.c
 usr/src/lib/libzpool/common/zfs.h
 usr/src/lib/nametoaddr/straddr/amd64/straddr.so.2
 usr/src/lib/nametoaddr/straddr/i386/straddr.so.2
-usr/src/lib/pkcs11/libsoftcrypto/amd64/arcfour-x86_64.s
+usr/src/lib/pkcs11/libsoftcrypto/amd64/arcfour-x86_64.S
 usr/src/lib/policykit/libpolkit/i386/libpolkit.so.0.0.0
 usr/src/lib/policykit/libpolkit/i386/polkit.pc
 usr/src/lib/print/libipp-core/i386/libipp-core.so.0
@@ -9016,7 +9016,6 @@ usr/src/test/zfs-tests/tests/functional/exec/mmap_exec
 usr/src/test/zfs-tests/tests/functional/libzfs/many_fds
 usr/src/test/zfs-tests/tests/functional/resilver/sysevent
 usr/src/test/zfs-tests/tests/functional/threadsappend/threadsappend
-usr/src/tools/aw/aw
 usr/src/tools/btxld/btxld
 usr/src/tools/codesign/findcrypto
 usr/src/tools/codesign/signit
@@ -9240,7 +9239,7 @@ usr/src/uts/i86pc/io/acpi/drmach_acpi/drmach_err.c
 usr/src/uts/i86pc/io/acpi/drmach_acpi/sbdgenerr
 usr/src/uts/i86pc/io/dr/dr_err.c
 usr/src/uts/i86pc/io/dr/sbdgenerr
-usr/src/uts/intel/arcfour/arcfour-x86_64.s
+usr/src/uts/intel/arcfour/arcfour-x86_64.S
 usr/src/uts/intel/core_pcbe/core_pcbe_bdw.c
 usr/src/uts/intel/core_pcbe/core_pcbe_bdw_de.c
 usr/src/uts/intel/core_pcbe/core_pcbe_bdx.c
@@ -9267,7 +9266,7 @@ usr/src/uts/intel/core_pcbe/core_pcbe_tgl.c
 usr/src/uts/intel/core_pcbe/core_pcbe_wsm_ep_dp.c
 usr/src/uts/intel/core_pcbe/core_pcbe_wsm_ep_sp.c
 usr/src/uts/intel/core_pcbe/core_pcbe_wsm_ex.c
-usr/src/uts/intel/md5/md5_amd64.s
+usr/src/uts/intel/md5/md5_amd64.S
 usr/src/uts/intel/mwlfw/mw88W8363fw
 usr/src/uts/intel/mwlfw/mwlboot
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_cpcgen.h
@@ -9275,7 +9274,7 @@ usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f17h_zen1.c
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f17h_zen2.c
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f19h_zen3.c
 usr/src/uts/intel/os/priv_names
-usr/src/uts/intel/sha1/sha1-x86_64.s
-usr/src/uts/intel/sha2/sha256-x86_64.s
-usr/src/uts/intel/sha2/sha512-x86_64.s
+usr/src/uts/intel/sha1/sha1-x86_64.S
+usr/src/uts/intel/sha2/sha256-x86_64.S
+usr/src/uts/intel/sha2/sha512-x86_64.S
 usr/src/uts/intel/uathfw/uathbin
