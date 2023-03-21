@@ -24,6 +24,7 @@
 # Copyright 2013 Nexenta Systems, Inc. All rights reserved.
 # Copyright 2022 Garrett D'Amore <garrett@damore.org>
 # Copyright 2017 Citrus IT Limited. All rights reserved.
+# Copyright 2023 OmniOS Community Edition (OmniOSce) Association.
 #
 
 #
@@ -40,7 +41,9 @@ set name=variant.arch value=$(ARCH)
 dir  path=kernel group=sys
 dir  path=kernel/drv group=sys
 dir  path=kernel/drv/$(ARCH64) group=sys
-file path=kernel/drv/$(ARCH64)/mr_sas group=sys
+# Allow replacement of the mr_sas binary with a closed source version
+# downloaded from LSI/Avago/Broadcom
+file path=kernel/drv/$(ARCH64)/mr_sas group=sys overlay=allow preserve=true
 file path=kernel/drv/mr_sas.conf group=sys
 dir  path=usr/share/man
 dir  path=usr/share/man/man4d
