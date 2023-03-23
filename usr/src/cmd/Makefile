@@ -167,7 +167,6 @@ COMMON_SUBDIRS=		\
 	fdetach		\
 	fdformat	\
 	fdisk		\
-	ficl		\
 	filesync	\
 	file		\
 	find		\
@@ -495,6 +494,7 @@ i386_SUBDIRS=		\
 	cxgbetool	\
 	diskscan	\
 	hyperv		\
+	ficl		\
 	nvmeadm		\
 	pptadm		\
 	rdmsr		\
