@@ -3323,6 +3323,7 @@ usr/src/man/man1/case.1
 usr/src/man/man1/chdir.1
 usr/src/man/man1/checkeq.1
 usr/src/man/man1/continue.1
+usr/src/man/man1/csh.1
 usr/src/man/man1/ctags.1
 usr/src/man/man1/decrypt.1
 usr/src/man/man1/dirname.1
