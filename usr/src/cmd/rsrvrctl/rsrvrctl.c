@@ -9,6 +9,7 @@
  * http://www.illumos.org/license/CDDL.
  *
  * Copyright 2023 Oxide Computer Company
+ * Copyright 2023 OmniOS Community Edition (OmniOSce) Association.
  */
 
 #include <stdio.h>
@@ -20,10 +21,24 @@
 #include <assert.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <limits.h>
 
 #include <sys/vmm_dev.h>
 
 const char *prog_name;
+#define	LOCK_FILE	"/var/run/rsrvrctl.lock"
+
+static void
+get_lock(void)
+{
+	int fd;
+
+	fd = open(LOCK_FILE, O_CREAT | O_WRONLY, 0600);
+	if (fd == -1)
+		err(EXIT_FAILURE, "Could not open lock file '%s'", LOCK_FILE);
+	if (lockf(fd, F_LOCK, 0) != 0)
+		err(EXIT_FAILURE, "Could not acquire lock");
+}
 
 static void
 usage(int exitcode)
@@ -220,6 +235,8 @@ main(int argc, char *argv[])
 	    (resize_opts == 0 && !opt_q) || (resize_opts > 1)) {
 		usage(EXIT_FAILURE);
 	}
+
+	get_lock();
 
 	fd = open(VMM_CTL_DEV, O_EXCL | O_RDWR);
 	if (fd < 0) {
