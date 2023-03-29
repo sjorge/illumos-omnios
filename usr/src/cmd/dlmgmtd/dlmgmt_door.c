@@ -23,6 +23,7 @@
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2019 OmniOS Community Edition (OmniOSce) Association.
  * Copyright 2019 Joyent, Inc.
+ * Copyright 2023 Oxide Computer Company
  */
 
 /*
@@ -60,12 +61,8 @@
 #include <libsysevent.h>
 #include <libdlmgmt.h>
 #include <librcm.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include "dlmgmt_impl.h"
-
 
 typedef void dlmgmt_door_handler_t(void *, void *, size_t *, zoneid_t,
     ucred_t *);
@@ -386,11 +383,6 @@ dlmgmt_upcall_destroy(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 	if ((err = dlmgmt_checkprivs(linkp->ll_class, cred)) != 0)
 		goto done;
 
-	if (linkp->ll_tomb == B_TRUE) {
-		err = EINPROGRESS;
-		goto done;
-	}
-
 	if (((linkp->ll_flags & flags) & DLMGMT_ACTIVE) != 0) {
 		if ((err = dlmgmt_delete_db_entry(linkp, DLMGMT_ACTIVE)) != 0)
 			goto done;
@@ -435,6 +427,7 @@ dlmgmt_getname(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 		retvalp->lr_flags = linkp->ll_flags;
 		retvalp->lr_class = linkp->ll_class;
 		retvalp->lr_media = linkp->ll_media;
+		retvalp->lr_flags |= linkp->ll_transient ? DLMGMT_TRANSIENT : 0;
 	}
 
 	dlmgmt_table_unlock();
@@ -468,6 +461,7 @@ dlmgmt_getlinkid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 	retvalp->lr_flags = linkp->ll_flags;
 	retvalp->lr_class = linkp->ll_class;
 	retvalp->lr_media = linkp->ll_media;
+	retvalp->lr_flags |= linkp->ll_transient ? DLMGMT_TRANSIENT : 0;
 
 done:
 	dlmgmt_table_unlock();
@@ -511,6 +505,7 @@ dlmgmt_getnext(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 		retvalp->lr_class = linkp->ll_class;
 		retvalp->lr_media = linkp->ll_media;
 		retvalp->lr_flags = linkp->ll_flags;
+		retvalp->lr_flags |= linkp->ll_transient ? DLMGMT_TRANSIENT : 0;
 	}
 
 	dlmgmt_table_unlock();
@@ -660,12 +655,6 @@ dlmgmt_remapid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 	if ((err = dlmgmt_checkprivs(linkp->ll_class, cred)) != 0)
 		goto done;
 
-	if (linkp->ll_tomb == B_TRUE) {
-		err = EBUSY;
-		goto done;
-	}
-
-
 	if (link_by_name(remapid->ld_link, linkp->ll_zoneid) != NULL) {
 		err = EEXIST;
 		goto done;
@@ -726,11 +715,6 @@ dlmgmt_upid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 
 	if ((err = dlmgmt_checkprivs(linkp->ll_class, cred)) != 0)
 		goto done;
-
-	if (linkp->ll_tomb == B_TRUE) {
-		err = EBUSY;
-		goto done;
-	}
 
 	if (linkp->ll_flags & DLMGMT_ACTIVE) {
 		err = EINVAL;
@@ -939,7 +923,7 @@ static void
 dlmgmt_removeconf(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
     ucred_t *cred)
 {
-	dlmgmt_door_removeconf_t 	*removeconf = argp;
+	dlmgmt_door_removeconf_t	*removeconf = argp;
 	dlmgmt_removeconf_retval_t	*retvalp = retp;
 	dlmgmt_link_t			*linkp;
 	int				err;
@@ -1016,7 +1000,7 @@ dlmgmt_openconf(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 {
 	dlmgmt_door_openconf_t	*openconf = argp;
 	dlmgmt_openconf_retval_t *retvalp = retp;
-	dlmgmt_link_t 		*linkp;
+	dlmgmt_link_t		*linkp;
 	datalink_id_t		linkid = openconf->ld_linkid;
 	dlmgmt_dlconf_t		*dlconfp;
 	dlmgmt_linkattr_t	*attrp;
@@ -1085,7 +1069,7 @@ dlmgmt_getconfsnapshot(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 {
 	dlmgmt_door_getconfsnapshot_t	*snapshot = argp;
 	dlmgmt_getconfsnapshot_retval_t	*retvalp = retp;
-	dlmgmt_link_t 			*linkp;
+	dlmgmt_link_t			*linkp;
 	datalink_id_t			linkid = snapshot->ld_linkid;
 	dlmgmt_linkattr_t		*attrp;
 	char				*buf;
@@ -1239,11 +1223,6 @@ dlmgmt_setzoneid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 	if ((err = dlmgmt_checkprivs(linkp->ll_class, cred)) != 0)
 		goto done;
 
-	if (linkp->ll_tomb == B_TRUE) {
-		err = EBUSY;
-		goto done;
-	}
-
 	/* We can only assign an active link to a zone. */
 	if (!(linkp->ll_flags & DLMGMT_ACTIVE)) {
 		err = EINVAL;
@@ -1283,8 +1262,10 @@ dlmgmt_setzoneid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 			    "zone %d: %s", linkid, oldzoneid, strerror(err));
 			goto done;
 		}
-		avl_remove(&dlmgmt_loan_avl, linkp);
-		linkp->ll_onloan = B_FALSE;
+		if (linkp->ll_onloan) {
+			avl_remove(&dlmgmt_loan_avl, linkp);
+			linkp->ll_onloan = B_FALSE;
+		}
 	}
 
 	if (newzoneid != GLOBAL_ZONEID) {
@@ -1295,8 +1276,10 @@ dlmgmt_setzoneid(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 			(void) zone_add_datalink(oldzoneid, linkid);
 			goto done;
 		}
-		avl_add(&dlmgmt_loan_avl, linkp);
-		linkp->ll_onloan = B_TRUE;
+		if (!linkp->ll_transient) {
+			avl_add(&dlmgmt_loan_avl, linkp);
+			linkp->ll_onloan = B_TRUE;
+		}
 	}
 
 	avl_remove(&dlmgmt_name_avl, linkp);
@@ -1348,10 +1331,6 @@ dlmgmt_zonehalt(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 	int			err = 0;
 	dlmgmt_door_zonehalt_t	*zonehalt = argp;
 	dlmgmt_zonehalt_retval_t *retvalp = retp;
-	static char my_pid[10];
-
-	if (my_pid[0] == '\0')
-		(void) snprintf(my_pid, sizeof (my_pid), "%d\n", getpid());
 
 	if ((err = dlmgmt_checkprivs(0, cred)) == 0) {
 		if (zoneid != GLOBAL_ZONEID) {
@@ -1359,26 +1338,9 @@ dlmgmt_zonehalt(void *argp, void *retp, size_t *sz, zoneid_t zoneid,
 		} else if (zonehalt->ld_zoneid == GLOBAL_ZONEID) {
 			err = EINVAL;
 		} else {
-			/*
-			 * dls and mac don't honor the locking rules defined in
-			 * mac. In order to try and make that case less likely
-			 * to happen, we try to serialize some of the zone
-			 * activity here between dlmgmtd and the brands on
-			 * /etc/dladm/zone.lck
-			 */
-			int fd;
-
-			while ((fd = open(ZONE_LOCK, O_WRONLY |
-			    O_CREAT | O_EXCL, S_IRUSR | S_IWUSR)) < 0)
-				(void) sleep(1);
-			(void) write(fd, my_pid, sizeof (my_pid));
-			(void) close(fd);
-
 			dlmgmt_table_lock(B_TRUE);
 			dlmgmt_db_fini(zonehalt->ld_zoneid);
 			dlmgmt_table_unlock();
-
-			(void) unlink(ZONE_LOCK);
 		}
 	}
 	retvalp->lr_err = err;

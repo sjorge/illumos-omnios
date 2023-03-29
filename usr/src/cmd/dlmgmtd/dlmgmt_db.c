@@ -21,7 +21,8 @@
 
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2015, Joyent Inc.
+ * Copyright 2016 Joyent, Inc.
+ * Copyright 2023 Oxide Computer Company
  */
 
 #include <assert.h>
@@ -44,7 +45,6 @@
 #include <libcontract.h>
 #include <libcontract_priv.h>
 #include <sys/contract/process.h>
-#include <sys/vnic.h>
 #include <zone.h>
 #include "dlmgmt_impl.h"
 
@@ -552,8 +552,20 @@ dlmgmt_db_update(dlmgmt_db_op_t op, const char *entryname, dlmgmt_link_t *linkp,
 	assert((flags == DLMGMT_PERSIST) || (flags == DLMGMT_ACTIVE));
 
 	if ((req = dlmgmt_db_req_alloc(op, entryname, linkp->ll_linkid,
-	    linkp->ll_zoneid, flags, &err)) == NULL)
+	    linkp->ll_zoneid, flags, &err)) == NULL) {
 		return (err);
+	}
+
+	/*
+	 * If this is a transient link, then use the global zone cache file.
+	 * This is in order to allow recovery from a dlmgmtd failure that
+	 * leaves a zone in a 'down' state. In that state it is not possible
+	 * to read the zone's cache file (since it is always done from a sub
+	 * process running in the zone's context). As a result, datalinks would
+	 * otherwise remain stuck in the zone.
+	 */
+	if (flags == DLMGMT_ACTIVE && linkp->ll_transient)
+		req->ls_zoneid = GLOBAL_ZONEID;
 
 	/*
 	 * If the return error is EINPROGRESS, this request is handled
@@ -717,7 +729,6 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 	char			attr_name[MAXLINKATTRLEN];
 	size_t			attr_buf_len = 0;
 	void			*attr_buf = NULL;
-	boolean_t		rename;
 
 	curr = buf;
 	len = strlen(buf);
@@ -726,8 +737,8 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 		char		c = buf[i];
 		boolean_t	match = (c == '=' ||
 		    (c == ',' && !found_type) || c == ';');
+		boolean_t	rename = B_FALSE;
 
-		rename = B_FALSE;
 		/*
 		 * Move to the next character if there is no match and
 		 * if we have not reached the last character.
@@ -788,6 +799,10 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 					linkp->ll_zoneid = 0;
 					rename = B_TRUE;
 				}
+			} else if (strcmp(attr_name, "transient") == 0) {
+				if (read_boolean(curr, &attr_buf) == 0)
+					goto parse_fail;
+				linkp->ll_transient = *(boolean_t *)attr_buf;
 			} else {
 				attr_buf_len = translators[type].read_func(curr,
 				    &attr_buf);
@@ -837,10 +852,11 @@ parse_linkprops(char *buf, dlmgmt_link_t *linkp)
 		 * reparenting it to the GZ and renaming it to avoid name
 		 * collisions.
 		 */
-		if (rename == B_TRUE) {
+		if (rename) {
 			(void) snprintf(linkp->ll_link, MAXLINKNAMELEN,
 			    "SUNWorphan%u", (uint16_t)(gethrtime() / 1000));
 		}
+
 		curr = buf + i + 1;
 	}
 
@@ -1154,7 +1170,8 @@ process_db_read(dlmgmt_db_req_t *req, FILE *fp)
 			continue;
 		}
 
-		link_in_file.ll_zoneid = req->ls_zoneid;
+		assert(req->ls_zoneid == 0 ||
+		    link_in_file.ll_zoneid == req->ls_zoneid);
 		link_in_db = link_by_name(link_in_file.ll_link,
 		    link_in_file.ll_zoneid);
 		if (link_in_db != NULL) {
@@ -1253,6 +1270,7 @@ generate_link_line(dlmgmt_link_t *linkp, boolean_t persist, char *buf)
 	ptr += snprintf(ptr, BUFLEN(lim, ptr), "%s\t", linkp->ll_link);
 	if (!persist) {
 		char zname[ZONENAME_MAX];
+
 		/*
 		 * We store the linkid and the zone name in the active database
 		 * so that dlmgmtd can recover in the event that it is
@@ -1270,6 +1288,11 @@ generate_link_line(dlmgmt_link_t *linkp, boolean_t persist, char *buf)
 	ptr += write_uint64(ptr, BUFLEN(lim, ptr), "class", &u64);
 	u64 = linkp->ll_media;
 	ptr += write_uint64(ptr, BUFLEN(lim, ptr), "media", &u64);
+
+	if (!persist && linkp->ll_transient) {
+		boolean_t b = B_TRUE;
+		ptr += write_boolean(ptr, BUFLEN(lim, ptr), "transient", &b);
+	}
 
 	/*
 	 * The daemon does not keep any active link attribute. Only store the
@@ -1495,10 +1518,12 @@ dlmgmt_db_init(zoneid_t zoneid, char *zoneroot)
 		boot = B_TRUE;
 	}
 
-	req->ls_flags = DLMGMT_PERSIST;
-	err = dlmgmt_process_db_req(req);
-	if (err != 0 && err != ENOENT)
-		goto done;
+	if (zone_file_exists(zoneroot, DLMGMT_PERSISTENT_DB_PATH)) {
+		req->ls_flags = DLMGMT_PERSIST;
+		err = dlmgmt_process_db_req(req);
+		if (err != 0 && err != ENOENT)
+			goto done;
+	}
 	err = 0;
 	if (rewrite_needed) {
 		/*
@@ -1527,11 +1552,6 @@ done:
 
 /*
  * Remove all links in the given zoneid.
- *
- * We do this work in two different passes. In the first pass, we remove any
- * entry that hasn't been loaned and mark every entry that has been loaned as
- * something that is going to be tombstomed. In the second pass, we drop the
- * table lock for every entry and remove the tombstombed entry for our zone.
  */
 void
 dlmgmt_db_fini(zoneid_t zoneid)
@@ -1541,65 +1561,9 @@ dlmgmt_db_fini(zoneid_t zoneid)
 	while (linkp != NULL) {
 		next_linkp = AVL_NEXT(&dlmgmt_name_avl, linkp);
 		if (linkp->ll_zoneid == zoneid) {
-			boolean_t onloan = linkp->ll_onloan;
-
-			/*
-			 * Cleanup any VNICs that were loaned to the zone
-			 * before the zone goes away and we can no longer
-			 * refer to the VNIC by the name/zoneid.
-			 */
-			if (onloan) {
-				(void) dlmgmt_delete_db_entry(linkp,
-				    DLMGMT_ACTIVE);
-				linkp->ll_tomb = B_TRUE;
-			} else {
-				(void) dlmgmt_destroy_common(linkp,
-				    DLMGMT_ACTIVE | DLMGMT_PERSIST);
-			}
+			(void) dlmgmt_destroy_common(linkp,
+			    DLMGMT_ACTIVE | DLMGMT_PERSIST);
 		}
 		linkp = next_linkp;
 	}
-
-again:
-	linkp = avl_first(&dlmgmt_name_avl);
-	while (linkp != NULL) {
-		vnic_ioc_delete_t ioc;
-
-		next_linkp = AVL_NEXT(&dlmgmt_name_avl, linkp);
-
-		if (linkp->ll_zoneid != zoneid) {
-			linkp = next_linkp;
-			continue;
-		}
-		ioc.vd_vnic_id = linkp->ll_linkid;
-		if (linkp->ll_tomb != B_TRUE)
-			abort();
-
-		/*
-		 * We have to drop the table lock while going up into the
-		 * kernel. If we hold the table lock while deleting a vnic, we
-		 * may get blocked on the mac perimeter and the holder of it may
-		 * want something from dlmgmtd.
-		 */
-		dlmgmt_table_unlock();
-
-		if (ioctl(dladm_dld_fd(dld_handle),
-		    VNIC_IOC_DELETE, &ioc) < 0)
-			dlmgmt_log(LOG_WARNING, "dlmgmt_db_fini "
-			    "delete VNIC ioctl failed %d %d",
-			    ioc.vd_vnic_id, errno);
-
-		/*
-		 * Even though we've dropped the lock, we know that nothing else
-		 * could have removed us. Therefore, it should be safe to go
-		 * through and delete ourselves, but do nothing else. We'll have
-		 * to restart iteration from the beginning. This can be painful.
-		 */
-		dlmgmt_table_lock(B_TRUE);
-
-		(void) dlmgmt_destroy_common(linkp,
-		    DLMGMT_ACTIVE | DLMGMT_PERSIST);
-		goto again;
-	}
-
 }
