@@ -8613,6 +8613,7 @@ usr/src/test/bhyve-tests/tests/vmm/auto_destruct
 usr/src/test/bhyve-tests/tests/vmm/check_iommu
 usr/src/test/bhyve-tests/tests/vmm/cpuid_ioctl
 usr/src/test/bhyve-tests/tests/vmm/datarw_constraints
+usr/src/test/bhyve-tests/tests/vmm/datarw_vcpu
 usr/src/test/bhyve-tests/tests/vmm/default_capabs
 usr/src/test/bhyve-tests/tests/vmm/drv_hold
 usr/src/test/bhyve-tests/tests/vmm/fpu_getset
@@ -9274,6 +9275,7 @@ usr/src/uts/intel/opteron_pcbe/opteron_pcbe_cpcgen.h
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f17h_zen1.c
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f17h_zen2.c
 usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f19h_zen3.c
+usr/src/uts/intel/opteron_pcbe/opteron_pcbe_f19h_zen4.c
 usr/src/uts/intel/os/priv_names
 usr/src/uts/intel/sha1/sha1-x86_64.S
 usr/src/uts/intel/sha2/sha256-x86_64.S
