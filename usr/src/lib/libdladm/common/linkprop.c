@@ -1048,7 +1048,7 @@ check_prop(dladm_handle_t handle __unused, prop_desc_t *pdp,
     datalink_id_t linkid __unused, char **prop_val, uint_t *val_cntp,
     uint_t flags __unused, val_desc_t **vdpp, datalink_media_t media __unused)
 {
-	int		i, j;
+	uint_t		i, j;
 	uint_t		val_cnt = *val_cntp;
 	val_desc_t	*vdp = *vdpp;
 
@@ -1161,7 +1161,7 @@ i_dladm_set_linkprop(dladm_handle_t handle, datalink_id_t linkid,
     const char *prop_name, char **prop_val, uint_t val_cnt, uint_t flags,
     datalink_class_t class, uint32_t media)
 {
-	int			i;
+	uint_t			i;
 	boolean_t		found = B_FALSE;
 	dladm_status_t		status = DLADM_STATUS_OK;
 
@@ -1235,7 +1235,8 @@ dladm_set_linkprop(dladm_handle_t handle, datalink_id_t linkid,
 	 * equality test later and avoid an extra strcmp.
 	 */
 	if (prop_name != NULL) {
-		int i;
+		uint_t i;
+
 		for (i = 0; i < DLADM_MAX_PROPS; i++) {
 			if (strcasecmp(prop_name, prop_table[i].pd_name) == 0) {
 				prop_name = prop_table[i].pd_name;
@@ -1268,7 +1269,7 @@ dladm_set_linkprop(dladm_handle_t handle, datalink_id_t linkid,
 
 		if (status == DLADM_STATUS_OK && (flags & DLADM_OPT_ACTIVE)) {
 			prop_desc_t *pdp = prop_table;
-			int i;
+			uint_t i;
 
 			for (i = 0; i < DLADM_MAX_PROPS; i++, pdp++) {
 				if (!(pdp->pd_flags & PD_AFTER_PERM))
@@ -1299,7 +1300,7 @@ dladm_walk_linkprop(dladm_handle_t handle, datalink_id_t linkid, void *arg,
 	dladm_status_t		status;
 	datalink_class_t	class;
 	uint_t			media;
-	int			i;
+	uint_t			i;
 
 	if (linkid == DATALINK_INVALID_LINKID || func == NULL)
 		return (DLADM_STATUS_BADARG);
@@ -1342,7 +1343,7 @@ dladm_get_linkprop(dladm_handle_t handle, datalink_id_t linkid,
 	uint_t			media;
 	prop_desc_t		*pdp;
 	uint_t			cnt, dld_flags = 0;
-	int			i;
+	uint_t			i;
 	uint_t			perm_flags;
 
 	if (type == DLADM_PROP_VAL_DEFAULT)
@@ -1481,7 +1482,7 @@ dladm_get_linkprop_values(dladm_handle_t handle, datalink_id_t linkid,
 	uint_t			media;
 	prop_desc_t		*pdp;
 	uint_t			dld_flags;
-	int			valc, i;
+	uint_t			valc, i;
 	char			**prop_val;
 	uint_t			perm_flags;
 
@@ -2029,7 +2030,8 @@ check_cpus(dladm_handle_t handle, prop_desc_t *pdp __unused,
     datalink_id_t linkid, char **prop_val, uint_t *val_cntp,
     uint_t flags __unused, val_desc_t **vdpp, datalink_media_t media __unused)
 {
-	int			i, j, rc;
+	int			rc;
+	uint_t			i, j;
 	long			nproc = sysconf(_SC_NPROCESSORS_CONF);
 	mac_resource_props_t	mrp;
 	mac_propval_range_t	*pv_range;
@@ -2080,7 +2082,7 @@ check_cpus(dladm_handle_t handle, prop_desc_t *pdp __unused,
 
 	/* Check if all CPUs in the list are online */
 	for (i = 0; i < ncpus; i++) {
-		if (cpus[i] >= nproc) {
+		if (cpus[i] >= (uint32_t)nproc) {
 			status = DLADM_STATUS_BADCPUID;
 			goto done2;
 		}
@@ -2130,7 +2132,7 @@ dladm_status_t
 extract_cpus(val_desc_t *vdp, uint_t cnt, void *arg)
 {
 	mac_resource_props_t	*mrp = arg;
-	int			i;
+	uint_t			i;
 
 	if (vdp[0].vd_val == RESET_VAL) {
 		bzero(&mrp->mrp_cpus, sizeof (mac_cpus_t));
@@ -2554,7 +2556,7 @@ set_resource(dladm_handle_t handle, prop_desc_t *pdp __unused,
 	mac_resource_props_t	mrp;
 	dladm_status_t		status = DLADM_STATUS_OK;
 	dld_ioc_macprop_t	*dip;
-	int			i;
+	uint_t			i;
 
 	bzero(&mrp, sizeof (mac_resource_props_t));
 	dip = i_dladm_buf_alloc_by_name(0, linkid, "resource",
@@ -2623,7 +2625,7 @@ get_allowedips(dladm_handle_t handle, prop_desc_t *pdp __unused,
 	mac_resource_props_t	mrp;
 	mac_protect_t		*p;
 	dladm_status_t		status;
-	int			i;
+	uint_t			i;
 
 	status = i_dladm_get_public_prop(handle, linkid, "resource", flags,
 	    perm_flags, &mrp, sizeof (mrp));
@@ -2662,7 +2664,7 @@ extract_protection(val_desc_t *vdp, uint_t cnt, void *arg)
 {
 	mac_resource_props_t	*mrp = arg;
 	uint32_t		types = 0;
-	int			i;
+	uint_t			i;
 
 	for (i = 0; i < cnt; i++)
 		types |= (uint32_t)vdp[i].vd_val;
@@ -2677,7 +2679,7 @@ extract_allowedips(val_desc_t *vdp, uint_t cnt, void *arg)
 {
 	mac_resource_props_t	*mrp = arg;
 	mac_protect_t		*p = &mrp->mrp_protect;
-	int			i;
+	uint_t			i;
 
 	if (vdp->vd_val == 0) {
 		cnt = (uint_t)-1;
@@ -2777,7 +2779,7 @@ check_single_ip(char *buf, mac_ipaddr_t *addr)
 				off += 32;
 			}
 			off += high;
-			if (128 - off >= mask)
+			if (128 - off >= (int)mask)
 				return (DLADM_STATUS_INVALID_IP);
 		} else {
 			mask = 128;
@@ -2797,7 +2799,7 @@ check_allowedips(dladm_handle_t handle __unused, prop_desc_t *pdp __unused,
 {
 	dladm_status_t	status;
 	mac_ipaddr_t	*addr;
-	int		i;
+	uint_t		i;
 	uint_t		val_cnt = *val_cntp;
 	val_desc_t	*vdp = *vdpp;
 
@@ -2920,7 +2922,7 @@ dladm_cid2str(mac_dhcpcid_t *cid, char *buf)
 		break;
 	}
 	case CIDFORM_STR: {
-		int	i;
+		uint_t	i;
 
 		for (i = 0; i < cid->dc_len; i++) {
 			if (!isprint(cid->dc_id[i]))
@@ -3082,7 +3084,7 @@ get_allowedcids(dladm_handle_t handle, prop_desc_t *pdp __unused,
 	mac_resource_props_t	mrp;
 	mac_protect_t		*p;
 	dladm_status_t		status;
-	int			i;
+	uint_t			i;
 
 	status = i_dladm_get_public_prop(handle, linkid, "resource", flags,
 	    perm_flags, &mrp, sizeof (mrp));
@@ -3111,7 +3113,7 @@ extract_allowedcids(val_desc_t *vdp, uint_t cnt, void *arg)
 {
 	mac_resource_props_t	*mrp = arg;
 	mac_protect_t		*p = &mrp->mrp_protect;
-	int			i;
+	uint_t			i;
 
 	if (vdp->vd_val == 0) {
 		cnt = (uint_t)-1;
@@ -3133,7 +3135,7 @@ check_allowedcids(dladm_handle_t handle __unused, prop_desc_t *pdp __unused,
 {
 	dladm_status_t	status;
 	mac_dhcpcid_t	*cid;
-	int		i;
+	uint_t		i;
 	uint_t		val_cnt = *val_cntp;
 	val_desc_t	*vdp = *vdpp;
 
@@ -3168,7 +3170,7 @@ get_secondary_macs(dladm_handle_t handle, prop_desc_t *pdp,
 {
 	mac_secondary_addr_t	sa;
 	dladm_status_t		status;
-	int			i;
+	uint_t			i;
 
 	status = i_dladm_get_public_prop(handle, linkid, pdp->pd_name, flags,
 	    perm_flags, &sa, sizeof (sa));
@@ -3198,7 +3200,7 @@ check_secondary_macs(dladm_handle_t handle __unused, prop_desc_t *pdp __unused,
 	dladm_status_t	status;
 	uchar_t		*addr;
 	uint_t		len = 0;
-	int		i;
+	uint_t		i;
 	uint_t		val_cnt = *val_cntp;
 	val_desc_t	*vdp = *vdpp;
 
@@ -3234,7 +3236,7 @@ set_secondary_macs(dladm_handle_t handle, prop_desc_t *pd __unused,
 {
 	dladm_status_t status;
 	dld_ioc_macprop_t *dip;
-	int i;
+	uint_t i;
 	mac_secondary_addr_t msa;
 
 	dip = i_dladm_buf_alloc_by_name(0, linkid, "secondary-macs", 0,
@@ -3265,7 +3267,8 @@ get_autopush(dladm_handle_t handle, prop_desc_t *pdp, datalink_id_t linkid,
     uint_t flags, uint_t *perm_flags)
 {
 	struct		dlautopush dlap;
-	int		i, len;
+	int		len;
+	uint_t		i;
 	dladm_status_t	status;
 
 	if (flags & DLD_PROP_DEFAULT)
@@ -3513,7 +3516,7 @@ check_rate(dladm_handle_t handle, prop_desc_t *pdp __unused,
     uint_t flags __unused,
     val_desc_t **vdpp, datalink_media_t media)
 {
-	int		i;
+	uint_t		i;
 	uint_t		modval_cnt = MAX_SUPPORT_RATES;
 	char		*buf, **modval;
 	dladm_status_t	status;
@@ -3761,7 +3764,7 @@ i_dladm_set_linkprop_db(dladm_handle_t handle, datalink_id_t linkid,
     const char *prop_name, char **prop_val, uint_t val_cnt)
 {
 	char		buf[MAXLINELEN];
-	int		i;
+	uint_t		i;
 	dladm_conf_t	conf;
 	dladm_status_t	status;
 
@@ -4356,7 +4359,8 @@ static dladm_status_t
 i_dladm_set_private_prop(dladm_handle_t handle, datalink_id_t linkid,
     const char *prop_name, char **prop_val, uint_t val_cnt, uint_t flags)
 {
-	int		i, slen;
+	uint_t		i;
+	int		slen;
 	int		bufsize = 0;
 	dld_ioc_macprop_t *dip = NULL;
 	uchar_t		*dp;
@@ -4409,7 +4413,7 @@ i_dladm_set_private_prop(dladm_handle_t handle, datalink_id_t linkid,
 			/*
 			 * add a "," separator and update dp.
 			 */
-			if (i != (val_cnt -1))
+			if (i != (val_cnt - 1))
 				dp[slen++] = ',';
 			dp += (plen + 1);
 		}
@@ -4523,7 +4527,8 @@ get_stp(dladm_handle_t handle, struct prop_desc *pd, datalink_id_t linkid,
 {
 	const bridge_public_prop_t *bpp;
 	dladm_status_t retv;
-	int val, i;
+	int val;
+	uint_t i;
 
 	if (flags != 0)
 		return (DLADM_STATUS_NOTSUP);
@@ -4545,13 +4550,14 @@ get_stp(dladm_handle_t handle, struct prop_desc *pd, datalink_id_t linkid,
 		(void) strlcpy(*prop_val, "?", DLADM_PROP_VAL_MAX);
 		return (retv);
 	}
-	if (val == pd->pd_defval.vd_val && pd->pd_defval.vd_name[0] != '\0') {
+	if ((uintptr_t)val == pd->pd_defval.vd_val &&
+	    pd->pd_defval.vd_name[0] != '\0') {
 		(void) strlcpy(*prop_val, pd->pd_defval.vd_name,
 		    DLADM_PROP_VAL_MAX);
 		return (DLADM_STATUS_OK);
 	}
 	for (i = 0; i < pd->pd_noptval; i++) {
-		if (val == pd->pd_optval[i].vd_val) {
+		if ((uintptr_t)val == pd->pd_optval[i].vd_val) {
 			(void) strlcpy(*prop_val, pd->pd_optval[i].vd_name,
 			    DLADM_PROP_VAL_MAX);
 			return (DLADM_STATUS_OK);
@@ -4863,7 +4869,7 @@ i_dladm_link_proplist_extract_one(dladm_handle_t handle,
 {
 	dladm_status_t		status = DLADM_STATUS_OK;
 	dladm_arg_info_t	*aip = NULL;
-	int			i, j;
+	uint_t			i, j;
 
 	/* Find named property in proplist */
 	for (i = 0; i < proplist->al_count; i++) {
@@ -4933,7 +4939,7 @@ dladm_link_proplist_extract(dladm_handle_t handle, dladm_arg_list_t *proplist,
     mac_resource_props_t *mrp, uint_t flags)
 {
 	dladm_status_t	status;
-	int		i;
+	uint_t		i;
 
 	for (i = 0; i < DLADM_MAX_RSRC_PROP; i++) {
 		status = i_dladm_link_proplist_extract_one(handle,
@@ -4980,7 +4986,7 @@ dladm_attr_is_linkprop(const char *name)
 		DLADM_ATTR_NAMES
 	};
 	boolean_t	is_nonprop = B_FALSE;
-	int		i;
+	uint_t		i;
 
 	for (i = 0; i < sizeof (nonprop) / sizeof (nonprop[0]); i++) {
 		if (strcmp(name, nonprop[i]) == 0) {
@@ -4998,7 +5004,7 @@ dladm_linkprop_is_set(dladm_handle_t handle, datalink_id_t linkid,
 {
 	char		*buf, **propvals;
 	uint_t		valcnt = DLADM_MAX_PROP_VALCNT;
-	int		i;
+	uint_t		i;
 	dladm_status_t	status = DLADM_STATUS_OK;
 	size_t		bufsize;
 
