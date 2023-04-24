@@ -34,6 +34,7 @@ set name=pkg.fmri \
     value=pkg:/system/boot/grub@0.97,$(PKGVERS_BUILTON)-$(PKGVERS_BRANCH)
 set name=pkg.summary value="GNU GRUB - GNU GRand Unified Bootloader"
 set name=pkg.description value="Multiboot Boot Loader"
+set name=pkg.legacy value=true
 set name=info.classification value=org.opensolaris.category.2008:System/Core
 set name=variant.arch value=$(ARCH)
 $(i386_ONLY)dir path=boot group=sys
