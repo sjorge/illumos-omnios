@@ -92,7 +92,7 @@ struct	__ucontext {
 	 * UC_BRAND flag. Until such time, to help folks downstream who have the
 	 * lx brand, we leave them as is.
 	 */
-	long		uc_brand_data[3];	/* Was uc_filler[3] */
+	void		*uc_brand_data[3];	/* Was uc_filler[3] */
 	long		uc_xsave;
 	long		uc_filler1;
 };
@@ -101,7 +101,7 @@ struct	__ucontext {
  * We deviate from upstream-gate here in that we use what was uc_filler[3] for
  * brand data. In order to reduce changes elsewhere in code that computes the
  * offset of uc_filler, we provide the following definition.
-*/
+ */
 #define	uc_filler	uc_brand_data
 
 #if defined(_SYSCALL32)

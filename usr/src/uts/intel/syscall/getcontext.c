@@ -326,6 +326,7 @@ getsetcontext(int flag, void *arg)
 	void *fpu = NULL;
 	stack_t dummy_stk;
 	proc_t *p = lwptoproc(lwp);
+	int ret;
 
 	/*
 	 * In future releases, when the ucontext structure grows,
@@ -580,6 +581,7 @@ getsetcontext32(int flag, void *arg)
 	caddr32_t ustack32;
 	stack32_t dummy_stk32;
 	proc_t *p = lwptoproc(lwp);
+	int ret;
 
 	switch (flag) {
 	default:
