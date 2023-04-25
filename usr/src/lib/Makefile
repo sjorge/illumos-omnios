@@ -210,7 +210,6 @@ SUBDIRS +=				\
 	libshare	\
 	libsip		\
 	libsldap	\
-	libslp		\
 	libsmbfs	\
 	libsmbios	\
 	libsmedia	\
@@ -340,7 +339,6 @@ MSGSUBDIRS=		\
 	libsecdb	\
 	libshare	\
 	libsldap	\
-	libslp		\
 	libsmbfs	\
 	libsmedia	\
 	libtsol		\
@@ -451,7 +449,6 @@ HDRSUBDIRS=				\
 	libsff		\
 	libshare	\
 	libsip		\
-	libslp		\
 	libsmbfs	\
 	libsmbios	\
 	libsmedia	\

@@ -438,7 +438,6 @@ _MANFILES=	6to4relay.8		\
 		sharemgr.8		\
 		showmount.8		\
 		shutdown.8		\
-		slpd.8			\
 		smbadm.8		\
 		smbd.8			\
 		smbiod.8		\

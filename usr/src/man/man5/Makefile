@@ -173,8 +173,6 @@ _MANFILES=	Intro.5				\
 		shadow.5			\
 		sharetab.5			\
 		shells.5			\
-		slp.conf.5			\
-		slpd.reg.5			\
 		smb.5				\
 		smbautohome.5			\
 		smhba.conf.5			\
