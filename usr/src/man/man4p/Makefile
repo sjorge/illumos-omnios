@@ -37,7 +37,6 @@ MANFILES= 	arp.4p		\
 	 	routing.4p	\
 	 	sctp.4p		\
 	 	sip.4p		\
-	 	slp.4p		\
 	 	tcp.4p		\
 	 	udp.4p		\
 		vxlan.4p

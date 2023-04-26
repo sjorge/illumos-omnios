@@ -441,7 +441,6 @@ usr/src/cmd/cmd-inet/usr.lib/inetd/inetd-upgrade
 usr/src/cmd/cmd-inet/usr.lib/mdnsd/mdnsd
 usr/src/cmd/cmd-inet/usr.lib/pppoe/pppoec
 usr/src/cmd/cmd-inet/usr.lib/pppoe/pppoed
-usr/src/cmd/cmd-inet/usr.lib/slpd/slpd
 usr/src/cmd/cmd-inet/usr.lib/vrrpd/vrrpd
 usr/src/cmd/cmd-inet/usr.lib/wpad/wpad
 usr/src/cmd/cmd-inet/usr.sbin/6to4relay
@@ -2018,7 +2017,6 @@ usr/src/cmd/sgs/moe/i386/msg.h
 usr/src/cmd/sgs/nm/amd64/nm
 usr/src/cmd/sgs/nm/i386/nm
 usr/src/cmd/sgs/nm/i386/nm.xpg4
-usr/src/cmd/sgs/prof/i386/prof
 usr/src/cmd/sgs/pvs/amd64/msg.c
 usr/src/cmd/sgs/pvs/amd64/msg.h
 usr/src/cmd/sgs/pvs/amd64/pvs
@@ -3230,7 +3228,6 @@ usr/src/lib/libsecdb/auth_attr
 usr/src/lib/libsecdb/exec_attr
 usr/src/lib/libsecdb/prof_attr
 usr/src/lib/libsecdb/user_attr
-usr/src/lib/libslp/classes/
 usr/src/lib/libsmbios/common/smb_tables.c
 usr/src/lib/libsmedia/library/common/smed.h
 usr/src/lib/libsmedia/library/common/smed_clnt.c

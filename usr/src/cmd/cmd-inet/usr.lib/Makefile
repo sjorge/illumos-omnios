@@ -27,7 +27,7 @@
 SUBDIRS=	bridged ilbd in.cdpd in.chargend in.daytimed \
 		in.discardd in.echod in.mpathd in.ndpd \
 		in.ripngd in.timed inetd mdnsd pppoe \
-		slpd vrrpd wpad
+		vrrpd wpad
 
 MSGSUBDIRS=	ilbd inetd vrrpd
 
