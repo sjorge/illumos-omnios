@@ -2030,12 +2030,12 @@ emlxs_sli3_hba_init(emlxs_hba_t *hba)
  */
 static uint32_t
 emlxs_sli3_hba_reset(emlxs_hba_t *hba, uint32_t restart, uint32_t skip_post,
-	uint32_t quiesce)
+    uint32_t quiesce)
 {
 	emlxs_port_t *port = &PPORT;
-	MAILBOX *swpmb;
+	MAILBOX swpmb;
 	MAILBOX *mb;
-	uint32_t word0;
+	uint32_t *word0;
 	uint16_t cfg_value;
 	uint32_t status = 0;
 	uint32_t status1;
@@ -2078,7 +2078,7 @@ emlxs_sli3_hba_reset(emlxs_hba_t *hba, uint32_t restart, uint32_t skip_post,
 	hba->flag &= ~(FC_SLIM2_MODE | FC_HARDWARE_ERROR);
 
 	mb = FC_SLIM1_MAILBOX(hba);
-	swpmb = (MAILBOX *)&word0;
+	word0 = (uint32_t *)&swpmb;
 
 reset:
 
@@ -2089,10 +2089,10 @@ reset:
 
 	if (restart) {
 		/* First put restart command in mailbox */
-		word0 = 0;
-		swpmb->mbxCommand = MBX_RESTART;
-		swpmb->mbxHc = 1;
-		WRITE_SLIM_ADDR(hba, ((volatile uint32_t *)mb), word0);
+		*word0 = 0;
+		swpmb.mbxCommand = MBX_RESTART;
+		swpmb.mbxHc = 1;
+		WRITE_SLIM_ADDR(hba, ((volatile uint32_t *)mb), *word0);
 
 		/* Only skip post after emlxs_sli3_online is completed */
 		if (skip_post) {
@@ -3157,12 +3157,12 @@ emlxs_sli3_issue_mbox_cmd(emlxs_hba_t *hba, MAILBOXQ *mbq, int32_t flag,
 	SLIM2			*slim2p = (SLIM2 *)hba->sli.sli3.slim2.virt;
 	MAILBOX			*mbox;
 	MAILBOX			*mb;
-	volatile uint32_t	word0;
+	uint32_t		*word0;
 	volatile uint32_t	ldata;
 	off_t			offset;
 	MATCHMAP		*mbox_bp;
 	uint32_t		tmo_local;
-	MAILBOX			*swpmb;
+	MAILBOX			swpmb;
 
 	if (!mbq->port) {
 		mbq->port = &PPORT;
@@ -3171,7 +3171,7 @@ emlxs_sli3_issue_mbox_cmd(emlxs_hba_t *hba, MAILBOXQ *mbq, int32_t flag,
 	port = (emlxs_port_t *)mbq->port;
 
 	mb = (MAILBOX *)mbq;
-	swpmb = (MAILBOX *)&word0;
+	word0 = (uint32_t *)&swpmb;
 
 	mb->mbxStatus = MBX_SUCCESS;
 
@@ -3439,16 +3439,16 @@ emlxs_sli3_issue_mbox_cmd(emlxs_hba_t *hba, MAILBOXQ *mbq, int32_t flag,
 
 			EMLXS_MPDATA_SYNC(hba->sli.sli3.slim2.dma_handle,
 			    offset, sizeof (uint32_t), DDI_DMA_SYNC_FORKERNEL);
-			word0 = *((volatile uint32_t *)mbox);
-			word0 = BE_SWAP32(word0);
+			*word0 = *((volatile uint32_t *)mbox);
+			*word0 = BE_SWAP32(*word0);
 		} else {
 			mbox = FC_SLIM1_MAILBOX(hba);
-			word0 =
+			*word0 =
 			    READ_SLIM_ADDR(hba, ((volatile uint32_t *)mbox));
 		}
 
 		/* Wait for command to complete */
-		while ((swpmb->mbxOwner == OWN_CHIP) &&
+		while ((swpmb.mbxOwner == OWN_CHIP) &&
 		    !(mbq->flag & MBQ_COMPLETED)) {
 			if (!hba->timer_id && (tmo_local-- == 0)) {
 				/* self time */
@@ -3472,10 +3472,10 @@ emlxs_sli3_issue_mbox_cmd(emlxs_hba_t *hba, MAILBOXQ *mbq, int32_t flag,
 				EMLXS_MPDATA_SYNC(
 				    hba->sli.sli3.slim2.dma_handle, offset,
 				    sizeof (uint32_t), DDI_DMA_SYNC_FORKERNEL);
-				word0 = *((volatile uint32_t *)mbox);
-				word0 = BE_SWAP32(word0);
+				*word0 = *((volatile uint32_t *)mbox);
+				*word0 = BE_SWAP32(*word0);
 			} else {
-				word0 =
+				*word0 =
 				    READ_SLIM_ADDR(hba,
 				    ((volatile uint32_t *)mbox));
 			}
@@ -3491,8 +3491,8 @@ emlxs_sli3_issue_mbox_cmd(emlxs_hba_t *hba, MAILBOXQ *mbq, int32_t flag,
 		}
 
 		/* Check for config port command */
-		if ((swpmb->mbxCommand == MBX_CONFIG_PORT) &&
-		    (swpmb->mbxStatus == MBX_SUCCESS)) {
+		if ((swpmb.mbxCommand == MBX_CONFIG_PORT) &&
+		    (swpmb.mbxStatus == MBX_SUCCESS)) {
 			/* Setup host mbox for cmpl */
 			mbox = FC_SLIM2_MAILBOX(hba);
 			offset = (off_t)((uint64_t)((unsigned long)mbox)
@@ -3576,7 +3576,7 @@ emlxs_sli3_issue_mbox_cmd(emlxs_hba_t *hba, MAILBOXQ *mbq, int32_t flag,
 /*ARGSUSED*/
 static uint32_t
 emlxs_sli3_prep_fct_iocb(emlxs_port_t *port, emlxs_buf_t *cmd_sbp,
-	int channel)
+    int channel)
 {
 	emlxs_hba_t *hba = HBA;
 	emlxs_config_t *cfg = &CFG;
@@ -5445,10 +5445,10 @@ static void
 emlxs_sli3_hba_kill(emlxs_hba_t *hba)
 {
 	emlxs_port_t *port = &PPORT;
-	MAILBOX *swpmb;
+	MAILBOX swpmb;
 	MAILBOX *mb2;
 	MAILBOX *mb1;
-	uint32_t word0;
+	uint32_t *word0;
 	uint32_t j;
 	uint32_t interlock_failed;
 	uint32_t ha_copy;
@@ -5496,7 +5496,7 @@ emlxs_sli3_hba_kill(emlxs_hba_t *hba)
 
 	mb2 = FC_SLIM2_MAILBOX(hba);
 	mb1 = FC_SLIM1_MAILBOX(hba);
-	swpmb = (MAILBOX *)&word0;
+	word0 = (uint32_t *)&swpmb;
 
 	if (!(hba->flag & FC_SLIM2_MODE)) {
 		goto mode_B;
@@ -5510,13 +5510,13 @@ mode_A:
 interlock_A:
 
 	value = 0x55555555;
-	word0 = 0;
-	swpmb->mbxCommand = MBX_KILL_BOARD;
-	swpmb->mbxOwner = OWN_CHIP;
+	*word0 = 0;
+	swpmb.mbxCommand = MBX_KILL_BOARD;
+	swpmb.mbxOwner = OWN_CHIP;
 
 	/* Write value to SLIM */
 	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1) + 1), value);
-	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1)), word0);
+	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1)), *word0);
 
 	/* Send Kill board request */
 	mb2->un.varWords[0] = value;
@@ -5551,10 +5551,10 @@ interlock_A:
 	if (value == 0xAAAAAAAA) {
 		/* Now wait for mailbox ownership to clear */
 		while (j++ < 10000) {
-			word0 =
+			*word0 =
 			    READ_SLIM_ADDR(hba, ((volatile uint32_t *)mb1));
 
-			if (swpmb->mbxOwner == 0) {
+			if (swpmb.mbxOwner == 0) {
 				break;
 			}
 
@@ -5580,13 +5580,13 @@ mode_B:
 interlock_B:
 
 	value = 0x55555555;
-	word0 = 0;
-	swpmb->mbxCommand = MBX_KILL_BOARD;
-	swpmb->mbxOwner = OWN_CHIP;
+	*word0 = 0;
+	swpmb.mbxCommand = MBX_KILL_BOARD;
+	swpmb.mbxOwner = OWN_CHIP;
 
 	/* Write KILL BOARD to mailbox */
 	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1) + 1), value);
-	WRITE_SLIM_ADDR(hba, ((volatile uint32_t *)mb1), word0);
+	WRITE_SLIM_ADDR(hba, ((volatile uint32_t *)mb1), *word0);
 
 	/* interrupt board to do it right away */
 	WRITE_CSR_REG(hba, FC_CA_REG(hba), CA_MBATT);
@@ -5606,10 +5606,10 @@ interlock_B:
 	if (value == 0xAAAAAAAA) {
 		/* Now wait for mailbox ownership to clear */
 		while (j++ < 10000) {
-			word0 =
+			*word0 =
 			    READ_SLIM_ADDR(hba, ((volatile uint32_t *)mb1));
 
-			if (swpmb->mbxOwner == 0) {
+			if (swpmb.mbxOwner == 0) {
 				break;
 			}
 
@@ -5680,10 +5680,10 @@ static void
 emlxs_sli3_hba_kill4quiesce(emlxs_hba_t *hba)
 {
 	emlxs_port_t *port = &PPORT;
-	MAILBOX *swpmb;
+	MAILBOX swpmb;
 	MAILBOX *mb2;
 	MAILBOX *mb1;
-	uint32_t word0;
+	uint32_t *word0;
 	off_t offset;
 	uint32_t j;
 	uint32_t value;
@@ -5696,16 +5696,16 @@ emlxs_sli3_hba_kill4quiesce(emlxs_hba_t *hba)
 
 	mb2 = FC_SLIM2_MAILBOX(hba);
 	mb1 = FC_SLIM1_MAILBOX(hba);
-	swpmb = (MAILBOX *)&word0;
+	word0 = (uint32_t *)&swpmb;
 
 	value = 0x55555555;
-	word0 = 0;
-	swpmb->mbxCommand = MBX_KILL_BOARD;
-	swpmb->mbxOwner = OWN_CHIP;
+	*word0 = 0;
+	swpmb.mbxCommand = MBX_KILL_BOARD;
+	swpmb.mbxOwner = OWN_CHIP;
 
 	/* Write value to SLIM */
 	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1) + 1), value);
-	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1)), word0);
+	WRITE_SLIM_ADDR(hba, (((volatile uint32_t *)mb1)), *word0);
 
 	/* Send Kill board request */
 	mb2->un.varWords[0] = value;
@@ -5738,9 +5738,9 @@ emlxs_sli3_hba_kill4quiesce(emlxs_hba_t *hba)
 	if (value == 0xAAAAAAAA) {
 		/* Now wait for mailbox ownership to clear */
 		while (j++ < 10000) {
-			word0 =
+			*word0 =
 			    READ_SLIM_ADDR(hba, ((volatile uint32_t *)mb1));
-			if (swpmb->mbxOwner == 0) {
+			if (swpmb.mbxOwner == 0) {
 				break;
 			}
 			BUSYWAIT_US(50);
@@ -5777,16 +5777,16 @@ emlxs_handle_mb_event(emlxs_hba_t *hba)
 {
 	emlxs_port_t		*port = &PPORT;
 	MAILBOX			*mb;
-	MAILBOX			*swpmb;
+	MAILBOX			swpmb;
 	MAILBOX			*mbox;
 	MAILBOXQ		*mbq = NULL;
-	volatile uint32_t	word0;
+	uint32_t		*word0;
 	MATCHMAP		*mbox_bp;
 	off_t			offset;
 	uint32_t		i;
 	int			rc;
 
-	swpmb = (MAILBOX *)&word0;
+	word0 = (uint32_t *)&swpmb;
 
 	mutex_enter(&EMLXS_PORT_LOCK);
 	switch (hba->mbox_queue_flag) {
@@ -5860,20 +5860,20 @@ emlxs_handle_mb_event(emlxs_hba_t *hba)
 
 		EMLXS_MPDATA_SYNC(hba->sli.sli3.slim2.dma_handle, offset,
 		    sizeof (uint32_t), DDI_DMA_SYNC_FORKERNEL);
-		word0 = *((volatile uint32_t *)mbox);
-		word0 = BE_SWAP32(word0);
+		*word0 = *((volatile uint32_t *)mbox);
+		*word0 = BE_SWAP32(*word0);
 	} else {
 		mbox = FC_SLIM1_MAILBOX(hba);
-		word0 = READ_SLIM_ADDR(hba, ((volatile uint32_t *)mbox));
+		*word0 = READ_SLIM_ADDR(hba, ((volatile uint32_t *)mbox));
 	}
 
 	i = 0;
-	while (swpmb->mbxOwner == OWN_CHIP) {
+	while (swpmb.mbxOwner == OWN_CHIP) {
 		if (i++ > 10000) {
 			EMLXS_MSGF(EMLXS_CONTEXT, &emlxs_stray_mbox_intr_msg,
 			    "OWN_CHIP: %s: status=%x",
-			    emlxs_mb_cmd_xlate(swpmb->mbxCommand),
-			    swpmb->mbxStatus);
+			    emlxs_mb_cmd_xlate(swpmb.mbxCommand),
+			    swpmb.mbxStatus);
 
 			return (1);
 		}
@@ -5882,10 +5882,10 @@ emlxs_handle_mb_event(emlxs_hba_t *hba)
 		if (hba->flag & FC_SLIM2_MODE) {
 			EMLXS_MPDATA_SYNC(hba->sli.sli3.slim2.dma_handle,
 			    offset, sizeof (uint32_t), DDI_DMA_SYNC_FORKERNEL);
-			word0 = *((volatile uint32_t *)mbox);
-			word0 = BE_SWAP32(word0);
+			*word0 = *((volatile uint32_t *)mbox);
+			*word0 = BE_SWAP32(*word0);
 		} else {
-			word0 =
+			*word0 =
 			    READ_SLIM_ADDR(hba, ((volatile uint32_t *)mbox));
 		}
 	}
@@ -5943,20 +5943,20 @@ emlxs_handle_mb_event(emlxs_hba_t *hba)
 	}
 
 	if (hba->mbox_queue_flag == MBX_SLEEP) {
-		if (swpmb->mbxCommand != MBX_DOWN_LOAD &&
-		    swpmb->mbxCommand != MBX_DUMP_MEMORY) {
+		if (swpmb.mbxCommand != MBX_DOWN_LOAD &&
+		    swpmb.mbxCommand != MBX_DUMP_MEMORY) {
 			EMLXS_MSGF(EMLXS_CONTEXT, &emlxs_mbox_detail_msg,
 			    "Received.  %s: status=%x Sleep.",
-			    emlxs_mb_cmd_xlate(swpmb->mbxCommand),
-			    swpmb->mbxStatus);
+			    emlxs_mb_cmd_xlate(swpmb.mbxCommand),
+			    swpmb.mbxStatus);
 		}
 	} else {
-		if (swpmb->mbxCommand != MBX_DOWN_LOAD &&
-		    swpmb->mbxCommand != MBX_DUMP_MEMORY) {
+		if (swpmb.mbxCommand != MBX_DOWN_LOAD &&
+		    swpmb.mbxCommand != MBX_DUMP_MEMORY) {
 			EMLXS_MSGF(EMLXS_CONTEXT, &emlxs_mbox_detail_msg,
 			    "Completed. %s: status=%x",
-			    emlxs_mb_cmd_xlate(swpmb->mbxCommand),
-			    swpmb->mbxStatus);
+			    emlxs_mb_cmd_xlate(swpmb.mbxCommand),
+			    swpmb.mbxStatus);
 		}
 	}
 
@@ -6013,7 +6013,8 @@ emlxs_sli3_timer_check_mbox(emlxs_hba_t *hba)
 	emlxs_port_t *port = &PPORT;
 	emlxs_config_t *cfg = &CFG;
 	MAILBOX *mb = NULL;
-	uint32_t word0;
+	MAILBOX swpmb;
+	uint32_t *word0;
 	uint32_t offset;
 	uint32_t ha_copy = 0;
 
@@ -6039,6 +6040,8 @@ emlxs_sli3_timer_check_mbox(emlxs_hba_t *hba)
 		return;
 	}
 
+	word0 = (uint32_t *)&swpmb;
+
 	if (hba->mbox_queue_flag) {
 		/* Get first word of mailbox */
 		if (hba->flag & FC_SLIM2_MODE) {
@@ -6049,11 +6052,11 @@ emlxs_sli3_timer_check_mbox(emlxs_hba_t *hba)
 
 			EMLXS_MPDATA_SYNC(hba->sli.sli3.slim2.dma_handle,
 			    offset, sizeof (uint32_t), DDI_DMA_SYNC_FORKERNEL);
-			word0 = *((volatile uint32_t *)mb);
-			word0 = BE_SWAP32(word0);
+			*word0 = *((volatile uint32_t *)mb);
+			*word0 = BE_SWAP32(*word0);
 		} else {
 			mb = FC_SLIM1_MAILBOX(hba);
-			word0 =
+			*word0 =
 			    READ_SLIM_ADDR(hba, ((volatile uint32_t *)mb));
 #ifdef FMA_SUPPORT
 			/* Access handle validation */
@@ -6062,7 +6065,7 @@ emlxs_sli3_timer_check_mbox(emlxs_hba_t *hba)
 #endif  /* FMA_SUPPORT */
 		}
 
-		mb = (MAILBOX *)&word0;
+		mb = &swpmb;
 
 		/* Check if mailbox has actually completed */
 		if (mb->mbxOwner == OWN_HOST) {
