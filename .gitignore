@@ -3246,6 +3246,8 @@ usr/src/lib/libsqlite/i386/parse_tmp.y
 usr/src/lib/libsqlite/sqlite.h
 usr/src/lib/libtsol/amd64/libtsol.so.2
 usr/src/lib/libtsol/i386/libtsol.so.2
+usr/src/lib/libuuid/amd64/uuid.pc
+usr/src/lib/libuuid/i386/uuid.pc
 usr/src/lib/libuutil/native/sys/
 usr/src/lib/libwrap/amd64/libwrap.so.1.0
 usr/src/lib/libwrap/i386/libwrap.so.1.0
@@ -8605,6 +8607,7 @@ usr/src/test/bhyve-tests/tests/kdev/payload_vlapic_freq_periodic
 usr/src/test/bhyve-tests/tests/kdev/payload_vlapic_mmio_access
 usr/src/test/bhyve-tests/tests/kdev/payload_vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/payload_vpmtmr_freq
+usr/src/test/bhyve-tests/tests/kdev/payload_vrtc_ops
 usr/src/test/bhyve-tests/tests/kdev/payload_wrmsr_tsc
 usr/src/test/bhyve-tests/tests/kdev/pobj_guest_tsc_adjust.s
 usr/src/test/bhyve-tests/tests/kdev/pobj_rdmsr_tsc.s
@@ -8616,6 +8619,7 @@ usr/src/test/bhyve-tests/tests/kdev/pobj_vlapic_freq_periodic.s
 usr/src/test/bhyve-tests/tests/kdev/pobj_vlapic_mmio_access.s
 usr/src/test/bhyve-tests/tests/kdev/pobj_vlapic_msr_access.s
 usr/src/test/bhyve-tests/tests/kdev/pobj_vpmtmr_freq.s
+usr/src/test/bhyve-tests/tests/kdev/pobj_vrtc_ops.s
 usr/src/test/bhyve-tests/tests/kdev/pobj_wrmsr_tsc.s
 usr/src/test/bhyve-tests/tests/kdev/rdmsr_tsc
 usr/src/test/bhyve-tests/tests/kdev/tsc_freq_ctrl
@@ -8626,6 +8630,7 @@ usr/src/test/bhyve-tests/tests/kdev/vlapic_freq_periodic
 usr/src/test/bhyve-tests/tests/kdev/vlapic_mmio_access
 usr/src/test/bhyve-tests/tests/kdev/vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/vpmtmr_freq
+usr/src/test/bhyve-tests/tests/kdev/vrtc_ops
 usr/src/test/bhyve-tests/tests/kdev/wrmsr_tsc
 usr/src/test/bhyve-tests/tests/viona/interface_version
 usr/src/test/bhyve-tests/tests/vmm/auto_destruct
