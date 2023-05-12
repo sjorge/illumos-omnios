@@ -2154,10 +2154,18 @@ i_ipadm_lookupadd_addrobj(ipadm_handle_t iph, ipadm_addrobj_t ipaddr)
 	rvalp = &rval;
 	err = ipadm_door_call(iph, &larg, sizeof (larg), (void **)&rvalp,
 	    sizeof (rval), B_FALSE);
-	if (err == 0 && ipaddr->ipadm_aobjname[0] == '\0') {
-		/* copy the daemon generated `aobjname' into `ipadddr' */
-		(void) strlcpy(ipaddr->ipadm_aobjname, rval.ir_aobjname,
-		    sizeof (ipaddr->ipadm_aobjname));
+	if (err == 0) {
+		/*
+		 * Save daemon-generated state.  Unconditionally copy
+		 * the `lnum` from the daemon, and copy `aobjname' if
+		 * we did not give a name.
+		 */
+		ipaddr->ipadm_lifnum = rval.ir_lnum;
+		if (ipaddr->ipadm_aobjname[0] == '\0') {
+			(void) strlcpy(ipaddr->ipadm_aobjname,
+			    rval.ir_aobjname,
+			    sizeof (ipaddr->ipadm_aobjname));
+		}
 	}
 	if (err == EEXIST)
 		return (IPADM_ADDROBJ_EXISTS);
@@ -3226,8 +3234,7 @@ i_ipadm_op_dhcp(ipadm_addrobj_t addr, dhcp_ipc_type_t type, int *dhcperror)
 	switch (DHCP_IPC_CMD(type)) {
 	case DHCP_START:
 	case DHCP_EXTEND:
-		if (addr->ipadm_af == AF_INET && addr->ipadm_reqhost != NULL &&
-		    *addr->ipadm_reqhost != '\0') {
+		if (addr->ipadm_af == AF_INET && *addr->ipadm_reqhost != '\0') {
 			entry = inittab_getbycode(ITAB_CAT_STANDARD,
 			    ITAB_CONS_INFO, CD_HOSTNAME);
 			if (entry == NULL) {
