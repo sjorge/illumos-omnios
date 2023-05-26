@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2007, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2019 Nexenta by DDN, Inc. All rights reserved.
+ * Copyright 2020 Tintri by DDN, Inc. All rights reserved.
  * Copyright (c) 2016 by Delphix. All rights reserved.
  */
 
@@ -499,6 +499,7 @@ smb_user_auth_tmo(void *arg)
 {
 	smb_user_t *user = arg;
 	smb_request_t *sr;
+	taskqid_t tqid;
 
 	SMB_USER_VALID(user);
 
@@ -531,10 +532,10 @@ smb_user_auth_tmo(void *arg)
 	sr->uid_user = user;
 	sr->user_cr = user->u_cred;
 	sr->sr_state = SMB_REQ_STATE_SUBMITTED;
-
-	(void) taskq_dispatch(
+	tqid = taskq_dispatch(
 	    user->u_server->sv_worker_pool,
 	    smb_user_logoff_tq, sr, TQ_SLEEP);
+	VERIFY(tqid != TASKQID_INVALID);
 }
 
 /*
@@ -568,9 +569,9 @@ smb_user_is_admin(smb_user_t *user)
 #ifdef	_KERNEL
 	char		sidstr[SMB_SID_STRSZ];
 	ksidlist_t	*ksidlist;
-	ksid_t		ksid1;
-	ksid_t		*ksid2;
-	int		i;
+	ksid_t		*ksid;
+	uint32_t	rid;
+	int		ret;
 #endif	/* _KERNEL */
 	boolean_t	rc = B_FALSE;
 
@@ -581,34 +582,25 @@ smb_user_is_admin(smb_user_t *user)
 		return (B_TRUE);
 
 #ifdef	_KERNEL
-	bzero(&ksid1, sizeof (ksid_t));
 	(void) strlcpy(sidstr, ADMINISTRATORS_SID, SMB_SID_STRSZ);
-	ASSERT(smb_sid_splitstr(sidstr, &ksid1.ks_rid) == 0);
-	ksid1.ks_domain = ksid_lookupdomain(sidstr);
+	ret = smb_sid_splitstr(sidstr, &rid);
+	ASSERT3S(ret, ==, 0);
 
 	ksidlist = crgetsidlist(user->u_cred);
 	ASSERT(ksidlist);
-	ASSERT(ksid1.ks_domain);
-	ASSERT(ksid1.ks_domain->kd_name);
 
-	i = 0;
-	ksid2 = crgetsid(user->u_cred, KSID_USER);
-	do {
-		ASSERT(ksid2->ks_domain);
-		ASSERT(ksid2->ks_domain->kd_name);
+	ksid = crgetsid(user->u_cred, KSID_USER);
+	ASSERT(ksid != NULL);
+	ASSERT(ksid->ks_domain != NULL);
+	ASSERT(ksid->ks_domain->kd_name != NULL);
 
-		if (strcmp(ksid1.ks_domain->kd_name,
-		    ksid2->ks_domain->kd_name) == 0 &&
-		    ksid1.ks_rid == ksid2->ks_rid) {
-			user->u_flags |= SMB_USER_FLAG_ADMIN;
-			rc = B_TRUE;
-			break;
-		}
+	if ((rid == ksid->ks_rid &&
+	    strcmp(sidstr, ksid_getdomain(ksid)) == 0) ||
+	    ksidlist_has_sid(ksidlist, sidstr, rid)) {
+		user->u_flags |= SMB_USER_FLAG_ADMIN;
+		rc = B_TRUE;
+	}
 
-		ksid2 = &ksidlist->ksl_sids[i];
-	} while (i++ < ksidlist->ksl_nsid);
-
-	ksid_rele(&ksid1);
 #endif	/* _KERNEL */
 	return (rc);
 }
