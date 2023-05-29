@@ -548,7 +548,8 @@ scsi_hba_log(int level, const char *func, dev_info_t *self, dev_info_t *child,
 	/* augment message with 'information' */
 	info = scsi_hba_log_i;
 	*info = '\0';
-	if ((scsi_hba_log_info & 0x0001) && curproc && PTOU(curproc)->u_comm) {
+	if ((scsi_hba_log_info & 0x0001) && curproc != NULL &&
+	    PTOU(curproc)->u_comm[0] != '\0') {
 		(void) sprintf(info, "%s[%d]%p ",
 		    PTOU(curproc)->u_comm, curproc->p_pid, (void *)curthread);
 		info += strlen(info);
@@ -3192,7 +3193,8 @@ scsi_hba_ioctl(dev_t dev, int cmd, intptr_t arg, int mode, cred_t *credp,
 			}
 			child = ddi_get_next_sibling(child);
 		}
-		scsi_hba_devi_exit(self, enteredv);
+		if (child == NULL)
+			scsi_hba_devi_exit(self, enteredv);
 		break;
 	}
 
