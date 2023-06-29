@@ -474,11 +474,6 @@ HV_TIMESYNC_OBJS = \
 CORETEMP_OBJS =	coretemp.o
 
 #
-# AMD Family 17 northbridge driver
-#
-AMDF17NBDF_OBJS = amdf17nbdf.o
-
-#
 # Intel Platform Controller Hub Temperature Module
 #
 PCHTEMP_OBJS = pchtemp.o
