@@ -193,7 +193,7 @@ int	fr_features = 0
 #endif
 	;
 
-#define	IPF_BUMP(x)	(x)++	
+#define	IPF_BUMP(x)	(x)++
 
 static	INLINE int	fr_ipfcheck __P((fr_info_t *, frentry_t *, int));
 static	INLINE int	fr_ipfcheck __P((fr_info_t *, frentry_t *, int));
@@ -796,7 +796,7 @@ fr_info_t *fin;
 	for (i = 0; ip6exthdr[i].ol_bit != 0; i++)
 		if (ip6exthdr[i].ol_val == IPPROTO_ESP) {
 			fin->fin_optmsk |= ip6exthdr[i].ol_bit;
-			break;			
+			break;
 		}
 }
 
@@ -825,7 +825,7 @@ fr_info_t *fin;
 	for (i = 0; ip6exthdr[i].ol_bit != 0; i++)
 		if (ip6exthdr[i].ol_val == IPPROTO_AH) {
 			fin->fin_optmsk |= ip6exthdr[i].ol_bit;
-			break;			
+			break;
 		}
 
 	ah = (authhdr_t *)fin->fin_dp;
@@ -1367,12 +1367,12 @@ fr_info_t *fin;
 		if (off != 0) {
 			fin->fin_flx |= FI_FRAGBODY;
 			off <<= 3;
-			if ((off + fin->fin_dlen > 65535) || 
+			if ((off + fin->fin_dlen > 65535) ||
 			    (fin->fin_dlen == 0) ||
 			    ((morefrag != 0) && ((fin->fin_dlen & 7) != 0))) {
-				/* 
+				/*
 				 * The length of the packet, starting at its
-				 * offset cannot exceed 65535 (0xffff) as the 
+				 * offset cannot exceed 65535 (0xffff) as the
 				 * length of an IP packet is only 16 bits.
 				 *
 				 * Any fragment that isn't the last fragment
@@ -2648,7 +2648,7 @@ ipf_stack_t *ifs;
 						IPF_BUMP(
 						ifs->ifs_frstats[out].fr_ret);
 					}
-					/* 
+					/*
 					 * we drop packet silently in case we
 					 * failed assemble fake response for it
 					 */
@@ -2660,7 +2660,7 @@ ipf_stack_t *ifs;
 					IPF_BUMP(
 					    ifs->ifs_frstats[out].fr_block);
 					RWLOCK_EXIT(&ifs->ifs_ipf_mutex);
-					
+
 					return (0);
 				}
 #endif	/* _KERNEL && SOLARIS2 >= 10 */
@@ -2686,7 +2686,7 @@ ipf_stack_t *ifs;
 						ifs->ifs_frstats[out].fr_ret);
 					}
 					else if (mp != NULL) {
-					/* 
+					/*
 					 * we drop packet silently in case we
 					 * failed assemble fake response for it
 					 */
@@ -2697,7 +2697,7 @@ ipf_stack_t *ifs;
 					IPF_BUMP(
 					    ifs->ifs_frstats[out].fr_block);
 					RWLOCK_EXIT(&ifs->ifs_ipf_mutex);
-					
+
 					return (0);
 				 }
 #endif /* _KERNEL && _SOLARIS2 >= 10 */
@@ -3536,10 +3536,8 @@ ipf_stack_t *ifs;
 			(void) frflushlist(set, unit, nfreedp, fp->fr_grp, ifs);
 		}
 
-		if (fp->fr_grhead != NULL) {
-			fr_delgroup(fp->fr_grhead, unit, set, ifs);
-			*fp->fr_grhead = '\0';
-		}
+		fr_delgroup(fp->fr_grhead, unit, set, ifs);
+		*fp->fr_grhead = '\0';
 
 		ASSERT(fp->fr_ref > 0);
 		fp->fr_next = NULL;
@@ -3806,7 +3804,7 @@ ipf_stack_t *ifs;
 			rval = newifp;
 		break;
 	case IPFSYNC_OLDIFP :
-		/* 
+		/*
 		 * If interface gets unplumbed it must be invalidated, which
 		 * means set all existing references to the interface to -1.
 		 * We don't want to invalidate references for wildcard
@@ -4040,7 +4038,7 @@ ipf_stack_t *ifs;
 
 	for (i = 0; i < rules; i++) {
 		fr_syncindex(rule_lists[i], ifp, newifp);
-	} 
+	}
 
 	/*
 	 * Update rule groups.
@@ -7356,7 +7354,7 @@ ipf_stack_t *ifs;
 		 * Now that we have ref, it's save to give up lock.
 		 */
 		RWLOCK_EXIT(&ifs->ifs_ipf_mutex);
- 
+
 		/*
 		 * Copy out data and clean up references and token as needed.
 		 */
@@ -7383,7 +7381,7 @@ ipf_stack_t *ifs;
 				break;
 			}
 		}
- 
+
 		if ((count == 1) || (error != 0))
 			break;
 
