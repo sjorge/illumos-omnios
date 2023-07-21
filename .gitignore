@@ -8256,7 +8256,7 @@ usr/src/man/man9f/mac_prop_info_set_default_uint64.9f
 usr/src/man/man9f/mac_prop_info_set_default_uint8.9f
 usr/src/man/man9f/mac_prop_info_set_perm.9f
 usr/src/man/man9f/mac_prop_info_set_range_uint32.9f
-usr/src/man/man9f/mac_ring_rx.9f
+usr/src/man/man9f/mac_rx_ring.9f
 usr/src/man/man9f/mac_transceiver_info_set_present.9f
 usr/src/man/man9f/mac_transceiver_info_set_usable.9f
 usr/src/man/man9f/mac_tx_ring_update.9f
