@@ -4319,6 +4319,7 @@ usr/src/man/man3c/strtok.3c
 usr/src/man/man3c/strtok_r.3c
 usr/src/man/man3c/strtold.3c
 usr/src/man/man3c/strtoll.3c
+usr/src/man/man3c/strtonumx.3c
 usr/src/man/man3c/strtoull.3c
 usr/src/man/man3c/strtoumax.3c
 usr/src/man/man3c/strxfrm_l.3c
@@ -8632,6 +8633,9 @@ usr/src/test/bhyve-tests/tests/kdev/vlapic_msr_access
 usr/src/test/bhyve-tests/tests/kdev/vpmtmr_freq
 usr/src/test/bhyve-tests/tests/kdev/vrtc_ops
 usr/src/test/bhyve-tests/tests/kdev/wrmsr_tsc
+usr/src/test/bhyve-tests/tests/perf/entry_exit
+usr/src/test/bhyve-tests/tests/perf/payload_entry_exit
+usr/src/test/bhyve-tests/tests/perf/pobj_entry_exit.s
 usr/src/test/bhyve-tests/tests/viona/interface_version
 usr/src/test/bhyve-tests/tests/vmm/auto_destruct
 usr/src/test/bhyve-tests/tests/vmm/check_iommu
@@ -8821,6 +8825,8 @@ usr/src/test/libc-tests/tests/stdio/test_mbrtowc.64
 usr/src/test/libc-tests/tests/strcoll-strxfrm-6907.32
 usr/src/test/libc-tests/tests/strcoll-strxfrm-6907.64
 usr/src/test/libc-tests/tests/strerror/strerror
+usr/src/test/libc-tests/tests/strtonum.32
+usr/src/test/libc-tests/tests/strtonum.64
 usr/src/test/libc-tests/tests/symbols/setup
 usr/src/test/libc-tests/tests/symbols/symbols_test.amd64
 usr/src/test/libc-tests/tests/symbols/symbols_test.i386
